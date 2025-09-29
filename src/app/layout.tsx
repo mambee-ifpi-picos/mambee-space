@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Navbar from "@/components/Navbar";
+
+// @ts-expect-error
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,7 +30,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <Navbar />
+        <main className="flex flex-col min-h-[calc(100vh-120px)]">
+          {children}
+        </main>
+        <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center bg-gray-700 text-white p-4">
+          Mambee2025
+        </footer>
       </body>
     </html>
   );
