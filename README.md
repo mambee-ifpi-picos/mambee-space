@@ -5,6 +5,14 @@ O **Mambee Spaces** permite organizar, gerenciar e visualizar espaços de forma 
 
 ---
 
+## 🚀 Diagramas
+
+- Diagrama de caso de uso:
+  [Diagrama de casos de uso](https://docs.google.com/drawings/d/13x8PCLNTc6HvRnRje044PTaGQe30xgzb4XIERpYk7ZU/edit?usp=sharing) 
+- Diagrama de Entidade Relacionamento
+  [Diagrama de entidade e relacionamento](https://docs.google.com/drawings/d/1GfegUnII3jqiGvulse4j8PTawOMsbWz3H4SfeCs33Ks/edit?usp=sharing) 
+---
+
 ## 🚀 Tecnologias utilizadas
 
 - [Next.js](https://nextjs.org/) — Framework React para aplicações web modernas
