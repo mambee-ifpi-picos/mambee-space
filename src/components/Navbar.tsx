@@ -24,7 +24,7 @@ export default function Navbar() {
               alt="Logo Mambee"
               width={40}
               height={40}
-              className="object-contain w-14 ml-2"
+              className="object-contain w-14 mr-5"
             />
           </Link>
           <h1 className="text-lg sm:text-xl font-bold">
