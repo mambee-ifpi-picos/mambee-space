@@ -2,44 +2,45 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 
 export default function Navbar() {
-  const pathname = usePathname();
-
-  const linkClasses = (href: string) =>
-    `px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-      pathname === href
-        ? "bg-gray-700 text-white"
-        : "text-gray-700 hover:bg-blue-100"
-    }`;
-
   return (
-    <nav className="bg-white shadow-md w-full">
-      <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Link href={"/"}>
-            <Image
-              src="/logo-mambee.png"
-              alt="Logo Mambee"
-              width={40}
-              height={40}
-              className="object-contain w-14 mr-5"
-            />
-          </Link>
-          <h1 className="text-lg sm:text-xl font-bold">
+    <motion.nav
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="w-full bg-white shadow-md z-50"
+    >
+      <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3">
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/logo-mambee.png"
+            alt="Logo Mambee"
+            width={40}
+            height={40}
+            className="object-contain w-12"
+          />
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
             <span className="text-[#C76E88]">Mambee</span> Space
           </h1>
-        </div>
-        <div className="flex flex-wrap gap-2 mt-3 sm:mt-0">
-          <Link href="/sobre" className={linkClasses("/sobre")}>
+        </Link>
+
+        <div className="hidden md:flex space-x-6">
+          <a
+            href="#sobre"
+            className="text-gray-700 hover:text-[#C76E88] font-medium transition-colors"
+          >
             Sobre
-          </Link>
-          <Link href="/relatorios" className={linkClasses("/relatorios")}>
+          </a>
+          <a
+            href="#relatorios"
+            className="text-gray-700 hover:text-[#C76E88] font-medium transition-colors"
+          >
             Relatórios
-          </Link>
+          </a>
         </div>
       </div>
-    </nav>
+    </motion.nav>
   );
 }

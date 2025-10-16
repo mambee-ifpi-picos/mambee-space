@@ -1,51 +1,52 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { FaMapPin } from "react-icons/fa";
 
 export default function RelatoriosPage() {
   const relatorios = [
-    { nome: "Relatório1", cor: "text-red-500" },
-    { nome: "Relatório2", cor: "text-blue-500" },
-    { nome: "Relatório3", cor: "text-green-500" },
-    { nome: "Relatório4", cor: "text-yellow-500" },
-    { nome: "Relatório5", cor: "text-cyan-500" },
-    { nome: "Relatório6", cor: "text-purple-500" },
-    { nome: "Relatório7", cor: "text-pink-500" },
-    { nome: "Relatório8", cor: "text-lime-500" },
+    { nome: "Reservas Realizadas", cor: "text-blue-500" },
+    { nome: "Cancelamentos", cor: "text-red-500" },
+    { nome: "Ocupação Semanal", cor: "text-green-500" },
+    { nome: "Usuários Ativos", cor: "text-yellow-500" },
+    { nome: "Agendamentos por Horário", cor: "text-purple-500" },
+    { nome: "Relatório Mensal", cor: "text-cyan-500" },
+    { nome: "Comparativo de Uso", cor: "text-pink-500" },
+    { nome: "Disponibilidade", cor: "text-lime-500" },
   ];
 
-  const col1 = relatorios.slice(0, 4);
-  const col2 = relatorios.slice(4, 8);
-
   return (
-    <section className="min-h-screen flex flex-col items-center justify-start pt-24 bg-white text-center">
-      <h1 style={{ fontSize: "50px" }} className="font-extrabold text-gray-800 mb-12">
+    <section className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-white to-gray-100 py-20 px-8 text-center">
+      <motion.h1
+  initial={{ opacity: 0, y: -40 }}
+  whileInView={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.6 }}
+  viewport={{ once: true, amount: 0.3 }}
+  className="text-4xl sm:text-5xl font-extrabold text-gray-800 mb-12"
+>
+
         Relatórios
-      </h1>
+      </motion.h1>
 
-      <div className="grid grid-cols-2 gap-x-80">
-        <div className="space-y-5">
-          {col1.map((r, i) => (
-            <div key={i} className="flex items-center space-x-3 text-blue-700">
-              <FaMapPin className={`${r.cor} text-5xl`} />
-              <span className="text-xl font-medium hover:underline cursor-pointer">
-                {r.nome}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-5">
-          {col2.map((r, i) => (
-            <div key={i} className="flex items-center space-x-5 text-blue-700">
-              <FaMapPin className={`${r.cor} text-5xl`} />
-              <span className="text-xl font-medium hover:underline cursor-pointer">
-                {r.nome}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        viewport={{ once: true }}
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-10 md:gap-x-32"
+      >
+        {relatorios.map((r, idx) => (
+          <div
+            key={idx}
+            className="flex items-center justify-center md:justify-start space-x-4 hover:scale-105 transition-transform duration-300"
+          >
+            <FaMapPin className={`${r.cor} text-4xl`} />
+            <span className="text-lg sm:text-xl font-medium text-gray-800 hover:underline cursor-pointer">
+              {r.nome}
+            </span>
+          </div>
+        ))}
+      </motion.div>
     </section>
   );
 }
