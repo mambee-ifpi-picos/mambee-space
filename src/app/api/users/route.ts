@@ -1,13 +1,18 @@
-// app/api/users/route.ts
+//api/users/route.ts
+
 import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 
 export async function GET() {
-  // Sample data – in real apps you’d fetch from a DB
-  const users = [
-    { name: "Alice Smith", email: "alice@example.com" },
-    { name: "Bob Johnson", email: "bob@example.com" },
-    { name: "Carol Davis", email: "carol@example.com" },
-  ];
+  const usuarios = await prisma.usuario.findMany();
+  return NextResponse.json(usuarios);
+}
 
-  return NextResponse.json(users);
+export async function POST(request: Request) {
+  const json = await request.json();
+  console.log(json);
+  const usuario = await prisma.usuario.create({
+    data: json,
+  });
+  return NextResponse.json(usuario);
 }
