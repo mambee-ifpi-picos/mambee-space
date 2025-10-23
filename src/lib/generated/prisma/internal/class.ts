@@ -22,7 +22,7 @@ const config: runtime.GetPrismaClientConfig = {
       "value": "prisma-client"
     },
     "output": {
-      "value": "/home/jesielviana/dev/mambee/mambee-spaces/src/lib/generated/prisma",
+      "value": "C:\\Users\\franc\\mambee-space\\src\\lib\\generated\\prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -31,12 +31,12 @@ const config: runtime.GetPrismaClientConfig = {
     "binaryTargets": [
       {
         "fromEnvVar": null,
-        "value": "rhel-openssl-3.0.x",
+        "value": "windows",
         "native": true
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/home/jesielviana/dev/mambee/mambee-spaces/prisma/schema.prisma",
+    "sourceFilePath": "C:\\Users\\franc\\mambee-space\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativePath": "../../../../prisma",
@@ -46,6 +46,7 @@ const config: runtime.GetPrismaClientConfig = {
     "db"
   ],
   "activeProvider": "postgresql",
+  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
