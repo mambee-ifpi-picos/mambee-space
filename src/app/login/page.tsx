@@ -11,7 +11,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback`, // ✅ CORRIGIDO
+        redirectTo: `${window.location.origin}/api/auth/callback`,
       },
     });
     if (error) console.error("Erro no login:", error.message);
@@ -21,7 +21,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "apple",
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback`, // ✅ idem
+        redirectTo: `${window.location.origin}/api/auth/callback`,
       },
     });
     if (error) console.error("Erro no login com Apple:", error.message);
@@ -32,7 +32,6 @@ export default function LoginPage() {
       <div className="bg-white p-8 rounded-2xl shadow-lg text-center w-80">
         <h1 className="text-2xl font-semibold mb-6">Login 🔐</h1>
 
-        {/* Botão Google */}
         <button
           type="button"
           onClick={handleGoogleLogin}
@@ -42,7 +41,7 @@ export default function LoginPage() {
           Entrar com Google
         </button>
 
-        {/* Botão Apple */}
+        
         <button
           type="button"
           onClick={handleAppleLogin}
