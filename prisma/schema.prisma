@@ -1,8 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// This is your Prisma schema file.
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
@@ -15,26 +12,26 @@ datasource db {
 }
 
 model Usuario {
-  idUsuario Int @id @default(autoincrement())
+  idUsuario Int @id @default(autoincrement())  
   foto String?
   email String @unique
   nome String
   admin Boolean @default(false)
 
-  salasCriadas   Sala[]
-  espacosCriados Espaco[]
+  salasCriadas    Sala[]
+  espacosCriados  Espaco[]
   reservasCriadas Reserva[]
 
   @@schema("public")
 }
 
 model Sala {
-  idSala Int @id @default(autoincrement())
-  nomeSala String
-  mapa String
+  idSala             Int      @id @default(autoincrement())
+  nomeSala           String
+  mapa               String
   limiteHorasReserva Int
-  ativa Boolean @default(true)
-  idUsuarioCriador Int
+  ativa              Boolean  @default(true)
+  idUsuarioCriador   Int
 
   criador Usuario @relation(fields: [idUsuarioCriador], references: [idUsuario])
   espacos Espaco[]
@@ -43,29 +40,29 @@ model Sala {
 }
 
 model Espaco {
-  idEspaco Int @id @default(autoincrement())
-  codigoEspaco String
-  idUsuarioCriador Int
-  idSalaPertence Int
+  idEspaco          Int      @id @default(autoincrement())
+  codigoEspaco      String
+  idUsuarioCriador  Int
+  idSalaPertence    Int
 
   criador Usuario @relation(fields: [idUsuarioCriador], references: [idUsuario])
-  sala Sala @relation(fields: [idSalaPertence], references: [idSala])
+  sala    Sala    @relation(fields: [idSalaPertence], references: [idSala])
   reservas Reserva[]
 
   @@schema("public")
 }
 
 model Reserva {
-  idReserva Int @id @default(autoincrement())
-  motivo String
-  horaInicio DateTime
-  horaFim DateTime
-  situacao String
-  idUsuarioCriador Int
-  idEspacoReservado Int
+  idReserva          Int      @id @default(autoincrement())
+  motivo             String
+  horaInicio         DateTime
+  horaFim            DateTime
+  situacao           String
+  idUsuarioCriador   Int
+  idEspacoReservado  Int
 
   criador Usuario @relation(fields: [idUsuarioCriador], references: [idUsuario])
-  espaco Espaco @relation(fields: [idEspacoReservado], references: [idEspaco])
+  espaco  Espaco  @relation(fields: [idEspacoReservado], references: [idEspaco])
 
   @@schema("public")
 }
