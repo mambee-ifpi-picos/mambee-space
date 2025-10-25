@@ -6,7 +6,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function LoginPage() {
   const supabase = createClientComponentClient();
-
+  
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -41,7 +41,6 @@ export default function LoginPage() {
           Entrar com Google
         </button>
 
-        
         <button
           type="button"
           onClick={handleAppleLogin}
