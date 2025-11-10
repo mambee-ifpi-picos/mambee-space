@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 import { supabase } from "@/lib/supabaseClient";
 import { NextResponse } from "next/server";
 
@@ -6,12 +8,11 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const idUsuario = searchParams.get("idUsuario");
 
-    if (!idUsuario) {
+    if (!idUsuario)
       return NextResponse.json(
         { success: false, error: "Informe o ID do usuário." },
         { status: 400 }
       );
-    }
 
     const { data: usuario, error: erroUsuario } = await supabase
       .from("Usuario")
@@ -23,19 +24,19 @@ export async function GET(req: Request) {
 
     let query = supabase
       .from("Reserva")
-      .select("*, espaco(codigoEspaco, sala(nomeSala))");
+      .select("*, Espaco(codigoEspaco, idSalaPertence)");
 
-    if (!usuario?.admin) {
-      query = query.eq("idUsuarioCriador", idUsuario);
-    }
+    if (!usuario?.admin) query = query.eq("idUsuarioCriador", idUsuario);
 
     const { data, error } = await query;
-
     if (error) throw error;
 
     return NextResponse.json({ success: true, reservas: data });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Erro desconhecido.";
+    const msg =
+      error instanceof Error
+        ? error.message
+        : JSON.stringify(error, null, 2) || "Erro desconhecido.";
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -46,72 +47,77 @@ export async function POST(req: Request) {
       motivo: string;
       horaInicio: string;
       horaFim: string;
+      situacao: string;
       idUsuarioCriador: number;
       idEspacoReservado: number;
     };
 
-    const { motivo, horaInicio, horaFim, idUsuarioCriador, idEspacoReservado } =
-      body;
+    const {
+      motivo,
+      horaInicio,
+      horaFim,
+      situacao,
+      idUsuarioCriador,
+      idEspacoReservado,
+    } = body;
 
     if (
       !motivo ||
       !horaInicio ||
       !horaFim ||
+      !situacao ||
       !idUsuarioCriador ||
       !idEspacoReservado
-    ) {
+    )
       return NextResponse.json(
         { success: false, error: "Campos obrigatórios ausentes." },
         { status: 400 }
       );
-    }
 
     const { data: espaco, error: erroEspaco } = await supabase
       .from("Espaco")
-      .select("idEspaco, sala(ativa)")
+      .select("idEspaco, idSalaPertence")
       .eq("idEspaco", idEspacoReservado)
       .single();
 
     if (erroEspaco) throw erroEspaco;
-
-    if (!espaco) {
+    if (!espaco)
       return NextResponse.json(
         { success: false, error: "Espaço não encontrado." },
         { status: 404 }
       );
-    }
 
-    const salaAtiva = Array.isArray(espaco.sala)
-      ? espaco.sala[0]?.ativa
-      : (espaco.sala as { ativa: boolean } | null)?.ativa;
+    const { data: sala, error: erroSala } = await supabase
+      .from("Sala")
+      .select("ativa")
+      .eq("idSala", espaco.idSalaPertence)
+      .single();
 
-    if (!salaAtiva) {
+    if (erroSala) throw erroSala;
+    if (!sala?.ativa)
       return NextResponse.json(
         { success: false, error: "A sala deste espaço está inativa." },
         { status: 403 }
       );
-    }
 
     const inicio = new Date(horaInicio).getTime();
     const fim = new Date(horaFim).getTime();
     const duracaoHoras = (fim - inicio) / (1000 * 60 * 60);
 
-    if (duracaoHoras > 4) {
+    if (duracaoHoras > 4)
       return NextResponse.json(
         { success: false, error: "O limite máximo de reserva é de 4 horas." },
         { status: 400 }
       );
-    }
 
     const { data: conflitos, error: erroConflito } = await supabase
       .from("Reserva")
       .select("idReserva, horaInicio, horaFim")
       .eq("idEspacoReservado", idEspacoReservado)
-      .or(`and(horaInicio.lt.${horaFim},horaFim.gt.${horaInicio})`);
+      .or(`and(horaInicio.lt."${horaFim}",horaFim.gt."${horaInicio}")`);
 
     if (erroConflito) throw erroConflito;
-
-    if (conflitos && conflitos.length > 0) {
+    if (conflitos && conflitos.length > 0)
       return NextResponse.json(
         {
           success: false,
@@ -119,7 +125,6 @@ export async function POST(req: Request) {
         },
         { status: 409 }
       );
-    }
 
     const { data, error } = await supabase
       .from("Reserva")
@@ -128,7 +133,7 @@ export async function POST(req: Request) {
           motivo,
           horaInicio,
           horaFim,
-          situacao: "Pendente",
+          situacao,
           idUsuarioCriador,
           idEspacoReservado,
         },
@@ -143,7 +148,10 @@ export async function POST(req: Request) {
       message: "Reserva criada com sucesso.",
     });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Erro desconhecido.";
+    const msg =
+      error instanceof Error
+        ? error.message
+        : JSON.stringify(error, null, 2) || "Erro desconhecido.";
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
