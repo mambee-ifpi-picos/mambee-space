@@ -94,7 +94,6 @@ export default function ListaSalasPage() {
 
   return (
     <main className="max-w-6xl mx-auto px-8 py-10 space-y-8">
-      {/* BUSCA */}
       <section className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex-1 flex items-center border rounded-md overflow-hidden bg-white">
           <div className="px-3 text-gray-400 text-sm">🔍</div>
