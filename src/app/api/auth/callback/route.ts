@@ -36,7 +36,7 @@ export async function GET(req: Request) {
   }
 
   const nome = user.user_metadata?.full_name || user.user_metadata?.name || "Sem nome";
-  const email = user.email!;
+  const email = user.email ?? `no-mail-${user.id}@ex.com`;
   const foto = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
 
   try {
@@ -53,8 +53,8 @@ export async function GET(req: Request) {
     });
 
     console.log("Usuário salvo/atualizado no Prisma com sucesso!");
-  } catch (err: any) {
-    console.error("Erro ao salvar no Prisma:", err.message);
+  } catch (err: unknown) {
+    console.error("Erro ao salvar no Prisma:", err);
   }
 
  
