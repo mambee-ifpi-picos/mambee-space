@@ -18,13 +18,12 @@ export default function RelatoriosPage() {
   return (
     <section className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-white to-gray-100 py-20 px-8 text-center">
       <motion.h1
-  initial={{ opacity: 0, y: -40 }}
-  whileInView={{ opacity: 1, y: 0 }}
-  transition={{ duration: 0.6 }}
-  viewport={{ once: true, amount: 0.3 }}
-  className="text-4xl sm:text-5xl font-extrabold text-gray-800 mb-12"
->
-
+        initial={{ opacity: 0, y: -40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        viewport={{ once: true, amount: 0.3 }}
+        className="text-4xl sm:text-5xl font-extrabold text-gray-800 mb-12"
+      >
         Relatórios
       </motion.h1>
 
