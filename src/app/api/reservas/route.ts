@@ -1,18 +1,22 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
 import { supabase } from "@/lib/supabaseClient";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const idUsuario = searchParams.get("idUsuario");
 
-    if (!idUsuario)
+    const idUsuario = searchParams.get("idUsuario");
+    const search = searchParams.get("search")?.trim().toLowerCase() || null;
+
+    if (!idUsuario) {
       return NextResponse.json(
         { success: false, error: "Informe o ID do usuário." },
         { status: 400 }
       );
+    }
 
     const { data: usuario, error: erroUsuario } = await supabase
       .from("Usuario")
@@ -26,12 +30,24 @@ export async function GET(req: Request) {
       .from("Reserva")
       .select("*, Espaco(codigoEspaco, idSalaPertence)");
 
-    if (!usuario?.admin) query = query.eq("idUsuarioCriador", idUsuario);
+    if (!usuario?.admin) {
+      query = query.eq("idUsuarioCriador", idUsuario);
+    }
 
     const { data, error } = await query;
     if (error) throw error;
 
-    return NextResponse.json({ success: true, reservas: data });
+    let reservasFiltradas = (data || []) as any[];
+    if (search) {
+      reservasFiltradas = reservasFiltradas.filter((reserva) =>
+        (reserva.motivo ?? "").toLowerCase().includes(search)
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      reservas: reservasFiltradas,
+    });
   } catch (error: unknown) {
     const msg =
       error instanceof Error
@@ -226,7 +242,10 @@ export async function PUT(req: Request) {
       const duracaoHoras = (fim - inicio) / (1000 * 60 * 60);
       if (duracaoHoras > 4) {
         return NextResponse.json(
-          { success: false, error: "O limite máximo de reserva é de 4 horas." },
+          {
+            success: false,
+            error: "O limite máximo de reserva é de 4 horas.",
+          },
           { status: 400 }
         );
       }
@@ -305,6 +324,7 @@ export async function DELETE(req: Request) {
         { status: 404 }
       );
     }
+
     if (!usuario?.admin && reserva.idUsuarioCriador !== Number(idUsuario)) {
       return NextResponse.json(
         {
