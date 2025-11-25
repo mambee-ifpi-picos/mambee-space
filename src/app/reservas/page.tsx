@@ -36,6 +36,7 @@ export default function MinhasReservasPage() {
   const [showSuccessCancel, setShowSuccessCancel] = useState(false);
   const [pagina, setPagina] = useState(1);
   const itensPorPagina = 9;
+
   const carregarReservas = useCallback(async (searchTerm?: string) => {
     setLoading(true);
     setErro(null);
@@ -130,6 +131,7 @@ export default function MinhasReservasPage() {
   const totalPaginas =
     reservas.length === 0 ? 1 : Math.ceil(reservas.length / itensPorPagina);
   const estaNaUltimaPagina = pagina === totalPaginas;
+
   return (
     <main className="max-w-6xl mx-auto px-8 py-8 space-y-6">
       <section className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -168,7 +170,7 @@ export default function MinhasReservasPage() {
         <p className="text-sm text-gray-500">Nenhuma reserva encontrada.</p>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 auto-rows-[10rem]">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 auto-rows-[10rem] items-stretch">
             {reservasPaginadas.map((reserva) => (
               <article
                 key={reserva.idReserva}
@@ -177,7 +179,6 @@ export default function MinhasReservasPage() {
                 <div className="w-2 bg-teal-500" />
 
                 <div className="flex-1 px-4 py-3 flex flex-col justify-between h-full">
-                  {/* Usuário / avatar */}
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 text-xs">
                       👤
@@ -187,8 +188,16 @@ export default function MinhasReservasPage() {
                       {String(reserva.idUsuarioCriador).padStart(3, "0")}
                     </div>
                   </div>
-
-                  <p className="text-sm text-gray-800 mb-1">{reserva.motivo}</p>
+                  <p
+                    className="text-sm text-gray-800 mb-1 overflow-hidden"
+                    style={{
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                    }}
+                  >
+                    {reserva.motivo}
+                  </p>
 
                   <p className="text-xs text-gray-600 mb-3">
                     {formatarHoraData(reserva.horaInicio, reserva.horaFim)}
