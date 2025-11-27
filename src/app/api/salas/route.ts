@@ -8,7 +8,7 @@ export async function GET() {
   if (salaError) {
     return NextResponse.json(
       { success: false, error: salaError.message },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -18,7 +18,7 @@ export async function GET() {
   if (espacoError) {
     return NextResponse.json(
       { success: false, error: espacoError.message },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -33,12 +33,13 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { nomeSala, mapa, limiteHorasReserva, idUsuarioCriador } = body;
+    const { nomeSala, mapa, limiteHorasReserva, idUsuarioCriador, ativa } =
+      body;
 
     if (!nomeSala || !mapa || !limiteHorasReserva || !idUsuarioCriador)
       return NextResponse.json(
         { success: false, error: "Campos obrigatórios ausentes." },
-        { status: 400 }
+        { status: 400 },
       );
 
     const { data: usuario } = await supabase
@@ -50,18 +51,18 @@ export async function POST(req: Request) {
     if (!usuario?.admin)
       return NextResponse.json(
         { success: false, error: "Apenas administradores podem criar salas." },
-        { status: 403 }
+        { status: 403 },
       );
 
     if (limiteHorasReserva > 4)
       return NextResponse.json(
         { success: false, error: "O limite máximo de horas por reserva é 4." },
-        { status: 400 }
+        { status: 400 },
       );
 
     const { data, error } = await supabase
       .from("Sala")
-      .insert([{ nomeSala, mapa, limiteHorasReserva, idUsuarioCriador }])
+      .insert([{ nomeSala, mapa, limiteHorasReserva, idUsuarioCriador, ativa }])
       .select();
 
     if (error) throw error;
@@ -87,7 +88,7 @@ export async function PUT(req: Request) {
     if (!idSala || !idUsuarioEditor) {
       return NextResponse.json(
         { success: false, error: "Campos obrigatórios ausentes." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -100,7 +101,7 @@ export async function PUT(req: Request) {
     if (!usuario?.admin) {
       return NextResponse.json(
         { success: false, error: "Apenas administradores podem editar salas." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -125,8 +126,8 @@ export async function PUT(req: Request) {
         ativa === true
           ? "Sala ativada com sucesso."
           : ativa === false
-          ? "Sala desativada com sucesso."
-          : "Sala atualizada com sucesso.",
+            ? "Sala desativada com sucesso."
+            : "Sala atualizada com sucesso.",
     });
   } catch (err: unknown) {
     return NextResponse.json({ success: false, error: err }, { status: 500 });
@@ -142,7 +143,7 @@ export async function DELETE(req: Request) {
     if (!idSala || !idUsuario)
       return NextResponse.json(
         { success: false, error: "Parâmetros ausentes." },
-        { status: 400 }
+        { status: 400 },
       );
 
     const { data: usuario } = await supabase
@@ -157,7 +158,7 @@ export async function DELETE(req: Request) {
           success: false,
           error: "Apenas administradores podem deletar salas.",
         },
-        { status: 403 }
+        { status: 403 },
       );
 
     await supabase.from("Espaco").delete().eq("idSalaPertence", idSala);
