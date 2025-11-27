@@ -48,8 +48,10 @@ export default function SobrePage() {
           className="flex justify-center md:justify-end"
         >
           <Image
-            src="sobre.png"
+            src="/sobre.png"
             alt="Demonstração da plataforma"
+            width={800}
+            height={600}
             className="rounded-2xl shadow-lg max-w-full h-auto"
           />
         </motion.div>
