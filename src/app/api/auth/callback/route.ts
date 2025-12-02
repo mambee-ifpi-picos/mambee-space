@@ -1,43 +1,88 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { prisma } from "@/lib/prisma";
+import { createServerClient } from "@supabase/ssr";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
 
   if (!code) {
-    return NextResponse.json({ error: "Código ausente" }, { status: 400 });
+    return NextResponse.redirect(new URL("/login?error=no_code", req.url));
   }
 
-  const supabase = createRouteHandlerClient({ cookies });
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set({ name, value, ...options });
+            });
+          } catch {}
+        },
+      },
+    },
+  );
+
   const { error: authError } = await supabase.auth.exchangeCodeForSession(code);
 
   if (authError) {
-    return NextResponse.json({ error: authError.message }, { status: 400 });
+    console.error("Erro ao autenticar:", authError.message);
+    return NextResponse.redirect(new URL("/login?error=auth", req.url));
   }
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (userError || !user || !user.email) { 
-    return NextResponse.json({ error: "Usuário ou email não encontrado" }, { status: 404 });
+  if (userError || !user) {
+    return NextResponse.redirect(new URL("/login?error=user", req.url));
   }
 
-  
-  const email = user.email; 
-  const nome = user.user_metadata?.full_name || user.user_metadata?.name || "Sem nome";
-  const foto = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+  const nome =
+    (user.user_metadata as any)?.full_name ||
+    (user.user_metadata as any)?.name ||
+    "Sem nome";
 
-  try {
-    await prisma.usuario.upsert({
-      where: { email },
-      update: { nome, foto },
-      create: { nome, email, foto, admin: false },
-    });
-  } catch (err) { 
-    const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
-    console.error("Erro ao salvar no Prisma:", errorMessage);
+  const email = user.email ?? `no-mail-${user.id}@example.com`;
+
+  const foto =
+    (user.user_metadata as any)?.avatar_url ||
+    (user.user_metadata as any)?.picture ||
+    null;
+
+  const { data: existingUser } = await supabase
+    .from("Usuario")
+    .select("*")
+    .eq("email", email)
+    .single();
+
+  const usuarioParaSalvar: any = {
+    idAuth: user.id,
+    nome,
+    email,
+    foto,
+  };
+
+  // manter admin existente sem mudar
+  if (existingUser) {
+    usuarioParaSalvar.admin = existingUser.admin;
+  }
+
+  const { error: upsertError } = await supabase
+    .from("Usuario")
+    .upsert(usuarioParaSalvar, { onConflict: "email" });
+
+  if (upsertError) {
+    console.error("Erro ao salvar Usuario:", upsertError.message);
   }
 
   return NextResponse.redirect(new URL("/home", req.url));
