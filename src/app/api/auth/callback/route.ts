@@ -25,15 +25,12 @@ export async function GET(req: Request) {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set({ name, value, ...options });
             });
-          } catch {
-            // se for chamado em RSC, ignora
-          }
+          } catch {}
         },
       },
     },
   );
 
-  // troca o code pela sessão
   const { error: authError } = await supabase.auth.exchangeCodeForSession(code);
 
   if (authError) {
@@ -62,15 +59,27 @@ export async function GET(req: Request) {
     (user.user_metadata as any)?.picture ||
     null;
 
-  // salvar/atualizar no Supabase diretamente (tabela Usuario)
-  const { error: upsertError } = await supabase.from("Usuario").upsert(
-    {
-      nome,
-      email,
-      foto,
-    },
-    { onConflict: "email" }, // garante que não duplica
-  );
+  const { data: existingUser } = await supabase
+    .from("Usuario")
+    .select("*")
+    .eq("email", email)
+    .single();
+
+  const usuarioParaSalvar: any = {
+    idAuth: user.id,
+    nome,
+    email,
+    foto,
+  };
+
+  // manter admin existente sem mudar
+  if (existingUser) {
+    usuarioParaSalvar.admin = existingUser.admin;
+  }
+
+  const { error: upsertError } = await supabase
+    .from("Usuario")
+    .upsert(usuarioParaSalvar, { onConflict: "email" });
 
   if (upsertError) {
     console.error("Erro ao salvar Usuario:", upsertError.message);
