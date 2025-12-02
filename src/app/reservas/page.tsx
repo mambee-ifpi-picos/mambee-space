@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 
 type Espaco = {
   codigoEspaco: string;
@@ -18,119 +19,145 @@ type Reserva = {
   Espaco: Espaco | null;
 };
 
+type Usuario = {
+  idUsuario: number;
+  nome: string;
+  email: string | null;
+  foto?: string | null;
+};
+
 type ApiResponse = {
   success: boolean;
   reservas?: Reserva[];
+  total?: number;
   error?: string;
+  usuarios?: Usuario[];
 };
 
-const ID_USUARIO = 1;
-const USUARIO_E_ADMIN = true;
+const ID_USUARIO = 1; // ID do usuário logado
+const USUARIO_E_ADMIN = true; // true se for admin
 
-export default function MinhasReservasPage() {
+export default function ReservasPage() {
   const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [usuarios, setUsuarios] = useState<Record<number, Usuario>>({});
   const [busca, setBusca] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
-  const [showSuccessCancel, setShowSuccessCancel] = useState(false);
   const [pagina, setPagina] = useState(1);
+  const [totalReservas, setTotalReservas] = useState(0);
+  const [loading, setLoading] = useState(false);
   const itensPorPagina = 9;
 
-  const carregarReservas = useCallback(async (searchTerm?: string) => {
-    setLoading(true);
-    setErro(null);
-
-    try {
-      let url = `/api/reservas?idUsuario=${ID_USUARIO}`;
-
-      if (searchTerm && searchTerm.trim() !== "") {
-        url += `&search=${encodeURIComponent(searchTerm.trim())}`;
+  const debugFetch = useCallback(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      try {
+        const res = await fetch(input, init);
+        const text = await res.text();
+        return { ok: res.ok, status: res.status, text };
+      } catch (err) {
+        console.error("[debugFetch] erro:", err);
+        throw err;
       }
+    },
+    []
+  );
 
-      const res = await fetch(url, { cache: "no-store" });
-      const json: ApiResponse = await res.json();
+  const carregarUsuarios = useCallback(
+    async (ids: number[]) => {
+      if (ids.length === 0) return;
+      try {
+        const url = `/api/usuarios?ids=${ids.join(",")}`;
+        const r = await debugFetch(url, { cache: "no-store" });
+        if (!r.ok) return;
 
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || "Erro ao carregar reservas.");
+        const parsed: ApiResponse = JSON.parse(r.text);
+        if (!parsed.usuarios) return;
+
+        const mapa: Record<number, Usuario> = {};
+        parsed.usuarios.forEach((u) => {
+          mapa[u.idUsuario] = {
+            idUsuario: u.idUsuario,
+            nome: u.nome?.trim() || u.email?.split("@")[0] || "Usuário",
+            email: u.email ?? null,
+            foto: u.foto ?? null,
+          };
+        });
+
+        setUsuarios((prev) => ({ ...prev, ...mapa }));
+      } catch (err) {
+        console.error("[carregarUsuarios] erro", err);
       }
+    },
+    [debugFetch]
+  );
 
-      const todas = json.reservas || [];
-      const filtradas = USUARIO_E_ADMIN
-        ? todas
-        : todas.filter((r) => r.idUsuarioCriador === ID_USUARIO);
+  const carregarReservas = useCallback(
+    async (paginaAtual = 1, searchTerm = busca) => {
+      setLoading(true);
 
-      setReservas(filtradas);
-      setPagina(1);
-    } catch (err: any) {
-      setErro(err.message || "Erro ao carregar reservas.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      try {
+        // ✨ CORREÇÃO FRONT-END: Sempre enviamos idUsuario e isAdmin para evitar o erro 400
+        const url = `/api/reservas?pagina=${paginaAtual}&itensPorPagina=${itensPorPagina}&idUsuario=${ID_USUARIO}&isAdmin=${USUARIO_E_ADMIN}${
+          searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : ""
+        }`;
+
+        // 🟢 LOG DA URL
+        console.log("➡️ [carregarReservas] Chamando URL:", url);
+
+        const r = await debugFetch(url, { cache: "no-store" });
+        if (!r.ok) {
+          // 🔴 LOG DO CORPO DO ERRO
+          console.error(
+            "❌ [carregarReservas] Erro HTTP. Status:",
+            r.status,
+            "Corpo da Resposta (r.text):",
+            r.text
+          );
+          throw new Error(`Erro HTTP ${r.status}`);
+        }
+
+        const data: ApiResponse = JSON.parse(r.text);
+        if (!data.success)
+          throw new Error(data.error || "Erro ao carregar reservas");
+
+        // ⚠️ Nota: O front-end espera 'reservas' e 'total' diretamente em 'data'
+        const reservasTipadas: Reserva[] = data.reservas || [];
+        setReservas(reservasTipadas);
+        setTotalReservas(data.total || 0);
+        setPagina(paginaAtual);
+
+        const idsUsuarios = [
+          ...new Set(reservasTipadas.map((r) => r.idUsuarioCriador)),
+        ];
+        carregarUsuarios(idsUsuarios);
+      } catch (err: unknown) {
+        console.error("[carregarReservas] erro", err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [busca, carregarUsuarios, debugFetch]
+  );
 
   useEffect(() => {
     carregarReservas();
   }, [carregarReservas]);
 
-  async function handleCancelar(reserva: Reserva) {
-    try {
-      const res = await fetch(
-        `/api/reservas?idReserva=${reserva.idReserva}&idUsuario=${ID_USUARIO}`,
-        { method: "DELETE" }
-      );
-
-      const json = await res.json();
-
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || "Erro ao cancelar reserva.");
-      }
-
-      setReservas((prev) => {
-        const novoArray = prev.filter((r) => r.idReserva !== reserva.idReserva);
-
-        if (novoArray.length === 0) {
-          setPagina(1);
-        } else {
-          const maxPaginas = Math.max(
-            1,
-            Math.ceil(novoArray.length / itensPorPagina)
-          );
-          setPagina((p) => Math.min(p, maxPaginas));
-        }
-
-        return novoArray;
-      });
-
-      setShowSuccessCancel(true);
-    } catch (err: any) {
-      alert(err.message || "Erro ao cancelar reserva.");
-    }
-  }
+  const totalPaginas = Math.max(1, Math.ceil(totalReservas / itensPorPagina));
+  const estaNaUltimaPagina = pagina >= totalPaginas;
 
   function formatarHoraData(inicioStr: string, fimStr: string) {
     const inicio = new Date(inicioStr);
     const fim = new Date(fimStr);
-
-    const horaInicio = inicio.toLocaleTimeString("pt-BR", {
+    const h1 = inicio.toLocaleTimeString("pt-BR", {
       hour: "2-digit",
       minute: "2-digit",
     });
-    const horaFim = fim.toLocaleTimeString("pt-BR", {
+    const h2 = fim.toLocaleTimeString("pt-BR", {
       hour: "2-digit",
       minute: "2-digit",
     });
     const data = inicio.toLocaleDateString("pt-BR");
-
-    return `${horaInicio} - ${horaFim} - ${data}`;
+    return `${h1} - ${h2} - ${data}`;
   }
-
-  const inicio = (pagina - 1) * itensPorPagina;
-  const fim = inicio + itensPorPagina;
-  const reservasPaginadas = reservas.slice(inicio, fim);
-  const totalPaginas =
-    reservas.length === 0 ? 1 : Math.ceil(reservas.length / itensPorPagina);
-  const estaNaUltimaPagina = pagina === totalPaginas;
 
   return (
     <main className="max-w-6xl mx-auto px-8 py-8 space-y-6">
@@ -145,10 +172,9 @@ export default function MinhasReservasPage() {
             className="flex-1 px-2 py-2 text-sm outline-none"
           />
         </div>
-
         <button
           type="button"
-          onClick={() => carregarReservas(busca)}
+          onClick={() => carregarReservas(1, busca)}
           disabled={loading}
           className="px-5 py-2 text-sm font-medium rounded-md bg-teal-500 text-white shadow-sm disabled:opacity-60"
         >
@@ -156,122 +182,98 @@ export default function MinhasReservasPage() {
         </button>
       </section>
 
-      <h2 className="text-lg font-semibold">Minhas Reservas</h2>
+      <h2 className="text-lg font-semibold">
+        {USUARIO_E_ADMIN ? "Todas as Reservas" : "Minhas Reservas"}
+      </h2>
 
-      {erro && (
-        <div className="border border-red-300 bg-red-50 text-red-700 px-4 py-2 rounded-md text-sm">
-          {erro}
-        </div>
+      {loading && reservas.length === 0 && (
+        <p className="text-sm text-gray-500">Carregando reservas...</p>
+      )}
+      {reservas.length === 0 && !loading && (
+        <p className="text-sm text-gray-500">Nenhuma reserva encontrada.</p>
       )}
 
-      {loading && reservas.length === 0 ? (
-        <p className="text-sm text-gray-500">Carregando reservas...</p>
-      ) : reservas.length === 0 ? (
-        <p className="text-sm text-gray-500">Nenhuma reserva encontrada.</p>
-      ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 auto-rows-[10rem] items-stretch">
-            {reservasPaginadas.map((reserva) => (
-              <article
-                key={reserva.idReserva}
-                className="flex rounded-xl shadow-sm bg-[#F5F5F5] overflow-hidden h-full"
-              >
-                <div className="w-2 bg-teal-500" />
-
-                <div className="flex-1 px-4 py-3 flex flex-col justify-between h-full">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 text-xs">
-                      👤
-                    </div>
-                    <div className="text-sm font-semibold text-gray-800">
-                      Usuário{" "}
-                      {String(reserva.idUsuarioCriador).padStart(3, "0")}
-                    </div>
-                  </div>
-                  <p
-                    className="text-sm text-gray-800 mb-1 overflow-hidden"
-                    style={{
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                    }}
-                  >
-                    {reserva.motivo}
-                  </p>
-
-                  <p className="text-xs text-gray-600 mb-3">
-                    {formatarHoraData(reserva.horaInicio, reserva.horaFim)}
-                  </p>
-
-                  <div className="flex justify-end mt-auto">
-                    <button
-                      type="button"
-                      onClick={() => handleCancelar(reserva)}
-                      className="px-4 py-1 text-xs font-semibold rounded-full bg-pink-400 text-white hover:bg-pink-500"
-                    >
-                      Cancelar
-                    </button>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 auto-rows-[10rem] items-stretch">
+        {reservas.map((reserva) => {
+          const user = usuarios[reserva.idUsuarioCriador];
+          return (
+            <article
+              key={reserva.idReserva}
+              className="flex rounded-xl shadow-sm bg-[#F5F5F5] overflow-hidden h-full"
+            >
+              <div className="w-2 bg-teal-500" />
+              <div className="flex-1 px-4 py-3 flex flex-col justify-between h-full">
+                <div className="flex items-center gap-2 mb-2">
+                  <Image
+                    src={user?.foto || "/default-user.png"}
+                    alt={`Foto de ${user?.nome || "Usuário"}`}
+                    width={32}
+                    height={32}
+                    className="rounded-full border border-gray-300"
+                  />
+                  <div className="flex flex-col text-sm text-gray-800">
+                    <span className="font-semibold">
+                      {user?.nome || `Usuário ${reserva.idUsuarioCriador}`}
+                    </span>
+                    {user?.email && (
+                      <span className="text-xs text-gray-500">
+                        {user.email}
+                      </span>
+                    )}
                   </div>
                 </div>
-              </article>
-            ))}
-          </div>
 
-          {reservas.length > 0 && (
-            <div className="flex flex-col items-center gap-2 mt-6">
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => setPagina((p) => Math.max(1, p - 1))}
-                  disabled={pagina === 1}
-                  className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 text-sm"
+                <p
+                  className="text-sm text-gray-800 mb-1 overflow-hidden"
+                  style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                  }}
                 >
-                  ◀ Anterior
-                </button>
+                  {reserva.motivo}
+                </p>
 
-                <span className="text-sm font-medium">
-                  Página {pagina} de {totalPaginas}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPagina((p) => Math.min(totalPaginas, p + 1))
-                  }
-                  disabled={estaNaUltimaPagina}
-                  className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 text-sm"
-                >
-                  Próxima ▶
-                </button>
+                <p className="text-xs text-gray-600 mb-3">
+                  {formatarHoraData(reserva.horaInicio, reserva.horaFim)}
+                </p>
               </div>
+            </article>
+          );
+        })}
+      </div>
 
-              {estaNaUltimaPagina && (
-                <span className="text-xs text-gray-500">
-                  Você já está vendo todas as reservas.
-                </span>
-              )}
-            </div>
-          )}
-        </>
-      )}
-
-      {showSuccessCancel && (
-        <div className="fixed left-1/2 bottom-10 -translate-x-1/2 w-[min(480px,90%)] z-20">
-          <div className="flex items-center justify-between bg-pink-500 text-white rounded-md px-6 py-3 shadow-lg">
-            <div className="flex items-center gap-3">
-              <span className="border border-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                ✓
-              </span>
-              <span>Reserva cancelada com sucesso.</span>
-            </div>
+      {reservas.length > 0 && (
+        <div className="flex flex-col items-center gap-2 mt-6">
+          <div className="flex items-center gap-4">
             <button
               type="button"
-              onClick={() => setShowSuccessCancel(false)}
-              className="text-lg leading-none px-1"
+              onClick={() => carregarReservas(pagina - 1)}
+              disabled={pagina === 1 || loading}
+              className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 text-sm"
             >
-              ×
+              ◀ Anterior
+            </button>
+
+            <span className="text-sm font-medium">
+              Página {pagina} de {totalPaginas}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => carregarReservas(pagina + 1)}
+              disabled={estaNaUltimaPagina || loading}
+              className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 text-sm"
+            >
+              Próxima ▶
             </button>
           </div>
+
+          {estaNaUltimaPagina && (
+            <span className="text-xs text-gray-500">
+              Você já está vendo todas as reservas.
+            </span>
+          )}
         </div>
       )}
     </main>

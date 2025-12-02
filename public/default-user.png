@@ -1,0 +1,7 @@
+<Image
+  src={user?.foto || "/default-user.png"}
+  alt={`Foto de ${user?.nome || "Usuário"}`}
+  width={32}
+  height={32}
+  className="rounded-full border border-gray-300"
+/>
