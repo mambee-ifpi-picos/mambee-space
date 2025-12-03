@@ -26,7 +26,7 @@ export function Menu({ isOpen }: { isOpen: boolean }) {
 
   return (
     <aside
-      className={`h-screen w-64 bg-[#f3f3f3] border-r flex flex-col p-4 transition-all duration-300 ${
+      className={`h-screen w-64 bg-[#f3f3f3] flex flex-col p-4 transition-all duration-300 ${
         isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
     >
@@ -57,17 +57,13 @@ export function Menu({ isOpen }: { isOpen: boolean }) {
         ))}
 
         <Link
-          href="/reservas"
+          href="/reservar"
           className="mt-4 flex items-center gap-2 px-3 py-2 rounded bg-teal-500 text-white hover:bg-teal-600 transition"
         >
           <PlusCircle size={18} />
           <span>Nova Reserva</span>
         </Link>
       </nav>
-
-      <div className="mt-auto px-3 py-2 text-gray-700 flex items-center gap-2">
-        <span className="text-sm opacity-70">Suporte</span>
-      </div>
     </aside>
   );
 }

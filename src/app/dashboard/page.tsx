@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/a11y/useAriaPropsSupportedByRole: <explanation> */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -65,7 +66,6 @@ export default function Dashboard() {
     topSemana,
   } = data;
 
-  // transformando arrays em dados para Recharts
   const manhaData = graficos.manha.map((v, i) => ({
     hora: `${6 + i}h`,
     valor: v,
@@ -84,39 +84,42 @@ export default function Dashboard() {
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="grid grid-cols-4 gap-4">
-        {/* ESPAÇO MAIS UTILIZADO */}
-        <div className="col-span-1 bg-teal-500 text-white p-5 rounded-lg shadow flex flex-col">
+        <div
+          className="col-span-1 bg-teal-500 text-white p-5 rounded-lg shadow flex flex-col"
+          aria-label="Card espaço mais utilizado"
+        >
           <p className="text-xs font-semibold">ESPAÇO MAIS UTILIZADO</p>
           <p className="text-5xl font-extrabold mt-2">{percentualOcupacao}%</p>
           <p className="text-xl font-semibold mt-2">{espacoMaisUtilizado}</p>
         </div>
 
-        {/* CARD CINZA IGUAL AO PRINT */}
-        <div className="col-span-2 bg-gray-300 p-5 rounded-lg shadow" />
+        <div
+          className="col-span-2 bg-gray-300 p-5 rounded-lg shadow"
+          aria-label="Card informativo cinza"
+        />
 
-        {/* ESPAÇOS UTILIZADOS */}
-        <div className="col-span-1 bg-white p-5 rounded-lg shadow">
+        <div
+          className="col-span-1 bg-white p-5 rounded-lg shadow"
+          aria-label="Uso dos espaços"
+        >
           <p className="text-xs font-semibold">USO DOS ESPAÇOS (%)</p>
 
           <div className="mt-4 flex justify-between">
-            {/* MENSAL */}
-            <div className="text-center">
+            <div className="text-center" aria-label="Uso mensal">
               <div className="w-16 h-16 rounded-full border-4 border-teal-400 flex items-center justify-center font-bold text-teal-600 text-xl">
                 {espacosUtilizados.mensal}%
               </div>
               <p className="text-xs mt-1">Mensal</p>
             </div>
 
-            {/* SEMANAL */}
-            <div className="text-center">
+            <div className="text-center" aria-label="Uso semanal">
               <div className="w-16 h-16 rounded-full border-4 border-yellow-400 flex items-center justify-center font-bold text-yellow-600 text-xl">
                 {espacosUtilizados.semanal}%
               </div>
               <p className="text-xs mt-1">Semanal</p>
             </div>
 
-            {/* DIÁRIO */}
-            <div className="text-center">
+            <div className="text-center" aria-label="Uso diário">
               <div className="w-16 h-16 rounded-full border-4 border-red-400 flex items-center justify-center font-bold text-red-600 text-xl">
                 {espacosUtilizados.diario}%
               </div>
@@ -125,8 +128,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* GRÁFICO MANHÃ */}
-        <div className="col-span-1 bg-white p-4 rounded-lg shadow">
+        <div
+          className="col-span-1 bg-white p-4 rounded-lg shadow"
+          aria-label="Gráfico da manhã"
+        >
           <p className="text-xs font-semibold mb-2">
             HORÁRIOS MAIS UTILIZADO MANHÃ
           </p>
@@ -149,8 +154,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* GRÁFICO TARDE */}
-        <div className="col-span-1 bg-white p-4 rounded-lg shadow">
+        <div
+          className="col-span-1 bg-white p-4 rounded-lg shadow"
+          aria-label="Gráfico da tarde"
+        >
           <p className="text-xs font-semibold mb-2">
             HORÁRIOS MAIS UTILIZADO TARDE
           </p>
@@ -173,8 +180,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* FREQUÊNCIA POR DIA */}
-        <div className="col-span-2 bg-white p-5 rounded-lg shadow">
+        <div
+          className="col-span-2 bg-white p-5 rounded-lg shadow"
+          aria-label="Frequência por dia da semana"
+        >
           <p className="text-xs font-semibold mb-2">
             FREQUÊNCIA POR DIA DA SEMANA
           </p>
@@ -192,8 +201,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* INATIVIDADE */}
-        <div className="col-span-1 bg-white p-5 rounded-lg shadow flex flex-col justify-between">
+        <div
+          className="col-span-1 bg-white p-5 rounded-lg shadow flex flex-col justify-between"
+          aria-label="Card de inatividade"
+        >
           <p className="text-xs font-semibold">INATIVIDADE</p>
           <p className="text-5xl font-bold">{totalInatividade}</p>
           <p className="text-xs text-gray-500">
@@ -201,8 +212,10 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* TOP MÊS */}
-        <div className="col-span-2 bg-white p-5 rounded-lg shadow">
+        <div
+          className="col-span-2 bg-white p-5 rounded-lg shadow"
+          aria-label="Top do mês"
+        >
           <p className="text-xs font-semibold mb-3">
             TOP FREQUENTADORES DO MÊS
           </p>
@@ -215,9 +228,9 @@ export default function Dashboard() {
             <div
               key={u.email}
               className={`flex justify-between items-center py-2 border-b last:border-b-0
-        ${i === 0 ? "text-xl font-bold text-yellow-600" : ""}
-        ${i === 1 ? "text-lg font-semibold text-gray-700" : ""}
-        ${i === 2 ? "text-base font-medium text-gray-600" : ""}`}
+              ${i === 0 ? "text-xl font-bold text-yellow-600" : ""}
+              ${i === 1 ? "text-lg font-semibold text-gray-700" : ""}
+              ${i === 2 ? "text-base font-medium text-gray-600" : ""}`}
             >
               <span>
                 {i === 0 && "🥇 "}
@@ -230,8 +243,10 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* TOP SEMANA */}
-        <div className="col-span-2 bg-white p-5 rounded-lg shadow">
+        <div
+          className="col-span-2 bg-white p-5 rounded-lg shadow"
+          aria-label="Top da semana"
+        >
           <p className="text-xs font-semibold mb-3">
             TOP FREQUENTADORES DA SEMANA
           </p>
@@ -244,9 +259,9 @@ export default function Dashboard() {
             <div
               key={u.email}
               className={`flex justify-between items-center py-2 border-b last:border-b-0
-        ${i === 0 ? "text-xl font-bold text-yellow-600" : ""}
-        ${i === 1 ? "text-lg font-semibold text-gray-700" : ""}
-        ${i === 2 ? "text-base font-medium text-gray-600" : ""}`}
+              ${i === 0 ? "text-xl font-bold text-yellow-600" : ""}
+              ${i === 1 ? "text-lg font-semibold text-gray-700" : ""}
+              ${i === 2 ? "text-base font-medium text-gray-600" : ""}`}
             >
               <span>
                 {i === 0 && "🥇 "}
