@@ -39,9 +39,17 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <Navbar />
 
         <div className="flex min-h-[calc(100vh-160px)]">
-          {!isLanding && <Menu isOpen={open} />}
+          {!isLanding && (
+            <div
+              className={`transition-all duration-300 ${
+                open ? "w-64" : "w-0"
+              } overflow-hidden`}
+            >
+              <Menu isOpen={open} />
+            </div>
+          )}
 
-          <div className="flex-1">
+          <div className="flex-1 transition-all duration-300">
             {!isLanding && (
               <button
                 type="button"
