@@ -1,180 +1,156 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-
-type Espaco = {
-  codigoEspaco: string;
-  idSalaPertence: number;
-};
 
 type Reserva = {
   idReserva: number;
   motivo: string;
   horaInicio: string;
   horaFim: string;
-  situacao: string;
-  idUsuarioCriador: number;
-  idEspacoReservado: number;
-  Espaco: Espaco | null;
+  idUsuarioCriador?: number;
+  criador?: {
+    idUsuario?: number;
+    email?: string;
+    nome?: string;
+    foto?: string;
+  };
 };
 
-type Usuario = {
+type UsuarioLogado = {
   idUsuario: number;
-  nome: string;
-  email: string | null;
-  foto?: string | null;
+  email: string;
+  admin: boolean;
 };
-
-type ApiResponse = {
-  success: boolean;
-  reservas?: Reserva[];
-  total?: number;
-  error?: string;
-  usuarios?: Usuario[];
-};
-
-const ID_USUARIO = 1; // ID do usuário logado
-const USUARIO_E_ADMIN = true; // true se for admin
 
 export default function ReservasPage() {
   const [reservas, setReservas] = useState<Reserva[]>([]);
-  const [usuarios, setUsuarios] = useState<Record<number, Usuario>>({});
   const [busca, setBusca] = useState("");
-  const [pagina, setPagina] = useState(1);
-  const [totalReservas, setTotalReservas] = useState(0);
   const [loading, setLoading] = useState(false);
-  const itensPorPagina = 9;
+  const [pagina, setPagina] = useState(1);
+  const [totalPaginas, setTotalPaginas] = useState(1);
+  const [usuarioLogado, setUsuarioLogado] = useState<UsuarioLogado | null>(
+    null
+  );
 
-  const debugFetch = useCallback(
-    async (input: RequestInfo | URL, init?: RequestInit) => {
+  const initialsFromNameOrEmail = (nome?: string, email?: string) => {
+    if (nome) return nome[0].toUpperCase();
+    if (email) return email[0].toUpperCase();
+    return "?";
+  };
+
+  const formatarHoraData = (inicio?: string, fim?: string) => {
+    if (!inicio) return "";
+    const start = new Date(inicio);
+    const end = fim ? new Date(fim) : null;
+    return end
+      ? `${start.toLocaleString()} - ${end.toLocaleTimeString()}`
+      : start.toLocaleString();
+  };
+
+  const carregarReservas = useCallback(
+    async (paginaReq = 1, termoBusca = "") => {
+      setLoading(true);
       try {
-        const res = await fetch(input, init);
-        const text = await res.text();
-        return { ok: res.ok, status: res.status, text };
+        const res = await fetch(
+          `/api/reservas?page=${paginaReq}&search=${termoBusca}`
+        );
+        const data = await res.json();
+
+        let lista: Reserva[] = [];
+        if (Array.isArray(data.reservas)) {
+          lista = data.reservas;
+        }
+
+        setReservas(lista);
+        setPagina(paginaReq);
+        setTotalPaginas(
+          Math.ceil((data.total || 0) / (data.pageSize || 50)) || 1
+        );
+        setUsuarioLogado(data.usuarioLogado);
       } catch (err) {
-        console.error("[debugFetch] erro:", err);
-        throw err;
+        console.error("Erro ao carregar reservas:", err);
+        setReservas([]);
+        setUsuarioLogado(null);
+      } finally {
+        setLoading(false);
       }
     },
     []
   );
 
-  const carregarUsuarios = useCallback(
-    async (ids: number[]) => {
-      if (ids.length === 0) return;
-      try {
-        const url = `/api/usuarios?ids=${ids.join(",")}`;
-        const r = await debugFetch(url, { cache: "no-store" });
-        if (!r.ok) return;
+  const handleCancelReservation = async (idReserva: number) => {
+    if (!usuarioLogado?.idUsuario) {
+      alert("Erro de autenticação: ID de usuário não encontrado.");
+      return;
+    }
 
-        const parsed: ApiResponse = JSON.parse(r.text);
-        if (!parsed.usuarios) return;
+    if (!window.confirm("Tem certeza que deseja CANCELAR esta reserva?")) {
+      return;
+    }
 
-        const mapa: Record<number, Usuario> = {};
-        parsed.usuarios.forEach((u) => {
-          mapa[u.idUsuario] = {
-            idUsuario: u.idUsuario,
-            nome: u.nome?.trim() || u.email?.split("@")[0] || "Usuário",
-            email: u.email ?? null,
-            foto: u.foto ?? null,
-          };
-        });
+    setLoading(true);
+    try {
+      const userId = usuarioLogado.idUsuario;
+      const res = await fetch(
+        `/api/reservas?idReserva=${idReserva}&idUsuario=${userId}`,
+        { method: "DELETE" }
+      );
 
-        setUsuarios((prev) => ({ ...prev, ...mapa }));
-      } catch (err) {
-        console.error("[carregarUsuarios] erro", err);
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        await carregarReservas(pagina, busca);
+        alert("Reserva cancelada com sucesso!");
+      } else {
+        alert(`Falha ao cancelar reserva: ${data.error || res.statusText}`);
       }
-    },
-    [debugFetch]
-  );
+    } catch (err) {
+      console.error("Erro ao cancelar reserva:", err);
+      alert("Erro de conexão ao tentar cancelar a reserva.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const carregarReservas = useCallback(
-    async (paginaAtual = 1, searchTerm = busca) => {
-      setLoading(true);
+  const estaNaUltimaPagina = pagina >= totalPaginas;
+  const reservasRender = reservas;
 
-      try {
-        // ✨ CORREÇÃO FRONT-END: Sempre enviamos idUsuario e isAdmin para evitar o erro 400
-        const url = `/api/reservas?pagina=${paginaAtual}&itensPorPagina=${itensPorPagina}&idUsuario=${ID_USUARIO}&isAdmin=${USUARIO_E_ADMIN}${
-          searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : ""
-        }`;
-
-        // 🟢 LOG DA URL
-        console.log("➡️ [carregarReservas] Chamando URL:", url);
-
-        const r = await debugFetch(url, { cache: "no-store" });
-        if (!r.ok) {
-          // 🔴 LOG DO CORPO DO ERRO
-          console.error(
-            "❌ [carregarReservas] Erro HTTP. Status:",
-            r.status,
-            "Corpo da Resposta (r.text):",
-            r.text
-          );
-          throw new Error(`Erro HTTP ${r.status}`);
-        }
-
-        const data: ApiResponse = JSON.parse(r.text);
-        if (!data.success)
-          throw new Error(data.error || "Erro ao carregar reservas");
-
-        // ⚠️ Nota: O front-end espera 'reservas' e 'total' diretamente em 'data'
-        const reservasTipadas: Reserva[] = data.reservas || [];
-        setReservas(reservasTipadas);
-        setTotalReservas(data.total || 0);
-        setPagina(paginaAtual);
-
-        const idsUsuarios = [
-          ...new Set(reservasTipadas.map((r) => r.idUsuarioCriador)),
-        ];
-        carregarUsuarios(idsUsuarios);
-      } catch (err: unknown) {
-        console.error("[carregarReservas] erro", err);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [busca, carregarUsuarios, debugFetch]
-  );
+  const handleSearch = () => {
+    setPagina(1);
+    if (pagina === 1) {
+      carregarReservas(1, busca);
+    }
+  };
 
   useEffect(() => {
-    carregarReservas();
-  }, [carregarReservas]);
-
-  const totalPaginas = Math.max(1, Math.ceil(totalReservas / itensPorPagina));
-  const estaNaUltimaPagina = pagina >= totalPaginas;
-
-  function formatarHoraData(inicioStr: string, fimStr: string) {
-    const inicio = new Date(inicioStr);
-    const fim = new Date(fimStr);
-    const h1 = inicio.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    const h2 = fim.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    const data = inicio.toLocaleDateString("pt-BR");
-    return `${h1} - ${h2} - ${data}`;
-  }
+    carregarReservas(pagina, busca);
+  }, [carregarReservas, pagina, busca]); 
 
   return (
     <main className="max-w-6xl mx-auto px-8 py-8 space-y-6">
       <section className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <label htmlFor="search" className="sr-only">
+          Buscar pelo motivo
+        </label>
         <div className="flex-1 flex items-center border rounded-md overflow-hidden bg-white">
           <div className="px-3 text-gray-400 text-sm">🔍</div>
           <input
+            id="search"
             type="text"
             placeholder="Buscar pelo motivo..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             className="flex-1 px-2 py-2 text-sm outline-none"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSearch();
+            }}
           />
         </div>
+
         <button
           type="button"
-          onClick={() => carregarReservas(1, busca)}
+          onClick={handleSearch}
           disabled={loading}
           className="px-5 py-2 text-sm font-medium rounded-md bg-teal-500 text-white shadow-sm disabled:opacity-60"
         >
@@ -183,7 +159,7 @@ export default function ReservasPage() {
       </section>
 
       <h2 className="text-lg font-semibold">
-        {USUARIO_E_ADMIN ? "Todas as Reservas" : "Minhas Reservas"}
+        {usuarioLogado?.admin ? "Todas as Reservas" : "Minhas Reservas"}
       </h2>
 
       {loading && reservas.length === 0 && (
@@ -194,8 +170,25 @@ export default function ReservasPage() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 auto-rows-[10rem] items-stretch">
-        {reservas.map((reserva) => {
-          const user = usuarios[reserva.idUsuarioCriador];
+        {reservasRender.map((reserva) => {
+          const criador = reserva.criador;
+
+          const displayName =
+            criador?.nome && criador.nome.trim().length > 0
+              ? criador.nome
+              : criador?.email
+              ? criador.email.split("@")[0]
+              : `Usuário #${criador?.idUsuario}`;
+          const displayEmail = criador?.email ?? null;
+          const avatarFoto = criador?.foto ?? null;
+          const initials = initialsFromNameOrEmail(
+            criador?.nome,
+            criador?.email
+          );
+
+          const isCriador = usuarioLogado?.idUsuario === criador?.idUsuario;
+          const podeCancelar = usuarioLogado?.admin || isCriador;
+
           return (
             <article
               key={reserva.idReserva}
@@ -203,65 +196,103 @@ export default function ReservasPage() {
             >
               <div className="w-2 bg-teal-500" />
               <div className="flex-1 px-4 py-3 flex flex-col justify-between h-full">
-                <div className="flex items-center gap-2 mb-2">
-                  <Image
-                    src={user?.foto || "/default-user.png"}
-                    alt={`Foto de ${user?.nome || "Usuário"}`}
-                    width={32}
-                    height={32}
-                    className="rounded-full border border-gray-300"
-                  />
-                  <div className="flex flex-col text-sm text-gray-800">
-                    <span className="font-semibold">
-                      {user?.nome || `Usuário ${reserva.idUsuarioCriador}`}
-                    </span>
-                    {user?.email && (
-                      <span className="text-xs text-gray-500">
-                        {user.email}
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        minWidth: 32,
+                        minHeight: 32,
+                      }}
+                    >
+                      {avatarFoto ? (
+                        <Image
+                          src={avatarFoto}
+                          alt={`Foto de ${displayName}`}
+                          width={32}
+                          height={32}
+                          className="rounded-full border border-gray-300 object-cover"
+                        />
+                      ) : (
+                        <div
+                          className="rounded-full flex items-center justify-center text-xs font-semibold border border-gray-300"
+                          style={{
+                            width: 32,
+                            height: 32,
+                            backgroundColor: "#E6E6E6",
+                            color: "#333",
+                          }}
+                        >
+                          {initials}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col text-sm text-gray-800">
+                      <span className="font-semibold leading-tight">
+                        {displayName}
                       </span>
-                    )}
+                      {displayEmail && (
+                        <span className="text-xs text-gray-500 leading-tight">
+                          {displayEmail}
+                        </span>
+                      )}
+                    </div>
                   </div>
+
+                  <p
+                    className="text-sm text-gray-800 mb-1 overflow-hidden"
+                    style={{
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                    }}
+                  >
+                    {reserva.motivo}
+                  </p>
                 </div>
 
-                <p
-                  className="text-sm text-gray-800 mb-1 overflow-hidden"
-                  style={{
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                  }}
-                >
-                  {reserva.motivo}
-                </p>
+                <div className="flex justify-between items-center mt-2">
+                  <p className="text-xs text-gray-600">
+                    {formatarHoraData(reserva.horaInicio, reserva.horaFim)}
+                  </p>
 
-                <p className="text-xs text-gray-600 mb-3">
-                  {formatarHoraData(reserva.horaInicio, reserva.horaFim)}
-                </p>
+                  {podeCancelar && (
+                    <button
+                      type="button"
+                      onClick={() => handleCancelReservation(reserva.idReserva)}
+                      disabled={loading}
+                      className="px-1.5 py-0.5 text-[10px] rounded-md bg-red-500 text-white shadow-md hover:bg-red-600 transition disabled:opacity-50"
+                      title="Cancelar Reserva"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
               </div>
             </article>
           );
         })}
       </div>
 
-      {reservas.length > 0 && (
+      {reservasRender.length > 0 && (
         <div className="flex flex-col items-center gap-2 mt-6">
           <div className="flex items-center gap-4">
             <button
               type="button"
-              onClick={() => carregarReservas(pagina - 1)}
+              onClick={() => pagina > 1 && setPagina(pagina - 1)}
               disabled={pagina === 1 || loading}
               className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 text-sm"
             >
               ◀ Anterior
             </button>
-
             <span className="text-sm font-medium">
               Página {pagina} de {totalPaginas}
             </span>
-
             <button
               type="button"
-              onClick={() => carregarReservas(pagina + 1)}
+              onClick={() => !estaNaUltimaPagina && setPagina(pagina + 1)}
               disabled={estaNaUltimaPagina || loading}
               className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 text-sm"
             >

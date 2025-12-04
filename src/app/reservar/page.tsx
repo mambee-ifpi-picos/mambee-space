@@ -1,198 +1,428 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
-// Tipos
 interface Espaco {
   idEspaco: number;
   codigoEspaco: string;
 }
-
 interface Reserva {
   idReserva: number;
   motivo: string;
   horaInicio: string;
   horaFim: string;
   espaco: Espaco | null;
-  criador: { nome?: string; email?: string | null };
+  criador: { nome?: string; email?: string | null } | null;
 }
-
-// Interface para resposta de salas
-interface SalaResponse {
+interface SalaResposta {
   espacos?: Espaco[];
 }
 
-function formatNameFromEmail(email?: string | null) {
-  if (!email) return "Usuário";
-  const local = email.split("@")[0];
-  const parts = local.split(/[._-]+/).filter(Boolean);
-  return (
-    parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ") || local
-  );
-}
+type LinhaIdUsuario = { idUsuario?: number };
 
-function formatTimeRange(startIso: string, endIso: string) {
-  try {
-    const start = new Date(startIso);
-    const end = new Date(endIso);
-    const h1 = start.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    const h2 = end.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    return `${h1} — ${h2}`;
-  } catch {
-    return "";
-  }
+function obterUrlApi(caminho: string) {
+  if (typeof window === "undefined" || !("location" in globalThis))
+    return caminho;
+  return `${window.location.origin}${caminho}`;
 }
 
 export default function ReservarPage() {
-  const [espacos, setEspacos] = useState<Espaco[]>([]);
-  const [loadingEspacos, setLoadingEspacos] = useState(true);
-  const [loadingReservas, setLoadingReservas] = useState(false);
-  const [selectedEspaco, setSelectedEspaco] = useState<number | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>("");
-  const [reservas, setReservas] = useState<Reserva[]>([]);
+  const supabase = createClientComponentClient();
+
+  const [idUsuario, setIdUsuario] = useState<number | null>(null);
+  const [uuidSupabase, setUuidSupabase] = useState<string | null>(null);
+  const [emailUsuario, setEmailUsuario] = useState<string | null>(null);
+  const [carregandoUsuario, setCarregandoUsuario] = useState<boolean>(true);
+
+  const [listaEspacos, setListaEspacos] = useState<Espaco[]>([]);
+  const [carregandoEspacos, setCarregandoEspacos] = useState(true);
+
+  const [espacoSelecionado, setEspacoSelecionado] = useState<number | null>(
+    null
+  );
+  const [dataSelecionada, setDataSelecionada] = useState<string>("");
+  const [listaReservas, setListaReservas] = useState<Reserva[]>([]);
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFim, setHoraFim] = useState("");
   const [motivo, setMotivo] = useState("");
+  const [carregandoReservas, setCarregandoReservas] = useState(false);
   const [erroReservas, setErroReservas] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
 
-  // Pega o ID do usuário logado apenas no client
-  useEffect(() => {
-    const storedId = localStorage.getItem("userId");
-    if (storedId) setUserId(storedId);
-  }, []);
+  const buscarIdUsuario = useCallback(async () => {
+    setCarregandoUsuario(true);
+    setIdUsuario(null);
+    setUuidSupabase(null);
+    setEmailUsuario(null);
+    try {
+      const { data } = await supabase.auth.getUser();
+      const usuarioAuth = data?.user ?? null;
+      if (!usuarioAuth) {
+        setCarregandoUsuario(false);
+        return;
+      }
+      const uuid = usuarioAuth.id;
+      const email = (usuarioAuth.email ?? "").trim();
+      setUuidSupabase(uuid);
+      setEmailUsuario(email || null);
 
-  // Buscar todos os espaços do banco
-  useEffect(() => {
-    setLoadingEspacos(true);
-    fetch("/api/salas")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.salas) {
-          const todosEspacos: Espaco[] = data.salas
-            .flatMap((sala: SalaResponse) => sala.espacos || [])
-            .map((e: Espaco) => ({
-              idEspaco: e.idEspaco,
-              codigoEspaco: e.codigoEspaco,
-            }));
+      if (email) {
+        try {
+          const resEmailRaw = await supabase
+            .from("Usuario")
+            .select("idUsuario")
+            .ilike("email", email)
+            .maybeSingle();
 
-          setEspacos(todosEspacos);
-
-          if (!selectedDate) {
-            setSelectedDate(new Date().toISOString().split("T")[0]);
+          const resEmail = resEmailRaw as {
+            data?: LinhaIdUsuario | null;
+            error?: unknown;
+          };
+          if (
+            !resEmail.error &&
+            resEmail.data &&
+            typeof resEmail.data.idUsuario === "number"
+          ) {
+            setIdUsuario(resEmail.data.idUsuario);
+            setCarregandoUsuario(false);
+            return;
           }
-        } else if (data.error) {
-          console.error("Erro ao carregar espaços:", data.error);
+        } catch (_erroLookupEmail) {
+          console.warn("Lookup por email falhou (não fatal).");
         }
-      })
-      .catch((e) => console.error("Erro de rede ao carregar espaços:", e))
-      .finally(() => setLoadingEspacos(false));
-  }, [selectedDate]);
+      }
 
-  // Buscar reservas quando espaço ou data mudar
-  useEffect(() => {
-    if (!selectedEspaco || !selectedDate) {
-      setReservas([]);
-      setErroReservas(null);
-      return;
+      const colunasPossiveis = [
+        "auth_id",
+        "supabase_uuid",
+        "supabase_id",
+        "id_supabase",
+        "idSupabase",
+      ];
+
+      for (const coluna of colunasPossiveis) {
+        try {
+          const resRaw = await supabase
+            .from("Usuario")
+            .select("idUsuario")
+            .eq(coluna, uuid)
+            .maybeSingle();
+
+          const res = resRaw as {
+            data?: LinhaIdUsuario | null;
+            error?: unknown;
+          };
+          if (
+            !res.error &&
+            res.data &&
+            typeof res.data.idUsuario === "number"
+          ) {
+            setIdUsuario(res.data.idUsuario);
+            setCarregandoUsuario(false);
+            return;
+          }
+        } catch {}
+      }
+
+      setIdUsuario(null);
+      setCarregandoUsuario(false);
+    } catch (erroBuscar) {
+      console.error("Erro buscarIdUsuario:", erroBuscar);
+      setIdUsuario(null);
+      setCarregandoUsuario(false);
     }
+  }, [supabase]);
 
-    setLoadingReservas(true);
-    setErroReservas(null);
+  useEffect(() => {
+    buscarIdUsuario();
+    const inscricao = supabase.auth.onAuthStateChange((_evento, sessao) => {
+      if (sessao?.user) buscarIdUsuario();
+      else {
+        setIdUsuario(null);
+        setUuidSupabase(null);
+        setEmailUsuario(null);
+        setCarregandoUsuario(false);
+      }
+    });
 
-    const apiCallUrl = `/api/reservas?data=${selectedDate}&idEspaco=${selectedEspaco}`;
-    console.log("Chamando API para Cronograma:", apiCallUrl);
+    return () => {
+      try {
+        const inscricaoUnknown = inscricao as unknown;
 
-    fetch(apiCallUrl)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.reservas) {
-          setReservas(data.reservas);
-        } else {
-          setReservas([]);
-          setErroReservas(data.error || "Falha ao carregar o cronograma.");
+        if (inscricaoUnknown && typeof inscricaoUnknown === "object") {
+          const maybeWithData = inscricaoUnknown as {
+            data?: { subscription?: { unsubscribe?: () => void } };
+          };
+          if (maybeWithData?.data?.subscription?.unsubscribe) {
+            maybeWithData.data.subscription.unsubscribe();
+            return;
+          }
+
+          const maybeWithUnsubscribe = inscricaoUnknown as {
+            unsubscribe?: unknown;
+          };
+          if (typeof maybeWithUnsubscribe.unsubscribe === "function") {
+            (maybeWithUnsubscribe.unsubscribe as () => void)();
+            return;
+          }
         }
-      })
-      .catch((e) => {
-        console.error("Erro de rede ao carregar cronograma:", e);
-        setErroReservas("Erro de conexão ao carregar o cronograma.");
-      })
-      .finally(() => setLoadingReservas(false));
-  }, [selectedEspaco, selectedDate]);
 
-  async function handleSalvarReserva() {
-    if (!userId) {
-      alert("Usuário não logado!");
+        if (typeof inscricao === "function") {
+          (inscricao as unknown as () => void)();
+        }
+      } catch {}
+    };
+  }, [buscarIdUsuario, supabase]);
+
+  const buscarReservas = useCallback(
+    async (espacoId: number | null, data: string) => {
+      if (espacoId == null || !data) {
+        setListaReservas([]);
+        setErroReservas(null);
+        return;
+      }
+      setCarregandoReservas(true);
+      setErroReservas(null);
+      try {
+        const url = obterUrlApi(
+          `/api/reservas?data=${encodeURIComponent(
+            data
+          )}&idEspaco=${encodeURIComponent(String(espacoId))}`
+        );
+        const res = await fetch(url);
+
+        let json: unknown = null;
+        try {
+          json = await res.json();
+        } catch {
+          const texto = await res.text().catch(() => null);
+          json = texto ? { success: false, error: texto } : null;
+        }
+
+        if (
+          res.ok &&
+          json &&
+          typeof json === "object" &&
+          "success" in json &&
+          (json as { success?: unknown }).success === true &&
+          Array.isArray((json as { reservas?: unknown }).reservas)
+        ) {
+          setListaReservas((json as { reservas?: Reserva[] }).reservas ?? []);
+        } else {
+          setListaReservas([]);
+          const errMsg =
+            json && typeof json === "object" && "error" in json
+              ? String((json as { error?: unknown }).error)
+              : `HTTP ${res.status}`;
+          setErroReservas(String(errMsg));
+        }
+      } catch (erro) {
+        const mensagem = erro instanceof Error ? erro.message : String(erro);
+        console.error("Erro buscarReservas:", erro);
+        setListaReservas([]);
+        setErroReservas(`Erro de conexão: ${mensagem}`);
+      } finally {
+        setCarregandoReservas(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    const buscarEspacos = async () => {
+      setCarregandoEspacos(true);
+      try {
+        const url = obterUrlApi("/api/salas");
+        const res = await fetch(url);
+
+        let json: unknown = null;
+        try {
+          json = await res.json();
+        } catch {
+          const txt = await res.text().catch(() => null);
+          json = txt ? { success: false, error: txt } : null;
+        }
+
+        if (
+          json &&
+          typeof json === "object" &&
+          "success" in json &&
+          (json as { success?: unknown }).success === true &&
+          Array.isArray((json as { salas?: unknown }).salas)
+        ) {
+          const salasRaw = (json as { salas?: SalaResposta[] }).salas ?? [];
+          const todos = salasRaw.flatMap((s) => s.espacos ?? []);
+          setListaEspacos(todos);
+
+          const hoje = new Date().toISOString().split("T")[0];
+          const novaData = dataSelecionada || hoje;
+          const novoEspaco =
+            espacoSelecionado ?? (todos.length > 0 ? todos[0].idEspaco : null);
+
+          setDataSelecionada(novaData);
+          setEspacoSelecionado(novoEspaco);
+
+          if (novoEspaco != null && novaData) {
+            buscarReservas(novoEspaco, novaData);
+          }
+        } else {
+          console.warn("/api/salas retornou formato inesperado:", json);
+        }
+      } catch (erro) {
+        console.error("Erro ao buscar salas:", erro);
+      } finally {
+        setCarregandoEspacos(false);
+      }
+    };
+    buscarEspacos();
+  }, [buscarReservas, dataSelecionada, espacoSelecionado]);
+
+  const handleChangeEspaco = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const novoId = e.target.value === "" ? null : Number(e.target.value);
+    setEspacoSelecionado(novoId);
+    if (novoId != null && dataSelecionada) {
+      buscarReservas(novoId, dataSelecionada);
+    }
+  };
+
+  const handleChangeData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const novaData = e.target.value;
+    setDataSelecionada(novaData);
+    if (espacoSelecionado != null && novaData) {
+      buscarReservas(espacoSelecionado, novaData);
+    }
+  };
+
+  const salvarReserva = useCallback(async () => {
+    if (
+      !espacoSelecionado ||
+      !dataSelecionada ||
+      !horaInicio ||
+      !horaFim ||
+      !motivo
+    ) {
+      alert("Todos os campos do formulário são obrigatórios.");
       return;
     }
 
     try {
-      const response = await fetch("/api/reservas", {
+      const payload: Record<string, unknown> = {
+        idEspaco: espacoSelecionado,
+        data: dataSelecionada,
+        inicio: horaInicio,
+        fim: horaFim,
+        motivo: motivo.trim(),
+      };
+
+      if (idUsuario) {
+        payload.idUsuario = idUsuario;
+        payload.idCriador = idUsuario;
+      } else if (uuidSupabase) {
+        payload.auth_id = uuidSupabase;
+        payload.supabase_uuid = uuidSupabase;
+      } else {
+        payload.idUsuario = null;
+      }
+
+      const url = obterUrlApi("/api/reservas");
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          idEspaco: selectedEspaco,
-          data: selectedDate,
-          inicio: horaInicio,
-          fim: horaFim,
-          motivo,
-          idCriador: userId,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      let parsed: unknown = null;
+      try {
+        parsed = await res.json();
+      } catch {
+        const texto = await res.text().catch(() => null);
+        parsed = texto ?? null;
+      }
 
-      if (data.success) {
+      if (!res.ok) {
+        const errMsg =
+          parsed && typeof parsed === "object" && "error" in parsed
+            ? String((parsed as { error?: unknown }).error)
+            : typeof parsed === "string"
+            ? parsed
+            : `Status ${res.status}`;
+        alert(`Erro do servidor: ${String(errMsg)}`);
+        return;
+      }
+
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        "success" in parsed &&
+        (parsed as { success?: unknown }).success === true
+      ) {
         alert("Reserva criada com sucesso!");
-        // Atualiza cronograma
         setHoraInicio("");
         setHoraFim("");
         setMotivo("");
+        if (espacoSelecionado != null && dataSelecionada) {
+          buscarReservas(espacoSelecionado, dataSelecionada);
+        }
       } else {
-        alert("Erro ao criar reserva: " + (data.error ?? "Desconhecido"));
+        const errMsg =
+          parsed && typeof parsed === "object" && "error" in parsed
+            ? String((parsed as { error?: unknown }).error)
+            : "Erro desconhecido ao criar reserva.";
+        alert(`Erro ao criar reserva: ${String(errMsg)}`);
       }
-    } catch (err) {
-      console.error("Erro ao salvar reserva:", err);
-      alert("Erro ao criar reserva.");
+    } catch (erroSalvar) {
+      console.error("Erro ao salvar reserva:", erroSalvar);
+      alert(
+        "Erro ao criar reserva (falha de conexão). Veja o console para detalhes."
+      );
     }
-  }
+  }, [
+    espacoSelecionado,
+    dataSelecionada,
+    horaInicio,
+    horaFim,
+    motivo,
+    idUsuario,
+    uuidSupabase,
+    buscarReservas,
+  ]);
 
   const nomeEspacoSelecionado =
-    espacos.find((e) => e.idEspaco === selectedEspaco)?.codigoEspaco ||
+    listaEspacos.find((e) => e.idEspaco === espacoSelecionado)?.codigoEspaco ??
     "Não Selecionado";
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 p-8">
       <div className="max-w-5xl mx-auto">
-        <header className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold text-lg">
-              R
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-800">
-                Nova Reserva de Espaço
-              </h1>
-              <p className="text-sm text-gray-500">
-                Usuário ID: {userId ?? "Não logado"}
-              </p>
-            </div>
+        <header className="mb-6">
+          <h1 className="text-2xl font-semibold text-gray-800">
+            Nova Reserva de Espaço
+          </h1>
+          <div className="text-sm text-gray-500 mt-2">
+            {carregandoUsuario ? (
+              "Carregando autenticação..."
+            ) : idUsuario ? (
+              <span>
+                Usuário ID:{" "}
+                <span className="font-medium text-teal-600">{idUsuario}</span>
+              </span>
+            ) : uuidSupabase ? (
+              <span>
+                Autenticado (UUID):{" "}
+                <span className="font-medium">{uuidSupabase}</span>
+                {emailUsuario ? ` — ${emailUsuario}` : ""}
+              </span>
+            ) : (
+              <span>Não autenticado</span>
+            )}
           </div>
         </header>
 
         <main className="grid grid-cols-12 gap-6">
-          {/* Formulário de reserva */}
           <section className="col-span-12 lg:col-span-5">
             <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5 shadow-lg">
               <h2 className="text-xl font-bold mb-4">Detalhes da Reserva</h2>
 
-              {/* Seleção do Espaço */}
               <div>
                 <label
                   htmlFor="espaco"
@@ -202,15 +432,17 @@ export default function ReservarPage() {
                 </label>
                 <select
                   id="espaco"
-                  value={selectedEspaco ?? ""}
-                  onChange={(e) => setSelectedEspaco(Number(e.target.value))}
+                  value={espacoSelecionado ?? ""}
+                  onChange={handleChangeEspaco}
                   className="w-full border border-gray-300 rounded-lg p-2 bg-white focus:ring-teal-500 focus:border-teal-500"
-                  disabled={loadingEspacos}
+                  disabled={carregandoEspacos}
                 >
                   <option value="">
-                    {loadingEspacos ? "Carregando..." : "Selecione um espaço"}
+                    {carregandoEspacos
+                      ? "Carregando..."
+                      : "Selecione um espaço"}
                   </option>
-                  {espacos.map((e) => (
+                  {listaEspacos.map((e) => (
                     <option key={e.idEspaco} value={e.idEspaco}>
                       {e.codigoEspaco}
                     </option>
@@ -218,7 +450,6 @@ export default function ReservarPage() {
                 </select>
               </div>
 
-              {/* Seleção da Data */}
               <div>
                 <label
                   htmlFor="data"
@@ -229,8 +460,8 @@ export default function ReservarPage() {
                 <input
                   id="data"
                   type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
+                  value={dataSelecionada}
+                  onChange={handleChangeData}
                   className="w-full border border-gray-300 rounded-lg p-2 bg-white focus:ring-teal-500 focus:border-teal-500"
                   max={
                     new Date(new Date().setDate(new Date().getDate() + 30))
@@ -240,7 +471,6 @@ export default function ReservarPage() {
                 />
               </div>
 
-              {/* Hora início e fim */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label
@@ -274,7 +504,6 @@ export default function ReservarPage() {
                 </div>
               </div>
 
-              {/* Motivo */}
               <div>
                 <label
                   htmlFor="motivo"
@@ -292,7 +521,6 @@ export default function ReservarPage() {
                 />
               </div>
 
-              {/* Botões */}
               <div className="flex gap-3 justify-end pt-2">
                 <button
                   type="button"
@@ -305,17 +533,18 @@ export default function ReservarPage() {
                 >
                   Limpar Campos
                 </button>
+
                 <button
                   type="button"
                   className="px-5 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition disabled:opacity-50"
-                  onClick={handleSalvarReserva}
+                  onClick={salvarReserva}
                   disabled={
-                    !selectedEspaco ||
-                    !selectedDate ||
+                    carregandoEspacos ||
+                    !espacoSelecionado ||
+                    !dataSelecionada ||
                     !horaInicio ||
                     !horaFim ||
-                    !motivo ||
-                    !userId
+                    !motivo
                   }
                 >
                   Reservar
@@ -324,12 +553,11 @@ export default function ReservarPage() {
             </div>
           </section>
 
-          {/* Cronograma */}
           <section className="col-span-12 lg:col-span-7">
             <h2 className="text-xl font-semibold mb-3 text-gray-800">
               Cronograma do Dia:{" "}
-              {selectedDate
-                ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString(
+              {dataSelecionada
+                ? new Date(`${dataSelecionada}T00:00:00`).toLocaleDateString(
                     "pt-BR",
                     { weekday: "long", day: "2-digit", month: "short" }
                   )
@@ -348,40 +576,38 @@ export default function ReservarPage() {
                   Erro: {erroReservas}
                 </div>
               )}
-              {loadingReservas ? (
+              {carregandoReservas ? (
                 <div className="text-sm text-gray-500 p-4 bg-white rounded-lg shadow-sm">
                   Carregando cronograma...
                 </div>
-              ) : reservas.length === 0 ? (
+              ) : listaReservas.length === 0 ? (
                 <div className="text-sm text-gray-500 p-4 bg-white rounded-lg shadow-sm">
-                  {selectedEspaco && selectedDate
-                    ? `Nenhuma reserva encontrada para ${nomeEspacoSelecionado} em ${selectedDate}.`
+                  {espacoSelecionado && dataSelecionada
+                    ? `Nenhuma reserva encontrada para ${nomeEspacoSelecionado} em ${dataSelecionada}.`
                     : "Selecione um espaço e uma data para ver o cronograma."}
                 </div>
               ) : (
-                reservas.map((r) => {
-                  const ownerName =
+                listaReservas.map((r) => {
+                  const nomeProprietario =
                     r.criador?.nome && r.criador.nome.trim().length > 0
                       ? r.criador.nome
-                      : formatNameFromEmail(r.criador?.email ?? null);
+                      : formatarNomeAPartirDoEmail(r.criador?.email ?? null);
                   return (
                     <div
                       key={r.idReserva}
                       className="flex items-center gap-4 bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:border-teal-400 transition"
                     >
                       <div className="shrink-0 w-2 h-full min-h-10 rounded-full bg-teal-500" />
-
                       <div className="flex-1">
                         <div className="text-sm font-medium text-gray-800">
-                          {ownerName}
+                          {nomeProprietario}
                         </div>
                         <div className="text-xs text-gray-600 truncate">
                           {r.motivo}
                         </div>
                       </div>
-
                       <div className="shrink-0 text-sm font-semibold text-gray-700 text-right w-32">
-                        {formatTimeRange(r.horaInicio, r.horaFim)}
+                        {formatarIntervaloHorario(r.horaInicio, r.horaFim)}
                       </div>
                     </div>
                   );
@@ -393,4 +619,30 @@ export default function ReservarPage() {
       </div>
     </div>
   );
+}
+
+function formatarNomeAPartirDoEmail(email?: string | null) {
+  if (!email) return "Usuário";
+  const local = email.split("@")[0];
+  const partes = local.split(/[._-]+/).filter(Boolean);
+  return (
+    partes.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ") || local
+  );
+}
+function formatarIntervaloHorario(inicioIso: string, fimIso: string) {
+  try {
+    const inicio = new Date(inicioIso);
+    const fim = new Date(fimIso);
+    const h1 = inicio.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const h2 = fim.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return `${h1} — ${h2}`;
+  } catch {
+    return "";
+  }
 }
