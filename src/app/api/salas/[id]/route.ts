@@ -1,28 +1,32 @@
 // biome-ignore lint/style/useImportType: <explanation>
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { useSearchParams } from 'next/navigation'
-import { useEffect } from 'react'
 
 const prisma = new PrismaClient();
 
-export async function PUT() {
-  const searchParams = useSearchParams()
-  const id = searchParams.get('id')
-
-   useEffect(() => {
-    if (!id) return
-
-    fetch('/api/salas', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id}),
-    })
-      .then(res => res.json())
-      .then(data => console.log(data))
-  }, [id])
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: { [id: string]: string } }
+) {
+  const id = Number(params.id);
+  try {
+    const data = await req.json();
+    const salaAtualizada = await prisma.sala.update({
+      where: { idSala: id },
+      data,
+    });
+    return NextResponse.json({ success: true, data: { sala: salaAtualizada } });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error("Erro ao atualizar sala:", error.message);
+    } else {
+      console.error("Erro desconhecido ao atualizar sala:", error);
+    }
+    return NextResponse.json(
+      { success: false, error: "Erro ao atualizar sala." },
+      { status: 500 },
+    );
+  }
 }
 
 export async function DELETE(
