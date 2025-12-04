@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: { [id: string]: string } },
 ) {
   const id = Number(params.id);
   try {
@@ -31,7 +31,7 @@ export async function PUT(
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: { [id: string]: string } },
 ) {
   const id = Number(params.id);
   try {
