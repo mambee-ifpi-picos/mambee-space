@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { supabase } from "@/lib/supabaseClient";
 import { NextResponse } from "next/server";
+import { todo } from "node:test";
 
 export async function GET() {
   const { data: salas, error: salaError } = await supabase
@@ -64,12 +65,13 @@ export async function POST(req: Request) {
         { status: 400 },
       );
 
-    const { data, error } = await supabase
+    // @todo referenciar salas
+    const { data: salasInseridas, error: erroSalasInseridas } = await supabase
       .from("Sala")
       .insert([{ nomeSala, mapa, limiteHorasReserva, idUsuarioCriador, ativa }])
       .select();
 
-    if (errorSalas) throw errorSalas;
+    if (erroSalasInseridas) throw erroSalasInseridas;
 
     // Buscar todos os espaços
     const { data: espacosData, error: errorEspacos } = await supabase
@@ -78,20 +80,20 @@ export async function POST(req: Request) {
 
     if (errorEspacos) throw errorEspacos;
 
-    if (!idSala || !idUsuarioEditor) {
+    if (!salasInseridas || !idUsuarioCriador) {
       return NextResponse.json(
         { success: false, error: "Campos obrigatórios ausentes." },
         { status: 400 },
       );
     }
 
-    const { data: usuario } = await supabase
+    const { data: usuarioEditor } = await supabase
       .from("Usuario")
       .select("admin")
-      .eq("idUsuario", idUsuarioEditor)
+      .eq("idUsuario", idUsuarioCriador)
       .single();
 
-    if (!usuario?.admin) {
+    if (!usuarioEditor?.admin) {
       return NextResponse.json(
         { success: false, error: "Apenas administradores podem editar salas." },
         { status: 403 },
@@ -107,7 +109,7 @@ export async function POST(req: Request) {
     const { data, error } = await supabase
       .from("Sala")
       .update(updateData)
-      .eq("idSala", idSala)
+      // @todo corrigir .eq("idSala", salalas)
       .select();
 
     if (error) throw error;
