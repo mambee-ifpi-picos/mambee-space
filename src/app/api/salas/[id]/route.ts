@@ -1,11 +1,12 @@
-import { NextResponse } from "next/server";
+// biome-ignore lint/style/useImportType: <explanation>
+import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: { [id: string]: string } },
 ) {
   const id = Number(params.id);
   try {
@@ -23,14 +24,14 @@ export async function PUT(
     }
     return NextResponse.json(
       { success: false, error: "Erro ao atualizar sala." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
-  _req: Request,
-  { params }: { params: { id: string } }
+  _req: NextRequest,
+  { params }: { params: { [id: string]: string } },
 ) {
   const id = Number(params.id);
   try {
@@ -47,7 +48,7 @@ export async function DELETE(
     }
     return NextResponse.json(
       { success: false, error: "Erro ao deletar sala." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
