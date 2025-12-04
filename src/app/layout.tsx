@@ -21,9 +21,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR">
       <body
@@ -33,7 +31,7 @@ export default function RootLayout({
         <main className="flex flex-col min-h-[calc(100vh-120px)]">
           {children}
         </main>
-        <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center bg-gray-700 text-white p-4">
+        <footer className="row-start-3 flex flex-wrap items-center justify-center gap-6 bg-gray-700 p-4 text-white">
           Mambee2025
         </footer>
       </body>

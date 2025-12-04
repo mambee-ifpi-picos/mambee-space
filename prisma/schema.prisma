@@ -8,21 +8,19 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  
 }
 
 model Usuario {
-  idUsuario       Int      @id @default(autoincrement())
-  foto            String?
-  email           String   @unique
-  nome            String
-  admin           Boolean  @default(false)
+  idUsuario Int    @id @default(autoincrement())
+  idAuth    String? @unique
+  foto      String?
+  email     String @unique
+  nome      String
+  admin     Boolean @default(false)
 
   salasCriadas    Sala[]
   espacosCriados  Espaco[]
   reservasCriadas Reserva[]
-
-  
 }
 
 model Sala {
@@ -35,8 +33,6 @@ model Sala {
 
   criador Usuario @relation(fields: [idUsuarioCriador], references: [idUsuario])
   espacos Espaco[]
-
- 
 }
 
 model Espaco {
@@ -48,8 +44,6 @@ model Espaco {
   criador Usuario @relation(fields: [idUsuarioCriador], references: [idUsuario])
   sala    Sala    @relation(fields: [idSalaPertence], references: [idSala])
   reservas Reserva[]
-
-
 }
 
 model Reserva {
@@ -63,6 +57,4 @@ model Reserva {
 
   criador Usuario @relation(fields: [idUsuarioCriador], references: [idUsuario])
   espaco  Espaco  @relation(fields: [idEspacoReservado], references: [idEspaco])
-
-  
 }

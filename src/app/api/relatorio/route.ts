@@ -1,78 +1,104 @@
-import { supabase } from "@/lib/supabaseClient";
 import { NextResponse } from "next/server";
-
-type UsuarioInfo = {
-  nome: string;
-  email: string;
-};
-
-type ReservaComUsuario = {
-  idReserva: number;
-  motivo: string;
-  horaInicio: string;
-  horaFim: string;
-  situacao: string;
-  Usuario?: UsuarioInfo[];
-};
+import { supabase } from "@/lib/supabaseClient";
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+
+    const filtroSala = (searchParams.get("sala") ?? "").trim().toLowerCase();
+    const filtroEspaco = (searchParams.get("espaco") ?? "")
+      .trim()
+      .toLowerCase();
+    const filtroMotivo = (searchParams.get("motivo") ?? "")
+      .trim()
+      .toLowerCase();
     const dataInicio = searchParams.get("inicio");
     const dataFim = searchParams.get("fim");
 
-    let query = supabase
-      .from("Reserva")
-      .select(
-        `
-          idReserva,
-          motivo,
-          horaInicio,
-          horaFim,
-          situacao,
-          Usuario: idUsuarioCriador (nome, email)
-        `
-      )
-      .order("horaInicio", { ascending: true });
+    const dtInicio = dataInicio ? new Date(`${dataInicio}T00:00:00`) : null;
+    const dtFim = dataFim ? new Date(`${dataFim}T23:59:59`) : null;
 
-    if (dataInicio && dataFim) {
-      query = query.gte("horaInicio", dataInicio).lte("horaFim", dataFim);
+    const { data: reservasData, error: errorReservas } = await supabase
+      .from("Reserva")
+      .select("*")
+      .order("horaInicio", { ascending: false });
+
+    if (errorReservas) {
+      throw new Error(errorReservas.message);
     }
 
-    const res = await query;
-    if (res.error) throw res.error;
+    if (!reservasData) {
+      return NextResponse.json({ success: true, reservas: [] });
+    }
 
-    const rawData = Array.isArray(res.data) ? res.data : [];
-    const reservas = rawData as unknown as ReservaComUsuario[];
+    const { data: espacos, error: errorEspacos } = await supabase
+      .from("Espaco")
+      .select("idEspaco, codigoEspaco, idSalaPertence");
 
-    const relatorio = reservas.map((reserva) => {
-      const usuarioData = Array.isArray(reserva.Usuario)
-        ? reserva.Usuario[0]
-        : reserva.Usuario;
+    if (errorEspacos) {
+      throw new Error(errorEspacos.message);
+    }
+
+    const { data: salas, error: errorSalas } = await supabase
+      .from("Sala")
+      .select("idSala, nomeSala");
+
+    if (errorSalas) {
+      throw new Error(errorSalas.message);
+    }
+
+    const { data: usuarios, error: errorUsuarios } = await supabase
+      .from("Usuario")
+      .select("idUsuario, nome, email");
+
+    if (errorUsuarios) {
+      throw new Error(errorUsuarios.message);
+    }
+
+    const reservasMapeadas = reservasData.map((r) => {
+      const espaco = espacos.find((e) => e.idEspaco === r.idEspacoReservado);
+      const sala = espaco
+        ? salas.find((s) => s.idSala === espaco.idSalaPertence)
+        : null;
+      const usuario = usuarios.find((u) => u.idUsuario === r.idUsuarioCriador);
 
       return {
-        id: reserva.idReserva,
-        motivo: reserva.motivo,
-        inicio: reserva.horaInicio
-          ? new Date(reserva.horaInicio).toLocaleString("pt-BR")
-          : "-",
-        fim: reserva.horaFim
-          ? new Date(reserva.horaFim).toLocaleString("pt-BR")
-          : "-",
-        situacao: reserva.situacao || "-",
-        usuario: usuarioData?.nome || "Usuário não encontrado",
-        email: usuarioData?.email || "-",
+        id: r.idReserva,
+        motivo: r.motivo ?? "",
+        inicio: r.horaInicio ?? "",
+        fim: r.horaFim ?? "",
+        situacao: r.situacao ?? "",
+        usuario: usuario?.nome ?? "",
+        email: usuario?.email ?? "",
+        sala: sala?.nomeSala ?? "",
+        espaco: espaco?.codigoEspaco ?? "",
       };
+    });
+
+    const reservasFiltradas = reservasMapeadas.filter((res) => {
+      const salaOK = res.sala.toLowerCase().includes(filtroSala);
+      const espacoOK = res.espaco.toLowerCase().includes(filtroEspaco);
+      const motivoOK = res.motivo.toLowerCase().includes(filtroMotivo);
+
+      let dataOK = true;
+      if (dtInicio) {
+        dataOK = dataOK && new Date(res.inicio) >= dtInicio;
+      }
+      if (dtFim) {
+        dataOK = dataOK && new Date(res.inicio) <= dtFim;
+      }
+
+      return salaOK && espacoOK && motivoOK && dataOK;
     });
 
     return NextResponse.json({
       success: true,
-      total: relatorio.length,
-      relatorio,
+      total: reservasFiltradas.length,
+      reservas: reservasFiltradas,
     });
-  } catch (error: unknown) {
-    console.error("ERRO AO GERAR RELATÓRIO:", error);
-    const msg = error instanceof Error ? error.message : JSON.stringify(error);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Erro inesperado";
+    console.error("Erro API:", msg);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
