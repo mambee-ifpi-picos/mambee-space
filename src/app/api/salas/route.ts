@@ -1,3 +1,7 @@
+// app/api/salas/route.ts
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { supabase } from "@/lib/supabaseClient";
 import { NextResponse } from "next/server";
 
@@ -65,25 +69,14 @@ export async function POST(req: Request) {
       .insert([{ nomeSala, mapa, limiteHorasReserva, idUsuarioCriador, ativa }])
       .select();
 
-    if (error) throw error;
+    if (errorSalas) throw errorSalas;
 
-    return NextResponse.json({ success: true, sala: data[0] });
-  } catch (err: unknown) {
-    return NextResponse.json({ success: false, error: err }, { status: 500 });
-  }
-}
+    // Buscar todos os espaços
+    const { data: espacosData, error: errorEspacos } = await supabase
+      .from("Espaco")
+      .select("idEspaco, codigoEspaco, idSalaPertence");
 
-export async function PUT(req: Request) {
-  try {
-    const body = await req.json();
-    const {
-      idSala,
-      nomeSala,
-      mapa,
-      limiteHorasReserva,
-      ativa,
-      idUsuarioEditor,
-    } = body;
+    if (errorEspacos) throw errorEspacos;
 
     if (!idSala || !idUsuarioEditor) {
       return NextResponse.json(

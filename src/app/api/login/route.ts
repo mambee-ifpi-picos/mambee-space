@@ -8,13 +8,13 @@ export async function POST(req: Request) {
     if (!email || !password) {
       return NextResponse.json(
         { error: "Email e senha são obrigatórios." },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     console.error("Erro interno:", err.message);
     return NextResponse.json(
       { error: "Erro interno no servidor." },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

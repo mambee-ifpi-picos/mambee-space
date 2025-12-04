@@ -1,323 +1,238 @@
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-import { supabase } from "@/lib/supabaseClient";
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
+    const supabase = createRouteHandlerClient({ cookies });
 
-    const idUsuario = searchParams.get("idUsuario");
-    const search = searchParams.get("search")?.trim().toLowerCase() || null;
+    const url = new URL(req.url);
+    const dataParam = url.searchParams.get("data");
+    const idEspacoParam = url.searchParams.get("idEspaco");
+    let idUsuarioParam =
+      url.searchParams.get("idUsuario") ??
+      url.searchParams.get("idUsuarioCriador");
+    const pageParam = url.searchParams.get("page");
+    const pageSizeParam = url.searchParams.get("pageSize");
+    const searchParam = url.searchParams.get("search");
 
-    if (!idUsuario) {
-      return NextResponse.json(
-        { success: false, error: "Informe o ID do usuário." },
-        { status: 400 }
-      );
+    const idEspaco = idEspacoParam ? Number(idEspacoParam) : undefined;
+    const page = pageParam ? Math.max(1, Number(pageParam)) : 1;
+    const pageSize = pageSizeParam
+      ? Math.max(1, Math.min(100, Number(pageSizeParam)))
+      : 50;
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const emailUsuarioLogado = session?.user?.email;
+
+    let usuarioLogado:
+      | { idUsuario: number; admin: boolean; email: string }
+      | undefined;
+
+    if (emailUsuarioLogado) {
+      const usuario = await prisma.usuario.findUnique({
+        where: { email: emailUsuarioLogado },
+        select: { idUsuario: true, admin: true, email: true },
+      });
+      usuarioLogado = usuario ?? undefined;
     }
 
-    const { data: usuario, error: erroUsuario } = await supabase
-      .from("Usuario")
-      .select("admin")
-      .eq("idUsuario", idUsuario)
-      .single();
+    const isAdmin = usuarioLogado?.admin === true;
 
-    if (erroUsuario) throw erroUsuario;
-
-    let query = supabase
-      .from("Reserva")
-      .select("*, Espaco(codigoEspaco, idSalaPertence)");
-
-    if (!usuario?.admin) {
-      query = query.eq("idUsuarioCriador", idUsuario);
+    if (
+      !isAdmin &&
+      !idUsuarioParam &&
+      usuarioLogado?.idUsuario &&
+      !dataParam &&
+      !idEspacoParam
+    ) {
+      idUsuarioParam = String(usuarioLogado.idUsuario);
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
+    const idUsuario = idUsuarioParam ? Number(idUsuarioParam) : undefined;
 
-    let reservasFiltradas = (data || []) as any[];
-    if (search) {
-      reservasFiltradas = reservasFiltradas.filter((reserva) =>
-        (reserva.motivo ?? "").toLowerCase().includes(search)
-      );
+    const filters: Prisma.ReservaWhereInput[] = [];
+
+    if (typeof idUsuario === "number" && Number.isFinite(idUsuario)) {
+      filters.push({
+        OR: [{ idUsuarioCriador: idUsuario }, { criador: { idUsuario } }],
+      });
     }
+
+    if (typeof idEspaco === "number" && Number.isFinite(idEspaco)) {
+      filters.push({ espaco: { idEspaco } });
+    }
+
+    if (dataParam && dataParam.trim().length > 0) {
+      const dataInicioUTC = new Date(`${dataParam}T00:00:00.000Z`);
+      const dataFimExclusivo = new Date(dataInicioUTC);
+      dataFimExclusivo.setDate(dataFimExclusivo.getDate() + 1);
+
+      filters.push({
+        horaInicio: { gte: dataInicioUTC, lt: dataFimExclusivo },
+      });
+    }
+
+    if (searchParam && searchParam.trim().length > 0) {
+      filters.push({
+        motivo: { contains: searchParam.trim(), mode: "insensitive" },
+      });
+    }
+
+    const whereClause = filters.length > 0 ? { AND: filters } : undefined;
+
+    const skip = (page - 1) * pageSize;
+    const take = pageSize;
+
+    const reservas = await prisma.reserva.findMany({
+      where: whereClause,
+      orderBy: { horaInicio: "asc" },
+      skip,
+      take,
+      include: {
+        espaco: true,
+        criador: {
+          select: { idUsuario: true, email: true, nome: true, foto: true },
+        },
+      },
+    });
+
+    const total = await prisma.reserva.count({ where: whereClause });
 
     return NextResponse.json({
       success: true,
-      reservas: reservasFiltradas,
+      reservas,
+      total,
+      usuarioLogado: usuarioLogado
+        ? {
+            idUsuario: usuarioLogado.idUsuario,
+            admin: usuarioLogado.admin,
+            email: usuarioLogado.email,
+          }
+        : null,
+      pageSize,
     });
-  } catch (error: unknown) {
-    const msg =
-      error instanceof Error
-        ? error.message
-        : JSON.stringify(error, null, 2) || "Erro desconhecido.";
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+  } catch (erro) {
+    const mensagem = erro instanceof Error ? erro.message : "Erro desconhecido";
+    return NextResponse.json(
+      { success: false, error: mensagem },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as {
-      motivo: string;
-      horaInicio: string;
-      horaFim: string;
-      situacao: string;
-      idUsuarioCriador: number;
-      idEspacoReservado: number;
-    };
-
-    const {
-      motivo,
-      horaInicio,
-      horaFim,
-      situacao,
-      idUsuarioCriador,
-      idEspacoReservado,
-    } = body;
+    const body = await req.json();
+    const { idEspaco, data, inicio, fim, motivo, idUsuario, idCriador } = body;
 
     if (
+      !idEspaco ||
+      !data ||
+      !inicio ||
+      !fim ||
       !motivo ||
-      !horaInicio ||
-      !horaFim ||
-      !situacao ||
-      !idUsuarioCriador ||
-      !idEspacoReservado
-    )
+      (!idUsuario && !idCriador)
+    ) {
       return NextResponse.json(
-        { success: false, error: "Campos obrigatórios ausentes." },
-        { status: 400 }
-      );
-
-    const { data: espaco, error: erroEspaco } = await supabase
-      .from("Espaco")
-      .select("idEspaco, idSalaPertence")
-      .eq("idEspaco", idEspacoReservado)
-      .single();
-
-    if (erroEspaco) throw erroEspaco;
-    if (!espaco)
-      return NextResponse.json(
-        { success: false, error: "Espaço não encontrado." },
-        { status: 404 }
-      );
-
-    const { data: sala, error: erroSala } = await supabase
-      .from("Sala")
-      .select("ativa")
-      .eq("idSala", espaco.idSalaPertence)
-      .single();
-
-    if (erroSala) throw erroSala;
-    if (!sala?.ativa)
-      return NextResponse.json(
-        { success: false, error: "A sala deste espaço está inativa." },
-        { status: 403 }
-      );
-
-    const inicio = new Date(horaInicio).getTime();
-    const fim = new Date(horaFim).getTime();
-    const duracaoHoras = (fim - inicio) / (1000 * 60 * 60);
-
-    if (duracaoHoras > 4)
-      return NextResponse.json(
-        { success: false, error: "O limite máximo de reserva é de 4 horas." },
-        { status: 400 }
-      );
-
-    const { data: conflitos, error: erroConflito } = await supabase
-      .from("Reserva")
-      .select("idReserva, horaInicio, horaFim")
-      .eq("idEspacoReservado", idEspacoReservado)
-      .or(`and(horaInicio.lt."${horaFim}",horaFim.gt."${horaInicio}")`);
-
-    if (erroConflito) throw erroConflito;
-    if (conflitos && conflitos.length > 0)
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Já existe uma reserva nesse horário para este espaço.",
-        },
-        { status: 409 }
-      );
-
-    const { data, error } = await supabase
-      .from("Reserva")
-      .insert([
-        {
-          motivo,
-          horaInicio,
-          horaFim,
-          situacao,
-          idUsuarioCriador,
-          idEspacoReservado,
-        },
-      ])
-      .select();
-
-    if (error) throw error;
-
-    return NextResponse.json({
-      success: true,
-      reserva: data[0],
-      message: "Reserva criada com sucesso.",
-    });
-  } catch (error: unknown) {
-    const msg =
-      error instanceof Error
-        ? error.message
-        : JSON.stringify(error, null, 2) || "Erro desconhecido.";
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
-  }
-}
-
-export async function PUT(req: Request) {
-  try {
-    const body = (await req.json()) as {
-      idReserva: number;
-      motivo?: string;
-      horaInicio?: string;
-      horaFim?: string;
-      situacao?: string;
-      idUsuarioEditor: number;
-    };
-
-    const {
-      idReserva,
-      motivo,
-      horaInicio,
-      horaFim,
-      situacao,
-      idUsuarioEditor,
-    } = body;
-
-    if (!idReserva || !idUsuarioEditor) {
-      return NextResponse.json(
-        { success: false, error: "Campos obrigatórios ausentes." },
+        { success: false, error: "Dados obrigatórios faltando." },
         { status: 400 }
       );
     }
 
-    const { data: usuario, error: erroUsuario } = await supabase
-      .from("Usuario")
-      .select("admin")
-      .eq("idUsuario", idUsuarioEditor)
-      .single();
-
-    if (erroUsuario) throw erroUsuario;
-
-    const { data: reservaExistente, error: erroReserva } = await supabase
-      .from("Reserva")
-      .select("idUsuarioCriador, idEspacoReservado, horaInicio, horaFim")
-      .eq("idReserva", idReserva)
-      .single();
-
-    if (erroReserva) throw erroReserva;
-
-    if (!reservaExistente) {
-      return NextResponse.json(
-        { success: false, error: "Reserva não encontrada." },
-        { status: 404 }
-      );
-    }
-
+    const horaInicio = new Date(`${data}T${inicio}:00.000Z`);
+    const horaFim = new Date(`${data}T${fim}:00.000Z`);
     if (
-      !usuario?.admin &&
-      reservaExistente.idUsuarioCriador !== Number(idUsuarioEditor)
+      Number.isNaN(horaInicio.getTime()) ||
+      Number.isNaN(horaFim.getTime()) ||
+      horaInicio >= horaFim
     ) {
       return NextResponse.json(
         {
           success: false,
-          error: "Você não tem permissão para editar esta reserva.",
+          error: "Horário de início ou fim inválido/inconsistente.",
         },
-        { status: 403 }
+        { status: 400 }
       );
     }
 
-    const inicio = horaInicio ? new Date(horaInicio).getTime() : null;
-    const fim = horaFim ? new Date(horaFim).getTime() : null;
+    const criadorId = Number(idUsuario ?? idCriador);
 
-    if (inicio && fim) {
-      const duracaoHoras = (fim - inicio) / (1000 * 60 * 60);
-      if (duracaoHoras > 4) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "O limite máximo de reserva é de 4 horas.",
-          },
-          { status: 400 }
-        );
-      }
-
-      const { data: conflitos, error: erroConflito } = await supabase
-        .from("Reserva")
-        .select("idReserva, horaInicio, horaFim")
-        .eq("idEspacoReservado", reservaExistente.idEspacoReservado)
-        .neq("idReserva", idReserva)
-        .or(`and(horaInicio.lt.${horaFim},horaFim.gt.${horaInicio})`);
-
-      if (erroConflito) throw erroConflito;
-
-      if (conflitos && conflitos.length > 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Já existe uma reserva nesse horário para este espaço.",
-          },
-          { status: 409 }
-        );
-      }
-    }
-
-    const { data, error } = await supabase
-      .from("Reserva")
-      .update({ motivo, horaInicio, horaFim, situacao })
-      .eq("idReserva", idReserva)
-      .select();
-
-    if (error) throw error;
-
-    return NextResponse.json({
-      success: true,
-      reserva: data[0],
-      message: "Reserva atualizada com sucesso.",
+    const novaReserva = await prisma.reserva.create({
+      data: {
+        motivo: motivo.trim(),
+        horaInicio,
+        horaFim,
+        situacao: "CONFIRMADA",
+        espaco: { connect: { idEspaco: Number(idEspaco) } },
+        criador: { connect: { idUsuario: criadorId } },
+      },
     });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Erro desconhecido.";
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+
+    return NextResponse.json(
+      { success: true, reserva: novaReserva },
+      { status: 201 }
+    );
+  } catch (erro) {
+    const mensagem =
+      erro instanceof Error
+        ? erro.message
+        : "Erro desconhecido ao processar reserva";
+    return NextResponse.json(
+      { success: false, error: mensagem },
+      { status: 500 }
+    );
   }
 }
 
 export async function DELETE(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const idReserva = searchParams.get("idReserva");
-    const idUsuario = searchParams.get("idUsuario");
+    const supabase = createRouteHandlerClient({ cookies });
 
-    if (!idReserva || !idUsuario) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { success: false, error: "Parâmetros ausentes." },
+        { success: false, error: "Usuário não autenticado." },
+        { status: 401 }
+      );
+    }
+
+    const emailUsuarioLogado = session.user.email;
+    const solicitante = await prisma.usuario.findUnique({
+      where: { email: emailUsuarioLogado },
+    });
+
+    if (!solicitante) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Usuário solicitante não encontrado no banco de dados.",
+        },
+        { status: 404 }
+      );
+    }
+
+    const url = new URL(req.url);
+    const idReservaParam = url.searchParams.get("idReserva");
+    if (!idReservaParam) {
+      return NextResponse.json(
+        { success: false, error: "Parâmetro idReserva necessário." },
         { status: 400 }
       );
     }
 
-    const { data: usuario, error: erroUsuario } = await supabase
-      .from("Usuario")
-      .select("admin")
-      .eq("idUsuario", idUsuario)
-      .single();
-
-    if (erroUsuario) throw erroUsuario;
-
-    const { data: reserva, error: erroReserva } = await supabase
-      .from("Reserva")
-      .select("idUsuarioCriador")
-      .eq("idReserva", idReserva)
-      .single();
-
-    if (erroReserva) throw erroReserva;
-
+    const idReserva = Number(idReservaParam);
+    const reserva = await prisma.reserva.findUnique({
+      where: { idReserva },
+      include: { criador: true },
+    });
     if (!reserva) {
       return NextResponse.json(
         { success: false, error: "Reserva não encontrada." },
@@ -325,29 +240,25 @@ export async function DELETE(req: Request) {
       );
     }
 
-    if (!usuario?.admin && reserva.idUsuarioCriador !== Number(idUsuario)) {
+    const solicitanteIsAdmin = solicitante.admin === true;
+    const reservaCriadorId =
+      reserva.idUsuarioCriador ?? reserva.criador?.idUsuario ?? null;
+    const ehCriador = reservaCriadorId === solicitante.idUsuario;
+
+    if (!solicitanteIsAdmin && !ehCriador) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Você não tem permissão para deletar esta reserva.",
-        },
+        { success: false, error: "Não autorizado para apagar esta reserva." },
         { status: 403 }
       );
     }
 
-    const { error } = await supabase
-      .from("Reserva")
-      .delete()
-      .eq("idReserva", idReserva);
-
-    if (error) throw error;
-
-    return NextResponse.json({
-      success: true,
-      message: "Reserva deletada com sucesso.",
-    });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Erro desconhecido.";
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    await prisma.reserva.delete({ where: { idReserva } });
+    return NextResponse.json({ success: true });
+  } catch (erro) {
+    const mensagem = erro instanceof Error ? erro.message : "Erro desconhecido";
+    return NextResponse.json(
+      { success: false, error: mensagem },
+      { status: 500 }
+    );
   }
 }
