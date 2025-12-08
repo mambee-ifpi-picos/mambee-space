@@ -8,12 +8,12 @@ type MapaInfo = {
   preview: string;
 };
 
-export const inriaSerif400 = Inria_Serif({
+const inriaSerif400 = Inria_Serif({
   subsets: ["latin"],
   weight: ["400"],
 });
 
-export const inriaSerif700 = Inria_Serif({
+const inriaSerif700 = Inria_Serif({
   subsets: ["latin"],
   weight: ["700"],
 });

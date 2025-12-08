@@ -1,183 +1,137 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { startOfMonth, startOfWeek, startOfDay, endOfWeek } from "date-fns";
+import dayjs from "dayjs";
+import weekOfYear from "dayjs/plugin/weekOfYear";
+
+dayjs.extend(weekOfYear);
+
+type CountGroup = {
+  idEspacoReservado: number;
+  _count: {
+    idReserva: number;
+  };
+};
+
+type CountUser = {
+  idUsuarioCriador: number;
+  _count: {
+    idReserva: number;
+  };
+};
 
 export async function GET() {
   try {
-    const agora = new Date();
+    const agora = dayjs();
+
+    const ano = agora.year();
+    const semana = agora.week();
+    const mes = agora.month() + 1;
+
+    const reservas = await prisma.reserva.findMany({
+      include: {
+        espaco: true,
+        usuario: true,
+      },
+    });
+
+    const totalReservas = reservas.length;
 
     const reservasPorEspaco = await prisma.reserva.groupBy({
       by: ["idEspacoReservado"],
-      _count: { idReserva: true },
+      _count: {
+        idReserva: true,
+      },
     });
 
     const maisUsado = reservasPorEspaco.sort(
-      (a, b) => b._count.idReserva - a._count.idReserva
+      (a: CountGroup, b: CountGroup) => b._count.idReserva - a._count.idReserva
     )[0];
 
-    const espacoInfo = maisUsado
-      ? await prisma.espaco.findUnique({
-          where: { idEspaco: maisUsado.idEspacoReservado },
-        })
+    const espacoInfo =
+      maisUsado &&
+      (await prisma.espaco.findUnique({
+        where: { id: maisUsado.idEspacoReservado },
+      }));
+
+    const maisReservado = espacoInfo
+      ? {
+          nome: espacoInfo.nome,
+          total: maisUsado._count.idReserva,
+        }
       : null;
 
-    const totalReservas = reservasPorEspaco.reduce(
-      (acc, r) => acc + r._count.idReserva,
-      0
-    );
-
-    const percentualOcupacao = maisUsado
-      ? Math.round((maisUsado._count.idReserva / totalReservas) * 100)
-      : 0;
-
-    const salas = await prisma.sala.findMany({
-      include: {
-        espacos: {
-          include: { reservas: true },
+    const reservasMes = await prisma.reserva.groupBy({
+      by: ["idUsuarioCriador"],
+      where: {
+        dataReserva: {
+          gte: new Date(`${ano}-${mes}-01`),
+          lt: new Date(`${ano}-${mes + 1}-01`),
         },
       },
+      _count: {
+        idReserva: true,
+      },
     });
 
-    const salaMaisUsada = salas
-      .map((s) => {
-        const users = new Set<number>();
-        const total = s.espacos.reduce((acc, e) => {
-          e.reservas.forEach((r) => users.add(r.idUsuarioCriador));
-          return acc + e.reservas.length;
-        }, 0);
+    const topMesRaw = [...reservasMes].sort(
+      (a: CountUser, b: CountUser) => b._count.idReserva - a._count.idReserva
+    );
+
+    const top3Mes = await Promise.all(
+      topMesRaw.slice(0, 3).map(async (item) => {
+        const info = await prisma.usuario.findUnique({
+          where: { id: item.idUsuarioCriador },
+        });
+
         return {
-          nome: s.nomeSala,
-          total,
-          totalUsuarios: users.size,
+          usuario: info?.nome,
+          total: item._count.idReserva,
         };
       })
-      .sort((a, b) => b.total - a.total)[0];
+    );
 
-    const mensal = await prisma.reserva.count({
-      where: { horaInicio: { gte: startOfMonth(agora) } },
-    });
-    const semanal = await prisma.reserva.count({
-      where: { horaInicio: { gte: startOfWeek(agora) } },
-    });
-    const diario = await prisma.reserva.count({
-      where: { horaInicio: { gte: startOfDay(agora) } },
-    });
-
-    const todas = await prisma.reserva.findMany({
-      select: { horaInicio: true },
-    });
-
-    const manha = Array(7).fill(0);
-    const tarde = Array(7).fill(0);
-
-    todas.forEach((r) => {
-      const h = new Date(r.horaInicio).getHours();
-      if (h >= 6 && h <= 12) manha[h - 6]++;
-      if (h >= 13 && h <= 19) tarde[h - 13]++;
-    });
-
-    const diasSemana = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"];
-
-    const semanaInicio = startOfWeek(agora);
-    const semanaFim = endOfWeek(agora);
-
-    const reservasSemana = await prisma.reserva.findMany({
+    const reservasSemana = await prisma.reserva.groupBy({
+      by: ["idUsuarioCriador"],
       where: {
-        horaInicio: { gte: semanaInicio, lt: semanaFim },
+        dataReserva: {
+          gte: agora.startOf("week").toDate(),
+          lt: agora.endOf("week").toDate(),
+        },
       },
-      select: { horaInicio: true, idUsuarioCriador: true },
+      _count: {
+        idReserva: true,
+      },
     });
 
-    const freqMap: Record<string, Set<number>> = {
-      DOM: new Set(),
-      SEG: new Set(),
-      TER: new Set(),
-      QUA: new Set(),
-      QUI: new Set(),
-      SEX: new Set(),
-      SAB: new Set(),
-    };
-
-    reservasSemana.forEach((r) => {
-      const dia = diasSemana[new Date(r.horaInicio).getDay()];
-      freqMap[dia].add(r.idUsuarioCriador);
-    });
-
-    const frequenciaDias: Record<string, number> = {};
-    diasSemana.forEach((d) => {
-      frequenciaDias[d] = freqMap[d].size;
-    });
-
-    const usuariosReservaramSemana = new Set(
-      reservasSemana.map((r) => r.idUsuarioCriador)
+    const topSemanaRaw = [...reservasSemana].sort(
+      (a: CountUser, b: CountUser) => b._count.idReserva - a._count.idReserva
     );
 
-    const todosUsuarios = await prisma.usuario.findMany({
-      select: { idUsuario: true, nome: true, email: true },
-    });
+    const top3Semana = await Promise.all(
+      topSemanaRaw.slice(0, 3).map(async (item) => {
+        const info = await prisma.usuario.findUnique({
+          where: { id: item.idUsuarioCriador },
+        });
 
-    const inativos = todosUsuarios.filter(
-      (u) => !usuariosReservaramSemana.has(u.idUsuario)
-    );
-
-    const totalInatividade = inativos.length;
-
-    const topMesRaw = await prisma.reserva.groupBy({
-      by: ["idUsuarioCriador"],
-      where: { horaInicio: { gte: startOfMonth(agora) } },
-      _count: { idReserva: true },
-    });
-
-    const topMes = await Promise.all(
-      topMesRaw
-        .sort((a, b) => b._count.idReserva - a._count.idReserva)
-        .slice(0, 3)
-        .map(async (t) => {
-          const u = await prisma.usuario.findUnique({
-            where: { idUsuario: t.idUsuarioCriador },
-          });
-          return {
-            nome: u?.nome ?? "Sem nome",
-            email: u?.email ?? "",
-            total: t._count.idReserva,
-          };
-        })
-    );
-
-    const topSemanaRaw = await prisma.reserva.groupBy({
-      by: ["idUsuarioCriador"],
-      where: { horaInicio: { gte: startOfWeek(agora) } },
-      _count: { idReserva: true },
-    });
-
-    const topSemana = await Promise.all(
-      topSemanaRaw
-        .sort((a, b) => b._count.idReserva - a._count.idReserva)
-        .slice(0, 3)
-        .map(async (t) => {
-          const u = await prisma.usuario.findUnique({
-            where: { idUsuario: t.idUsuarioCriador },
-          });
-          return {
-            nome: u?.nome ?? "Sem nome",
-            email: u?.email ?? "",
-            total: t._count.idReserva,
-          };
-        })
+        return {
+          usuario: info?.nome,
+          total: item._count.idReserva,
+        };
+      })
     );
 
     return NextResponse.json({
-      espacoMaisUtilizado: espacoInfo?.codigoEspaco ?? "Nenhum",
-      percentualOcupacao,
-      espacosUtilizados: { mensal, semanal, diario },
-      graficos: { manha, tarde },
-      frequenciaDias,
-      totalInatividade: 0,
-      topMes,
-      topSemana,
+      totalReservas,
+      maisReservado,
+      top3Mes,
+      top3Semana,
     });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Erro no dashboard" }, { status: 500 });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Erro ao buscar dados" },
+      { status: 500 }
+    );
   }
 }
