@@ -1,30 +1,47 @@
 "use client";
+export const dynamic = "force-dynamic";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useSearchParams } from "next/navigation";
 
-type Espaco = {
-  idEspaco: number;
-  codigoEspaco: string;
-  idSalaPertence: number;
-};
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Carregando salas...</div>}>
+      <ListaSalasPage />
+    </Suspense>
+  );
+}
 
-type Sala = {
-  idSala: number;
-  nomeSala: string;
-  mapa?: string;
-  ativa?: boolean | null;
-  limiteHorasReserva?: number | null;
-  espacos?: Espaco[];
-};
+function ListaSalasPage() {
+  console.log("🔥 ESTA É A PÁGINA CERTA /SALAS");
 
-type ApiResponse = {
-  success: boolean;
-  salas?: Sala[];
-  error?: string;
-};
+  type Espaco = {
+    idEspaco: number;
+    codigoEspaco: string;
+    idSalaPertence: number;
+  };
 
-export default function ListaSalasPage() {
+  type Sala = {
+    idSala: number;
+    nomeSala: string;
+    mapa?: string;
+    ativa?: boolean | null;
+    limiteHorasReserva?: number | null;
+    espacos?: Espaco[];
+  };
+
+  type ApiResponse = {
+    success: boolean;
+    salas?: Sala[];
+    error?: string;
+  };
+
   const [salas, setSalas] = useState<Sala[]>([]);
   const [busca, setBusca] = useState("");
   const [termoAtivo, setTermoAtivo] = useState("");
@@ -80,7 +97,7 @@ export default function ListaSalasPage() {
       const nomeSalaMatch = sala.nomeSala?.toLowerCase().includes(termo);
 
       const espacosMatch = (sala.espacos ?? []).some((e) =>
-        e.codigoEspaco?.toLowerCase().includes(termo)
+        e.codigoEspaco?.toLowerCase().includes(termo),
       );
 
       return nomeSalaMatch || espacosMatch;

@@ -37,7 +37,7 @@ export async function GET(req: Request) {
     const pagina = parseInt(searchParams.get("pagina") ?? "1", 10);
     const itensPorPagina = parseInt(
       searchParams.get("itensPorPagina") ?? "9",
-      10
+      10,
     );
     const search = searchParams.get("search")?.trim().toLowerCase() || null;
 
@@ -50,7 +50,7 @@ export async function GET(req: Request) {
       if (isNaN(idEspacoNum)) {
         return NextResponse.json(
           { success: false, error: "ID de espaço inválido." },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -73,7 +73,7 @@ export async function GET(req: Request) {
           horaFim,
           Espaco(codigoEspaco), 
           criador: Usuario(nome, email)
-        `
+        `,
         )
         .eq("idEspacoReservado", idEspacoNum)
         // Filtra reservas que começam no dia (dataReserva)
@@ -110,7 +110,7 @@ export async function GET(req: Request) {
     if (!idUsuario) {
       return NextResponse.json(
         { success: false, error: "Informe o ID do usuário." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -144,7 +144,7 @@ export async function GET(req: Request) {
     let reservasFinais: ReservaRow[] = reservasData;
     if (search) {
       reservasFinais = reservasData.filter((reserva) =>
-        (reserva.motivo ?? "").toLowerCase().includes(search)
+        (reserva.motivo ?? "").toLowerCase().includes(search),
       );
     }
 
@@ -193,7 +193,7 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.json(
         { success: false, error: "Campos obrigatórios ausentes." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -207,7 +207,7 @@ export async function POST(req: Request) {
     if (!espaco)
       return NextResponse.json(
         { success: false, error: "Espaço não encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
 
     const { data: sala, error: erroSala } = await supabase
@@ -220,7 +220,7 @@ export async function POST(req: Request) {
     if (!sala?.ativa)
       return NextResponse.json(
         { success: false, error: "A sala deste espaço está inativa." },
-        { status: 403 }
+        { status: 403 },
       );
 
     const inicio = new Date(horaInicio).getTime();
@@ -230,7 +230,7 @@ export async function POST(req: Request) {
     if (duracaoHoras > 4)
       return NextResponse.json(
         { success: false, error: "O limite máximo de reserva é de 4 horas." },
-        { status: 400 }
+        { status: 400 },
       );
 
     const { data: conflitos, error: erroConflito } = await supabase
@@ -246,7 +246,7 @@ export async function POST(req: Request) {
           success: false,
           error: "Já existe uma reserva nesse horário para este espaço.",
         },
-        { status: 409 }
+        { status: 409 },
       );
 
     const { data, error } = await supabase
@@ -304,7 +304,7 @@ export async function PUT(req: Request) {
     if (!idReserva || !idUsuarioEditor) {
       return NextResponse.json(
         { success: false, error: "Campos obrigatórios ausentes." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -327,7 +327,7 @@ export async function PUT(req: Request) {
     if (!reservaExistente)
       return NextResponse.json(
         { success: false, error: "Reserva não encontrada." },
-        { status: 404 }
+        { status: 404 },
       );
 
     if (
@@ -339,7 +339,7 @@ export async function PUT(req: Request) {
           success: false,
           error: "Você não tem permissão para editar esta reserva.",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -354,7 +354,7 @@ export async function PUT(req: Request) {
             success: false,
             error: "O limite máximo de reserva é de 4 horas.",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -376,7 +376,7 @@ export async function PUT(req: Request) {
             success: false,
             error: "Já existe uma reserva nesse horário para este espaço.",
           },
-          { status: 409 }
+          { status: 409 },
         );
       }
     }
@@ -411,7 +411,7 @@ export async function DELETE(req: Request) {
     if (!idReserva || !idUsuario) {
       return NextResponse.json(
         { success: false, error: "Parâmetros ausentes." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -434,7 +434,7 @@ export async function DELETE(req: Request) {
     if (!reserva) {
       return NextResponse.json(
         { success: false, error: "Reserva não encontrada." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -444,7 +444,7 @@ export async function DELETE(req: Request) {
           success: false,
           error: "Você não tem permissão para deletar esta reserva.",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
