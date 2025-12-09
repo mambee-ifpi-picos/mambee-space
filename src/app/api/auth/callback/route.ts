@@ -85,5 +85,5 @@ export async function GET(req: Request) {
     console.error("Erro ao salvar Usuario:", upsertError.message);
   }
 
-  return NextResponse.redirect(new URL("/home", req.url));
+  return NextResponse.redirect(new URL("/dashboard", req.url));
 }
