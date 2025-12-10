@@ -15,13 +15,13 @@ export function Menu({ isOpen }: { isOpen: boolean }) {
       label: "Minhas Reservas",
       icon: <ClipboardList size={18} />,
     },
-    { href: "/perfil", label: "Perfil", icon: <User size={18} /> },
     { href: "/relatorio", label: "Relatório", icon: <FileText size={18} /> },
     {
       href: "/relatorioguarita",
       label: "Relatorio Guarita",
       icon: <FileText size={18} />,
     },
+    { href: "/perfil", label: "Perfil", icon: <User size={18} /> },
   ];
 
   return (

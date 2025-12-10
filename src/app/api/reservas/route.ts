@@ -55,16 +55,15 @@ export async function GET(req: Request) {
 
     const idUsuario = idUsuarioParam ? Number(idUsuarioParam) : undefined;
 
-    const filters: Prisma.ReservaWhereInput[] = [];
+    // objeto where
+    const where: Prisma.ReservaWhereInput = {};
 
     if (typeof idUsuario === "number" && Number.isFinite(idUsuario)) {
-      filters.push({
-        OR: [{ idUsuarioCriador: idUsuario }, { criador: { idUsuario } }],
-      });
+      where.OR = [{ idUsuarioCriador: idUsuario }, { criador: { idUsuario } }];
     }
 
     if (typeof idEspaco === "number" && Number.isFinite(idEspaco)) {
-      filters.push({ espaco: { idEspaco } });
+      where.espaco = { idEspaco };
     }
 
     if (dataParam && dataParam.trim().length > 0) {
@@ -72,24 +71,24 @@ export async function GET(req: Request) {
       const dataFimExclusivo = new Date(dataInicioUTC);
       dataFimExclusivo.setDate(dataFimExclusivo.getDate() + 1);
 
-      filters.push({
-        horaInicio: { gte: dataInicioUTC, lt: dataFimExclusivo },
-      });
+      where.horaInicio = {
+        gte: dataInicioUTC,
+        lt: dataFimExclusivo,
+      };
     }
 
     if (searchParam && searchParam.trim().length > 0) {
-      filters.push({
-        motivo: { contains: searchParam.trim(), mode: "insensitive" },
-      });
+      where.motivo = {
+        contains: searchParam.trim(),
+        mode: "insensitive",
+      };
     }
-
-    const whereClause = filters.length > 0 ? { AND: filters } : undefined;
 
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 
     const reservas = await prisma.reserva.findMany({
-      where: whereClause,
+      where,
       orderBy: { horaInicio: "asc" },
       skip,
       take,
@@ -101,7 +100,7 @@ export async function GET(req: Request) {
       },
     });
 
-    const total = await prisma.reserva.count({ where: whereClause });
+    const total = await prisma.reserva.count({ where });
 
     return NextResponse.json({
       success: true,
@@ -117,9 +116,11 @@ export async function GET(req: Request) {
       pageSize,
     });
   } catch (erro) {
-    const mensagem = erro instanceof Error ? erro.message : "Erro desconhecido";
     return NextResponse.json(
-      { success: false, error: mensagem },
+      {
+        success: false,
+        error: erro instanceof Error ? erro.message : "Erro desconhecido",
+      },
       { status: 500 }
     );
   }

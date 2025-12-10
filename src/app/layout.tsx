@@ -13,6 +13,7 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   const pathname = usePathname();
+
   const [open, setOpen] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -24,22 +25,28 @@ export default function RootLayout({ children }: RootLayoutProps) {
     return (
       <html lang="pt-BR">
         <body>
-          <Navbar />
+          {pathname === "/" && <Navbar />}
           <main>{children}</main>
+          {pathname === "/" && (
+            <footer className="row-start-3 flex flex-wrap items-center justify-center gap-6 bg-gray-700 p-4 text-white">
+              Mambee2025
+            </footer>
+          )}
         </body>
       </html>
     );
   }
 
-  const isLanding = pathname === "/";
+  const hiddenMenuRoutes = ["/", "/login"];
+  const isMenuHidden = hiddenMenuRoutes.includes(pathname);
 
   return (
     <html lang="pt-BR">
       <body>
-        <Navbar />
+        {pathname === "/" && <Navbar />}
 
         <div className="flex min-h-[calc(100vh-160px)]">
-          {!isLanding && (
+          {!isMenuHidden && (
             <div
               className={`transition-all duration-300 ${
                 open ? "w-64" : "w-0"
@@ -50,7 +57,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           )}
 
           <div className="flex-1 transition-all duration-300">
-            {!isLanding && (
+            {!isMenuHidden && (
               <button
                 type="button"
                 onClick={() => setOpen(!open)}
@@ -66,9 +73,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
           </div>
         </div>
 
-        <footer className="row-start-3 flex flex-wrap items-center justify-center gap-6 bg-gray-700 p-4 text-white">
-          Mambee2025
-        </footer>
+        {pathname === "/" && (
+          <footer className="row-start-3 flex flex-wrap items-center justify-center gap-6 bg-gray-700 p-4 text-white">
+            Mambee2025
+          </footer>
+        )}
       </body>
     </html>
   );
