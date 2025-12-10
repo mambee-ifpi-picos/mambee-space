@@ -1,16 +1,35 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export async function GET(req: Request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                cookieStore.set({ name, value, ...options });
+              });
+            } catch {}
+          },
+        },
+      }
+    );
 
     const url = new URL(req.url);
     const dataParam = url.searchParams.get("data");
     const idEspacoParam = url.searchParams.get("idEspaco");
+
     let idUsuarioParam =
       url.searchParams.get("idUsuario") ??
       url.searchParams.get("idUsuarioCriador");
@@ -27,12 +46,11 @@ export async function GET(req: Request) {
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    const emailUsuarioLogado = session?.user?.email;
 
+    const emailUsuarioLogado = session?.user?.email;
     let usuarioLogado:
       | { idUsuario: number; admin: boolean; email: string }
       | undefined;
-
     if (emailUsuarioLogado) {
       const usuario = await prisma.usuario.findUnique({
         where: { email: emailUsuarioLogado },
@@ -58,22 +76,28 @@ export async function GET(req: Request) {
     const filters: Prisma.ReservaWhereInput[] = [];
 
     if (typeof idUsuario === "number" && Number.isFinite(idUsuario)) {
-      filters.push({
+      const userFilter: Prisma.ReservaWhereInput = {
         OR: [{ idUsuarioCriador: idUsuario }, { criador: { idUsuario } }],
-      });
+      };
+      filters.push(userFilter);
     }
 
     if (typeof idEspaco === "number" && Number.isFinite(idEspaco)) {
-      filters.push({ espaco: { idEspaco } });
+      filters.push({
+        espaco: { idEspaco },
+      });
     }
 
     if (dataParam && dataParam.trim().length > 0) {
-      const dataInicioUTC = new Date(`${dataParam}T00:00:00.000Z`);
-      const dataFimExclusivo = new Date(dataInicioUTC);
-      dataFimExclusivo.setDate(dataFimExclusivo.getDate() + 1);
+      const dataInicio = new Date(`${dataParam}T00:00:00`);
+      const dataFim = new Date(dataInicio);
+      dataFim.setDate(dataFim.getDate() + 1);
 
       filters.push({
-        horaInicio: { gte: dataInicioUTC, lt: dataFimExclusivo },
+        horaInicio: {
+          gte: dataInicio,
+          lt: dataFim,
+        },
       });
     }
 
@@ -83,7 +107,8 @@ export async function GET(req: Request) {
       });
     }
 
-    const whereClause = filters.length > 0 ? { AND: filters } : undefined;
+    let whereClause: Prisma.ReservaWhereInput | undefined;
+    if (filters.length > 0) whereClause = { AND: filters };
 
     const skip = (page - 1) * pageSize;
     const take = pageSize;
@@ -114,7 +139,7 @@ export async function GET(req: Request) {
             email: usuarioLogado.email,
           }
         : null,
-      pageSize,
+      pageSize: pageSize,
     });
   } catch (erro) {
     const mensagem = erro instanceof Error ? erro.message : "Erro desconhecido";
@@ -144,23 +169,52 @@ export async function POST(req: Request) {
       );
     }
 
-    const horaInicio = new Date(`${data}T${inicio}:00.000Z`);
-    const horaFim = new Date(`${data}T${fim}:00.000Z`);
-    if (
-      Number.isNaN(horaInicio.getTime()) ||
-      Number.isNaN(horaFim.getTime()) ||
-      horaInicio >= horaFim
-    ) {
+    const horaInicio = new Date(`${data}T${inicio}:00`);
+    const horaFim = new Date(`${data}T${fim}:00`);
+
+    if (Number.isNaN(horaInicio.getTime()) || Number.isNaN(horaFim.getTime())) {
       return NextResponse.json(
         {
           success: false,
-          error: "Horário de início ou fim inválido/inconsistente.",
+          error: "Horário de início ou fim inválido.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (horaInicio >= horaFim) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Horário de início deve ser antes do horário de fim.",
         },
         { status: 400 }
       );
     }
 
     const criadorId = Number(idUsuario ?? idCriador);
+    const reservasConflitantes = await prisma.reserva.findMany({
+      where: {
+        idEspacoReservado: Number(idEspaco),
+        OR: [
+          {
+            horaInicio: { lt: horaFim },
+            horaFim: { gt: horaInicio },
+          },
+        ],
+        situacao: "CONFIRMADA",
+      },
+    });
+
+    if (reservasConflitantes.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Já existe uma reserva neste horário para este espaço.",
+        },
+        { status: 400 }
+      );
+    }
 
     const novaReserva = await prisma.reserva.create({
       data: {
@@ -191,48 +245,28 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const url = new URL(req.url);
+    const idReservaParam = url.searchParams.get("idReserva");
+    const idUsuarioParam = url.searchParams.get("idUsuario");
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { success: false, error: "Usuário não autenticado." },
-        { status: 401 }
-      );
-    }
-
-    const emailUsuarioLogado = session.user.email;
-    const solicitante = await prisma.usuario.findUnique({
-      where: { email: emailUsuarioLogado },
-    });
-
-    if (!solicitante) {
+    if (!idReservaParam || !idUsuarioParam) {
       return NextResponse.json(
         {
           success: false,
-          error: "Usuário solicitante não encontrado no banco de dados.",
+          error: "Parâmetros idReserva e idUsuario necessários.",
         },
-        { status: 404 }
-      );
-    }
-
-    const url = new URL(req.url);
-    const idReservaParam = url.searchParams.get("idReserva");
-    if (!idReservaParam) {
-      return NextResponse.json(
-        { success: false, error: "Parâmetro idReserva necessário." },
         { status: 400 }
       );
     }
 
     const idReserva = Number(idReservaParam);
+    const idUsuario = Number(idUsuarioParam);
+
     const reserva = await prisma.reserva.findUnique({
       where: { idReserva },
       include: { criador: true },
     });
+
     if (!reserva) {
       return NextResponse.json(
         { success: false, error: "Reserva não encontrada." },
@@ -240,10 +274,13 @@ export async function DELETE(req: Request) {
       );
     }
 
-    const solicitanteIsAdmin = solicitante.admin === true;
+    const solicitante = await prisma.usuario.findUnique({
+      where: { idUsuario },
+    });
+    const solicitanteIsAdmin = solicitante?.admin === true;
     const reservaCriadorId =
       reserva.idUsuarioCriador ?? reserva.criador?.idUsuario ?? null;
-    const ehCriador = reservaCriadorId === solicitante.idUsuario;
+    const ehCriador = reservaCriadorId === idUsuario;
 
     if (!solicitanteIsAdmin && !ehCriador) {
       return NextResponse.json(
