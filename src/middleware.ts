@@ -1,35 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 
 const publicRoutes = ["/", "/login", "/relatorio", "/relatorioguarita"];
 const protectedRoutes = ["/reservas", "/perfil", "/reservar"];
 const adminRoutes = ["/sala_espaco", "/salas"];
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  const response = NextResponse.next();
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => {
-            request.cookies.set(name, value);
-          });
-
-          supabaseResponse = NextResponse.next({ request });
-
-          cookiesToSet.forEach(({ name, value, options }) => {
-            supabaseResponse.cookies.set(name, value, options);
-          });
-        },
-      },
-    },
-  );
+  const supabase = createMiddlewareClient({ req: request, res: response });
 
   const {
     data: { user },
@@ -37,57 +16,47 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // ROTAS PÚBLICAS
   if (publicRoutes.includes(pathname)) {
-    return supabaseResponse;
+    return response;
   }
 
+  // ROTAS QUE EXIGEM LOGIN
   if (protectedRoutes.some((route) => pathname.startsWith(route))) {
     if (!user) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(new URL("/login", request.url));
     }
-
-    return supabaseResponse;
+    return response;
   }
 
+  // ROTAS DE ADMIN
   if (adminRoutes.some((route) => pathname.startsWith(route))) {
     if (!user) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    const { data: usuario, error } = await supabase
+    const { data: usuario } = await supabase
       .from("Usuario")
       .select("admin")
       .eq("email", user.email)
-      .single();
-
-    if (error) {
-      console.error("Erro ao buscar usuario admin:", error.message);
-    }
+      .maybeSingle();
 
     if (!usuario?.admin) {
-      const url = request.nextUrl.clone();
-      url.pathname = "403";
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(new URL("/403", request.url));
     }
 
-    return supabaseResponse;
+    return response;
   }
 
-  return supabaseResponse;
+  return response;
 }
 
 export const config = {
   matcher: [
     "/reservas/:path*",
     "/perfil/:path*",
-
     "/sala_espaco/:path*",
     "/salas/:path*",
-
     "/",
     "/login",
     "/relatorio",
