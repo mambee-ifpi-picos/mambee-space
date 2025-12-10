@@ -94,7 +94,7 @@ export default function RelatorioPage() {
       </h1>
 
       <div className="mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
           <div className="flex flex-col">
             <label
               htmlFor="usuario-input"
