@@ -12,20 +12,32 @@ export async function GET(req: Request) {
     const filtroMotivo = (searchParams.get("motivo") ?? "")
       .trim()
       .toLowerCase();
+    const filtroUsuario = (searchParams.get("usuario") ?? "")
+      .trim()
+      .toLowerCase();
+
     const dataInicio = searchParams.get("inicio");
     const dataFim = searchParams.get("fim");
 
-    const dtInicio = dataInicio ? new Date(`${dataInicio}T00:00:00`) : null;
-    const dtFim = dataFim ? new Date(`${dataFim}T23:59:59`) : null;
+    if (!dataInicio || !dataFim) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Os campos 'inicio' e 'fim' são obrigatórios.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const dtInicio = new Date(`${dataInicio}T00:00:00`);
+    const dtFim = new Date(`${dataFim}T23:59:59`);
 
     const { data: reservasData, error: errorReservas } = await supabase
       .from("Reserva")
       .select("*")
       .order("horaInicio", { ascending: false });
 
-    if (errorReservas) {
-      throw new Error(errorReservas.message);
-    }
+    if (errorReservas) throw new Error(errorReservas.message);
 
     if (!reservasData) {
       return NextResponse.json({ success: true, reservas: [] });
@@ -35,25 +47,19 @@ export async function GET(req: Request) {
       .from("Espaco")
       .select("idEspaco, codigoEspaco, idSalaPertence");
 
-    if (errorEspacos) {
-      throw new Error(errorEspacos.message);
-    }
+    if (errorEspacos) throw new Error(errorEspacos.message);
 
     const { data: salas, error: errorSalas } = await supabase
       .from("Sala")
       .select("idSala, nomeSala");
 
-    if (errorSalas) {
-      throw new Error(errorSalas.message);
-    }
+    if (errorSalas) throw new Error(errorSalas.message);
 
     const { data: usuarios, error: errorUsuarios } = await supabase
       .from("Usuario")
       .select("idUsuario, nome, email");
 
-    if (errorUsuarios) {
-      throw new Error(errorUsuarios.message);
-    }
+    if (errorUsuarios) throw new Error(errorUsuarios.message);
 
     const reservasMapeadas = reservasData.map((r) => {
       const espaco = espacos.find((e) => e.idEspaco === r.idEspacoReservado);
@@ -79,16 +85,15 @@ export async function GET(req: Request) {
       const salaOK = res.sala.toLowerCase().includes(filtroSala);
       const espacoOK = res.espaco.toLowerCase().includes(filtroEspaco);
       const motivoOK = res.motivo.toLowerCase().includes(filtroMotivo);
+      const usuarioOK = res.usuario.toLowerCase().includes(filtroUsuario);
 
       let dataOK = true;
-      if (dtInicio) {
-        dataOK = dataOK && new Date(res.inicio) >= dtInicio;
-      }
-      if (dtFim) {
-        dataOK = dataOK && new Date(res.inicio) <= dtFim;
-      }
+      const dtInicioRes = new Date(res.inicio);
 
-      return salaOK && espacoOK && motivoOK && dataOK;
+      if (dtInicio) dataOK = dataOK && dtInicioRes >= dtInicio;
+      if (dtFim) dataOK = dataOK && dtInicioRes <= dtFim;
+
+      return salaOK && espacoOK && motivoOK && usuarioOK && dataOK;
     });
 
     return NextResponse.json({
@@ -98,7 +103,6 @@ export async function GET(req: Request) {
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Erro inesperado";
-    console.error("Erro API:", msg);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

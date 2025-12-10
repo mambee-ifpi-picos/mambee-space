@@ -73,7 +73,8 @@ export async function GET(req: Request) {
 
     const idUsuario = idUsuarioParam ? Number(idUsuarioParam) : undefined;
 
-    const filters: Prisma.ReservaWhereInput[] = [];
+    // objeto where
+    const where: Prisma.ReservaWhereInput = {};
 
     if (typeof idUsuario === "number" && Number.isFinite(idUsuario)) {
       const userFilter: Prisma.ReservaWhereInput = {
@@ -102,9 +103,10 @@ export async function GET(req: Request) {
     }
 
     if (searchParam && searchParam.trim().length > 0) {
-      filters.push({
-        motivo: { contains: searchParam.trim(), mode: "insensitive" },
-      });
+      where.motivo = {
+        contains: searchParam.trim(),
+        mode: "insensitive",
+      };
     }
 
     let whereClause: Prisma.ReservaWhereInput | undefined;
@@ -114,7 +116,7 @@ export async function GET(req: Request) {
     const take = pageSize;
 
     const reservas = await prisma.reserva.findMany({
-      where: whereClause,
+      where,
       orderBy: { horaInicio: "asc" },
       skip,
       take,
@@ -126,7 +128,7 @@ export async function GET(req: Request) {
       },
     });
 
-    const total = await prisma.reserva.count({ where: whereClause });
+    const total = await prisma.reserva.count({ where });
 
     return NextResponse.json({
       success: true,
@@ -142,9 +144,11 @@ export async function GET(req: Request) {
       pageSize: pageSize,
     });
   } catch (erro) {
-    const mensagem = erro instanceof Error ? erro.message : "Erro desconhecido";
     return NextResponse.json(
-      { success: false, error: mensagem },
+      {
+        success: false,
+        error: erro instanceof Error ? erro.message : "Erro desconhecido",
+      },
       { status: 500 }
     );
   }
