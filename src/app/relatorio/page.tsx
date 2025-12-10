@@ -52,9 +52,9 @@ export default function RelatorioPage() {
   const [sala, setSala] = useState("");
   const [espaco, setEspaco] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-
   const [dados, setDados] = useState<RelatorioItem[]>([]);
   const [carregando, setCarregando] = useState(false);
+  const [usuario, setUsuario] = useState("");
 
   async function buscarRelatorio() {
     setCarregando(true);
@@ -64,9 +64,15 @@ export default function RelatorioPage() {
       if (dataFim) params.append("fim", dataFim);
       if (sala) params.append("sala", sala);
       if (espaco) params.append("espaco", espaco);
+      if (usuario) params.append("usuario", usuario);
 
       const res = await fetch(`/api/relatorio?${params.toString()}`);
       const json = await res.json();
+
+      if (!dataInicio || !dataFim) {
+        alert("Preencha a data de início e a data de fim antes de buscar.");
+        return;
+      }
 
       if (json.success) {
         setDados(json.reservas ?? []);
@@ -89,6 +95,22 @@ export default function RelatorioPage() {
 
       <div className="mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+          <div className="flex flex-col">
+            <label
+              htmlFor="usuario-input"
+              className="mb-1 text-sm font-medium text-gray-600"
+            >
+              Usuário
+            </label>
+            <input
+              id="usuario-input"
+              type="text"
+              className="bg-gray-200 border border-gray-300 rounded p-3 outline-none focus:ring-2 focus:ring-teal-400"
+              value={usuario}
+              onChange={(e) => setUsuario(e.target.value)}
+            />
+          </div>
+
           <div className="flex flex-col">
             <label
               htmlFor="sala-input"
