@@ -1,4 +1,3 @@
-// app/api/usuarios/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -6,8 +5,8 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const idsParam = url.searchParams.get("ids");
+    let usuarios: any[] = [];
 
-    let usuarios;
     if (idsParam) {
       const ids = idsParam
         .split(",")

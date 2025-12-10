@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
-    "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.76.1",
     "biome": "^0.2.2",
