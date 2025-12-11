@@ -2,11 +2,26 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, User, FileText, PlusCircle, ClipboardList } from "lucide-react";
+import { Home, User, FileText, PlusCircle, ClipboardList, LogOut } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation"; 
+import { createBrowserClient } from "@supabase/ssr"; 
 
 export function Menu({ isOpen }: { isOpen: boolean }) {
   const pathname = usePathname();
+
+const router = useRouter();
+  
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
+  );
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.refresh();
+    router.push("/login");
+  };
 
   const links = [
     { href: "/dashboard", label: "Dashboard", icon: <Home size={18} /> },
@@ -64,6 +79,15 @@ export function Menu({ isOpen }: { isOpen: boolean }) {
           <span>Nova Reserva</span>
         </Link>
       </nav>
+
+      <button
+        onClick={handleLogout}
+        className="mt-10 flex items-center gap-2 px-3 py-2 rounded text-red-600 hover:bg-red-100 hover:text-red-700 transition font-medium"
+      >
+        <LogOut size={18} />
+        <span>Sair</span>
+      </button>
+
     </aside>
   );
 }
