@@ -2,17 +2,18 @@
 
 import { motion } from "framer-motion";
 import { FaMapPin } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 
 export default function RelatoriosPage() {
+  const router = useRouter();
+
   const relatorios = [
-    { nome: "Reservas Realizadas", cor: "text-blue-500" },
-    { nome: "Cancelamentos", cor: "text-red-500" },
-    { nome: "Ocupação Semanal", cor: "text-green-500" },
-    { nome: "Usuários Ativos", cor: "text-yellow-500" },
-    { nome: "Agendamentos por Horário", cor: "text-purple-500" },
-    { nome: "Relatório Mensal", cor: "text-cyan-500" },
-    { nome: "Comparativo de Uso", cor: "text-pink-500" },
-    { nome: "Disponibilidade", cor: "text-lime-500" },
+    { nome: "Relatorio Geral", cor: "text-blue-500", url: "/relatorio" },
+    {
+      nome: "Relatorio Guarita",
+      cor: "text-red-500",
+      url: "/relatorioguarita",
+    },
   ];
 
   return (
@@ -37,10 +38,11 @@ export default function RelatoriosPage() {
         {relatorios.map((r, idx) => (
           <div
             key={idx}
-            className="flex items-center justify-center md:justify-start space-x-4 hover:scale-105 transition-transform duration-300"
+            onClick={() => router.push(r.url)}
+            className="flex items-center justify-center md:justify-start space-x-4 hover:scale-105 transition-transform duration-300 cursor-pointer"
           >
             <FaMapPin className={`${r.cor} text-4xl`} />
-            <span className="text-lg sm:text-xl font-medium text-gray-800 hover:underline cursor-pointer">
+            <span className="text-lg sm:text-xl font-medium text-gray-800 hover:underline">
               {r.nome}
             </span>
           </div>

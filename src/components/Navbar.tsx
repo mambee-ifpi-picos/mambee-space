@@ -26,18 +26,28 @@ export default function Navbar() {
           </h1>
         </Link>
 
-        <div className="hidden md:flex space-x-6">
+        <div className="hidden md:flex items-center space-x-6">
           <a
             href="#sobre"
             className="text-gray-700 hover:text-[#C76E88] font-medium transition-colors"
           >
             Sobre
           </a>
+
           <a
             href="#relatorios"
             className="text-gray-700 hover:text-[#C76E88] font-medium transition-colors"
           >
             Relatórios
+          </a>
+
+          <a
+            href="/login"
+            className="px-4 py-1.5 font-medium rounded-lg border border-[#C76E88]
+             bg-white transition-all duration-200
+             hover:bg-[#C76E88] hover:text-white"
+          >
+            Acessar agora
           </a>
         </div>
       </div>

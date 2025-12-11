@@ -3,14 +3,22 @@
 import { motion } from "framer-motion";
 import Sobre from "@/components/sobre";
 import Relatorios from "@/components/relatorios";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
+
   return (
     <>
       <section className="flex flex-col justify-center min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 px-6 sm:px-12 md:px-20 lg:px-32 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-pink-100 via-white to-transparent opacity-60"></div>
 
-        <div className="relative w-full max-w-5xl mx-auto text-center md:text-left z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="relative w-full max-w-5xl mx-auto text-center md:text-left z-10"
+        >
           <motion.h1
             initial={{ opacity: 0, y: -30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -38,7 +46,16 @@ export default function Home() {
             <strong>simples, rápida e segura</strong>, proporcionando um
             ambiente ideal para estudos, reuniões e projetos colaborativos.
           </motion.p>
-        </div>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => router.push("/login")}
+            className="px-9 py-5 bg-[#C76E88] text-white font-bold rounded-xl shadow-md hover:bg-[#C76E88] transition-all duration-300 text-xl mt-[30px]"
+          >
+            Acessar agora
+          </motion.button>
+        </motion.div>
       </section>
 
       <div className="w-full overflow-hidden leading-[0] rotate-180">

@@ -2,8 +2,11 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 export default function SobrePage() {
+  const router = useRouter();
+
   return (
     <section className="flex flex-col justify-center items-center min-h-screen w-full bg-[#C76E88] px-6 sm:px-12 md:px-20 py-20 text-white relative overflow-hidden">
       <div className="relative max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-12 items-center z-10">
@@ -12,9 +15,9 @@ export default function SobrePage() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
           viewport={{ once: true, amount: 0.3 }}
-          className="elative max-w-2xl z-10 text-center md:text-justify flex-1"
+          className="relative max-w-2xl z-10 text-center md:text-justify flex-1"
         >
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-8 text-white drop-shadow-md !text-white">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-8 text-white drop-shadow-md">
             Como Funciona
           </h1>
 
@@ -33,11 +36,20 @@ export default function SobrePage() {
             educação.
           </p>
 
-          <p className="text-lg md:text-xl leading-relaxed text-white/90 font-light">
+          <p className="text-lg md:text-xl leading-relaxed text-white/90 font-light mb-10">
             Ao confirmar a reserva, o usuário assegura seu espaço e conta com
             uma experiência{" "}
             <strong>organizada, transparente e colaborativa.</strong>
           </p>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => router.push("/login")}
+            className="px-9 py-5 bg-white text-[#C76E88] font-bold rounded-xl shadow-md hover:bg-gray-100 transition-all duration-300 text-xl"
+          >
+            Acessar agora
+          </motion.button>
         </motion.div>
 
         <motion.div
