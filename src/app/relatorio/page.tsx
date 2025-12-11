@@ -1,16 +1,17 @@
 "use client";
 import { useState } from "react";
+import Image from "next/image";
 
 type RelatorioItem = {
   id: number;
   motivo: string;
   inicio: string;
   fim: string;
-  situacao: string;
   usuario: string;
   email: string;
   sala: string;
   espaco: string;
+  foto?: string;
 };
 
 function formatarHora(dataIso: string) {
@@ -51,17 +52,21 @@ export default function RelatorioPage() {
   const [dataFim, setDataFim] = useState("");
   const [sala, setSala] = useState("");
   const [espaco, setEspaco] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
   const [dados, setDados] = useState<RelatorioItem[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [usuario, setUsuario] = useState("");
 
   async function buscarRelatorio() {
+    if (!dataInicio || !dataFim) {
+      alert("Preencha a data de início e a data de fim antes de buscar.");
+      return;
+    }
+
     setCarregando(true);
     try {
       const params = new URLSearchParams();
-      if (dataInicio) params.append("inicio", dataInicio);
-      if (dataFim) params.append("fim", dataFim);
+      params.append("inicio", dataInicio);
+      params.append("fim", dataFim);
       if (sala) params.append("sala", sala);
       if (espaco) params.append("espaco", espaco);
       if (usuario) params.append("usuario", usuario);
@@ -69,18 +74,12 @@ export default function RelatorioPage() {
       const res = await fetch(`/api/relatorio?${params.toString()}`);
       const json = await res.json();
 
-      if (!dataInicio || !dataFim) {
-        alert("Preencha a data de início e a data de fim antes de buscar.");
-        return;
-      }
-
       if (json.success) {
         setDados(json.reservas ?? []);
       } else {
         setDados([]);
       }
-    } catch (err) {
-      console.error("Falha ao buscar relatório:", err);
+    } catch {
       setDados([]);
     } finally {
       setCarregando(false);
@@ -97,15 +96,15 @@ export default function RelatorioPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
           <div className="flex flex-col">
             <label
-              htmlFor="usuario-input"
+              htmlFor="usuario"
               className="mb-1 text-sm font-medium text-gray-600"
             >
               Usuário
             </label>
             <input
-              id="usuario-input"
+              id="usuario"
               type="text"
-              className="bg-gray-200 border border-gray-300 rounded p-3 outline-none focus:ring-2 focus:ring-teal-400"
+              className="bg-gray-200 border border-gray-300 rounded p-3"
               value={usuario}
               onChange={(e) => setUsuario(e.target.value)}
             />
@@ -113,15 +112,15 @@ export default function RelatorioPage() {
 
           <div className="flex flex-col">
             <label
-              htmlFor="sala-input"
+              htmlFor="sala"
               className="mb-1 text-sm font-medium text-gray-600"
             >
               Sala
             </label>
             <input
-              id="sala-input"
+              id="sala"
               type="text"
-              className="bg-gray-200 border border-gray-300 rounded p-3 outline-none focus:ring-2 focus:ring-teal-400"
+              className="bg-gray-200 border border-gray-300 rounded p-3"
               value={sala}
               onChange={(e) => setSala(e.target.value)}
             />
@@ -129,15 +128,15 @@ export default function RelatorioPage() {
 
           <div className="flex flex-col">
             <label
-              htmlFor="espaco-input"
+              htmlFor="espaco"
               className="mb-1 text-sm font-medium text-gray-600"
             >
               Espaço
             </label>
             <input
-              id="espaco-input"
+              id="espaco"
               type="text"
-              className="bg-gray-200 border border-gray-300 rounded p-3 outline-none focus:ring-2 focus:ring-teal-400"
+              className="bg-gray-200 border border-gray-300 rounded p-3"
               value={espaco}
               onChange={(e) => setEspaco(e.target.value)}
             />
@@ -147,15 +146,15 @@ export default function RelatorioPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="flex flex-col">
             <label
-              htmlFor="data-inicio"
+              htmlFor="dataInicio"
               className="mb-1 text-sm font-medium text-gray-600"
             >
               Data inicial
             </label>
             <input
-              id="data-inicio"
+              id="dataInicio"
               type="date"
-              className="bg-gray-200 border border-gray-300 rounded p-3 outline-none focus:ring-2 focus:ring-teal-400 text-gray-600"
+              className="bg-gray-200 border border-gray-300 rounded p-3"
               value={dataInicio}
               onChange={(e) => setDataInicio(e.target.value)}
             />
@@ -163,33 +162,17 @@ export default function RelatorioPage() {
 
           <div className="flex flex-col">
             <label
-              htmlFor="data-fim"
+              htmlFor="dataFim"
               className="mb-1 text-sm font-medium text-gray-600"
             >
               Data final
             </label>
             <input
-              id="data-fim"
+              id="dataFim"
               type="date"
-              className="bg-gray-200 border border-gray-300 rounded p-3 outline-none focus:ring-2 focus:ring-teal-400 text-gray-600"
+              className="bg-gray-200 border border-gray-300 rounded p-3"
               value={dataFim}
               onChange={(e) => setDataFim(e.target.value)}
-            />
-          </div>
-
-          <div className="flex flex-col">
-            <label
-              htmlFor="status-input"
-              className="mb-1 text-sm font-medium text-gray-600"
-            >
-              Status
-            </label>
-            <input
-              id="status-input"
-              type="text"
-              className="bg-gray-200 border border-gray-300 rounded p-3 outline-none focus:ring-2 focus:ring-teal-400"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
             />
           </div>
         </div>
@@ -199,36 +182,24 @@ export default function RelatorioPage() {
             type="button"
             onClick={buscarRelatorio}
             disabled={carregando}
-            className="flex items-center gap-2 bg-teal-500 text-white px-8 py-3 rounded shadow-md hover:bg-teal-600 transition font-medium uppercase text-sm tracking-wide"
+            className="bg-teal-500 text-white px-8 py-3 rounded"
           >
-            {carregando ? (
-              "..."
-            ) : (
-              <>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  role="img"
-                >
-                  <title>Buscar</title>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-                Buscar
-              </>
-            )}
+            {carregando ? "..." : "Buscar"}
           </button>
 
           <button
             type="button"
-            className="bg-gray-300 text-teal-600 px-8 py-3 rounded shadow-sm hover:bg-gray-400 transition font-medium uppercase text-sm tracking-wide"
+            onClick={() => {
+              const params = new URLSearchParams();
+              params.append("inicio", dataInicio);
+              params.append("fim", dataFim);
+              if (sala) params.append("sala", sala);
+              if (espaco) params.append("espaco", espaco);
+              if (usuario) params.append("usuario", usuario);
+
+              window.open(`/api/relatorio/pdf?${params.toString()}`, "_blank");
+            }}
+            className="bg-gray-300 text-teal-600 px-8 py-3 rounded"
           >
             Baixar
           </button>
@@ -239,13 +210,14 @@ export default function RelatorioPage() {
         <table className="min-w-full border-separate border-spacing-y-4 text-sm">
           <thead>
             <tr className="text-left text-gray-600">
-              <th className="p-2 font-normal pl-6">Sala</th>
+              <th className="p-2 font-normal pl-6">Usuário</th>
+              <th className="p-2 font-normal">Sala</th>
               <th className="p-2 font-normal">Espaço</th>
               <th className="p-2 font-normal text-center">Horário</th>
               <th className="p-2 font-normal text-center">Data</th>
-              <th className="p-2 font-normal text-right pr-6">Status</th>
             </tr>
           </thead>
+
           <tbody>
             {dados.length === 0 ? (
               <tr>
@@ -258,32 +230,39 @@ export default function RelatorioPage() {
               </tr>
             ) : (
               dados.map((item) => (
-                <tr
-                  key={item.id}
-                  className="group transition-transform hover:scale-[1.01]"
-                >
+                <tr key={item.id} className="group">
                   <td className="bg-gray-50 p-4 rounded-l-lg border-l-[6px] border-teal-500 relative">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-500">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-6 w-6"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                          role="img"
-                        >
-                          <title>Ícone de usuário</title>
-                          <path
-                            fillRule="evenodd"
-                            d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
+                      {item.foto ? (
+                        <Image
+                          src={item.foto}
+                          alt={item.usuario}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <Image
+                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
+                            item.usuario ?? "Usuário",
+                          )}&background=0c9488&color=fff&size=64`}
+                          alt={item.usuario}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      )}
+
+                      <div>
+                        <div className="text-gray-700 font-medium">
+                          {item.usuario || "—"}
+                        </div>
                       </div>
-                      <span className="text-gray-700 font-medium">
-                        {item.sala}
-                      </span>
                     </div>
+                  </td>
+
+                  <td className="bg-gray-50 p-4 text-gray-600">
+                    {item.sala || "—"}
                   </td>
 
                   <td className="bg-gray-50 p-4 text-gray-600">
@@ -294,21 +273,8 @@ export default function RelatorioPage() {
                     {formatarHora(item.inicio)} - {formatarHora(item.fim)}
                   </td>
 
-                  <td className="bg-gray-50 p-4 text-center text-gray-600">
+                  <td className="bg-gray-50 p-4 text-center text-gray-600 rounded-r-lg">
                     {formatarData(item.inicio)}
-                  </td>
-
-                  <td
-                    className={`bg-gray-50 p-4 text-right pr-6 rounded-r-lg font-medium
-                    ${
-                      item.situacao === "Finalizado"
-                        ? "text-teal-400"
-                        : item.situacao === "Em aberto"
-                          ? "text-pink-400"
-                          : "text-gray-500"
-                    }`}
-                  >
-                    {item.situacao}
                   </td>
                 </tr>
               ))

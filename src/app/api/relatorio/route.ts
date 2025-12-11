@@ -39,47 +39,40 @@ export async function GET(req: Request) {
 
     if (errorReservas) throw new Error(errorReservas.message);
 
-    if (!reservasData) {
-      return NextResponse.json({ success: true, reservas: [] });
-    }
-
-    const { data: espacos, error: errorEspacos } = await supabase
+    const { data: espacos } = await supabase
       .from("Espaco")
       .select("idEspaco, codigoEspaco, idSalaPertence");
 
-    if (errorEspacos) throw new Error(errorEspacos.message);
-
-    const { data: salas, error: errorSalas } = await supabase
+    const { data: salas } = await supabase
       .from("Sala")
       .select("idSala, nomeSala");
 
-    if (errorSalas) throw new Error(errorSalas.message);
-
-    const { data: usuarios, error: errorUsuarios } = await supabase
+    const { data: usuarios } = await supabase
       .from("Usuario")
-      .select("idUsuario, nome, email");
+      .select("idUsuario, nome, email, foto");
 
-    if (errorUsuarios) throw new Error(errorUsuarios.message);
+    const reservasMapeadas =
+      reservasData?.map((r) => {
+        const espaco = espacos?.find((e) => e.idEspaco === r.idEspacoReservado);
+        const sala = espaco
+          ? salas?.find((s) => s.idSala === espaco.idSalaPertence)
+          : null;
+        const usuario = usuarios?.find(
+          (u) => u.idUsuario === r.idUsuarioCriador
+        );
 
-    const reservasMapeadas = reservasData.map((r) => {
-      const espaco = espacos.find((e) => e.idEspaco === r.idEspacoReservado);
-      const sala = espaco
-        ? salas.find((s) => s.idSala === espaco.idSalaPertence)
-        : null;
-      const usuario = usuarios.find((u) => u.idUsuario === r.idUsuarioCriador);
-
-      return {
-        id: r.idReserva,
-        motivo: r.motivo ?? "",
-        inicio: r.horaInicio ?? "",
-        fim: r.horaFim ?? "",
-        situacao: r.situacao ?? "",
-        usuario: usuario?.nome ?? "",
-        email: usuario?.email ?? "",
-        sala: sala?.nomeSala ?? "",
-        espaco: espaco?.codigoEspaco ?? "",
-      };
-    });
+        return {
+          id: r.idReserva,
+          motivo: r.motivo ?? "",
+          inicio: r.horaInicio ?? "",
+          fim: r.horaFim ?? "",
+          usuario: usuario?.nome ?? "",
+          email: usuario?.email ?? "",
+          foto: usuario?.foto || undefined,
+          sala: sala?.nomeSala ?? "",
+          espaco: espaco?.codigoEspaco ?? "",
+        };
+      }) ?? [];
 
     const reservasFiltradas = reservasMapeadas.filter((res) => {
       const salaOK = res.sala.toLowerCase().includes(filtroSala);
@@ -87,11 +80,8 @@ export async function GET(req: Request) {
       const motivoOK = res.motivo.toLowerCase().includes(filtroMotivo);
       const usuarioOK = res.usuario.toLowerCase().includes(filtroUsuario);
 
-      let dataOK = true;
       const dtInicioRes = new Date(res.inicio);
-
-      if (dtInicio) dataOK = dataOK && dtInicioRes >= dtInicio;
-      if (dtFim) dataOK = dataOK && dtInicioRes <= dtFim;
+      const dataOK = dtInicioRes >= dtInicio && dtInicioRes <= dtFim;
 
       return salaOK && espacoOK && motivoOK && usuarioOK && dataOK;
     });
