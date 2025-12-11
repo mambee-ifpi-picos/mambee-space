@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { prisma } from "@/lib/prisma";
+import type { TopUsuario } from "@/utils/tipos";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import { NextResponse } from "next/server";
@@ -89,10 +90,12 @@ export async function GET() {
           where: { idUsuario: item.idUsuarioCriador },
         });
 
-        return {
-          usuario: info?.nome,
+        const result: TopUsuario = {
+          nome: info?.nome,
           total: item._count.idReserva,
         };
+
+        return result;
       }),
     );
 
@@ -119,18 +122,20 @@ export async function GET() {
           where: { idUsuario: item.idUsuarioCriador },
         });
 
-        return {
-          usuario: info?.nome,
+        const result: TopUsuario = {
+          nome: info?.nome,
           total: item._count.idReserva,
         };
+
+        return result;
       }),
     );
 
     return NextResponse.json({
       totalReservas,
       maisReservado,
-      top3Mes,
-      top3Semana,
+      topMes: top3Mes,
+      topSemana: top3Semana,
     });
   } catch (error) {
     console.error(error);

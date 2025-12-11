@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/a11y/useAriaPropsSupportedByRole: <explanation> */
 "use client";
 
+import { TopUsuario } from "@/utils/tipos";
 import { useEffect, useState } from "react";
 import {
   Bar,
@@ -13,12 +14,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
-type TopUsuario = {
-  nome: string;
-  email: string;
-  total: number;
-};
 
 type DashboardData = {
   espacoMaisUtilizado: string;
@@ -62,8 +57,8 @@ export default function Dashboard() {
     graficos,
     frequenciaDias,
     totalInatividade,
-    top3Mes,
-    top3Semana,
+    topMes,
+    topSemana,
   } = data;
 
   console.log("data", data);
@@ -224,13 +219,13 @@ export default function Dashboard() {
             TOP FREQUENTADORES DO MÊS
           </p>
 
-          {top3Mes?.length === 0 && (
+          {topMes?.length === 0 && (
             <p className="text-xs text-gray-500">Sem dados</p>
           )}
 
-          {top3Mes?.map((u, i) => (
+          {topMes?.map((u, i) => (
             <div
-              key={u.usuario}
+              key={u.nome}
               className={`flex justify-between items-center py-2 border-b last:border-b-0
               ${i === 0 ? "text-xl font-bold text-yellow-600" : ""}
               ${i === 1 ? "text-lg font-semibold text-gray-700" : ""}
@@ -240,7 +235,7 @@ export default function Dashboard() {
                 {i === 0 && "🥇 "}
                 {i === 1 && "🥈 "}
                 {i === 2 && "🥉 "}
-                {i + 1}° — {u.usuario}
+                {i + 1}° — {u.nome}
               </span>
               <span>{u.total} visitas</span>
             </div>
@@ -255,13 +250,13 @@ export default function Dashboard() {
             TOP FREQUENTADORES DA SEMANA
           </p>
 
-          {top3Semana?.length === 0 && (
+          {topSemana?.length === 0 && (
             <p className="text-xs text-gray-500">Sem dados</p>
           )}
 
-          {top3Semana?.map((u, i) => (
+          {topSemana?.map((u, i) => (
             <div
-              key={u.usuario}
+              key={u.nome}
               className={`flex justify-between items-center py-2 border-b last:border-b-0
               ${i === 0 ? "text-xl font-bold text-yellow-600" : ""}
               ${i === 1 ? "text-lg font-semibold text-gray-700" : ""}
@@ -271,7 +266,7 @@ export default function Dashboard() {
                 {i === 0 && "🥇 "}
                 {i === 1 && "🥈 "}
                 {i === 2 && "🥉 "}
-                {i + 1}° — {u.usuario}
+                {i + 1}° — {u.nome}
               </span>
               <span>{u.total} visitas</span>
             </div>
