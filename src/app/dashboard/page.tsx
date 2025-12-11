@@ -3,15 +3,15 @@
 
 import { useEffect, useState } from "react";
 import {
-  LineChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  BarChart,
-  Bar,
 } from "recharts";
 
 type TopUsuario = {
@@ -62,24 +62,28 @@ export default function Dashboard() {
     graficos,
     frequenciaDias,
     totalInatividade,
-    topMes,
-    topSemana,
+    top3Mes,
+    top3Semana,
   } = data;
 
-  const manhaData = graficos.manha.map((v, i) => ({
+  console.log("data", data);
+
+  const manhaData = graficos?.manha.map((v, i) => ({
     hora: `${6 + i}h`,
     valor: v,
   }));
 
-  const tardeData = graficos.tarde.map((v, i) => ({
+  const tardeData = graficos?.tarde.map((v, i) => ({
     hora: `${13 + i}h`,
     valor: v,
   }));
 
-  const freqData = Object.entries(frequenciaDias).map(([dia, valor]) => ({
-    dia,
-    valor,
-  }));
+  const freqData = Object.entries(frequenciaDias ? frequenciaDias : []).map(
+    ([dia, valor]) => ({
+      dia,
+      valor,
+    }),
+  );
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
@@ -107,21 +111,21 @@ export default function Dashboard() {
           <div className="mt-4 flex justify-between">
             <div className="text-center" aria-label="Uso mensal">
               <div className="w-16 h-16 rounded-full border-4 border-teal-400 flex items-center justify-center font-bold text-teal-600 text-xl">
-                {espacosUtilizados.mensal}%
+                {espacosUtilizados?.mensal}%
               </div>
               <p className="text-xs mt-1">Mensal</p>
             </div>
 
             <div className="text-center" aria-label="Uso semanal">
               <div className="w-16 h-16 rounded-full border-4 border-yellow-400 flex items-center justify-center font-bold text-yellow-600 text-xl">
-                {espacosUtilizados.semanal}%
+                {espacosUtilizados?.semanal}%
               </div>
               <p className="text-xs mt-1">Semanal</p>
             </div>
 
             <div className="text-center" aria-label="Uso diário">
               <div className="w-16 h-16 rounded-full border-4 border-red-400 flex items-center justify-center font-bold text-red-600 text-xl">
-                {espacosUtilizados.diario}%
+                {espacosUtilizados?.diario}%
               </div>
               <p className="text-xs mt-1">Diário</p>
             </div>
@@ -220,13 +224,13 @@ export default function Dashboard() {
             TOP FREQUENTADORES DO MÊS
           </p>
 
-          {topMes.length === 0 && (
+          {top3Mes?.length === 0 && (
             <p className="text-xs text-gray-500">Sem dados</p>
           )}
 
-          {topMes.map((u, i) => (
+          {top3Mes?.map((u, i) => (
             <div
-              key={u.email}
+              key={u.usuario}
               className={`flex justify-between items-center py-2 border-b last:border-b-0
               ${i === 0 ? "text-xl font-bold text-yellow-600" : ""}
               ${i === 1 ? "text-lg font-semibold text-gray-700" : ""}
@@ -236,7 +240,7 @@ export default function Dashboard() {
                 {i === 0 && "🥇 "}
                 {i === 1 && "🥈 "}
                 {i === 2 && "🥉 "}
-                {i + 1}° — {u.nome}
+                {i + 1}° — {u.usuario}
               </span>
               <span>{u.total} visitas</span>
             </div>
@@ -251,13 +255,13 @@ export default function Dashboard() {
             TOP FREQUENTADORES DA SEMANA
           </p>
 
-          {topSemana.length === 0 && (
+          {top3Semana?.length === 0 && (
             <p className="text-xs text-gray-500">Sem dados</p>
           )}
 
-          {topSemana.map((u, i) => (
+          {top3Semana?.map((u, i) => (
             <div
-              key={u.email}
+              key={u.usuario}
               className={`flex justify-between items-center py-2 border-b last:border-b-0
               ${i === 0 ? "text-xl font-bold text-yellow-600" : ""}
               ${i === 1 ? "text-lg font-semibold text-gray-700" : ""}
@@ -267,7 +271,7 @@ export default function Dashboard() {
                 {i === 0 && "🥇 "}
                 {i === 1 && "🥈 "}
                 {i === 2 && "🥉 "}
-                {i + 1}° — {u.nome}
+                {i + 1}° — {u.usuario}
               </span>
               <span>{u.total} visitas</span>
             </div>

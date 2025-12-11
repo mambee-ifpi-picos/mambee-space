@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
+import { NextResponse } from "next/server";
 
 dayjs.extend(weekOfYear);
 
@@ -31,7 +31,7 @@ export async function GET() {
     const reservas = await prisma.reserva.findMany({
       include: {
         espaco: true,
-        usuario: true,
+        criador: true,
       },
     });
 
@@ -45,13 +45,13 @@ export async function GET() {
     });
 
     const maisUsado = reservasPorEspaco.sort(
-      (a: CountGroup, b: CountGroup) => b._count.idReserva - a._count.idReserva
+      (a: CountGroup, b: CountGroup) => b._count.idReserva - a._count.idReserva,
     )[0];
 
     const espacoInfo =
       maisUsado &&
       (await prisma.espaco.findUnique({
-        where: { id: maisUsado.idEspacoReservado },
+        where: { idEspaco: maisUsado.idEspacoReservado },
       }));
 
     const maisReservado = espacoInfo
@@ -61,12 +61,17 @@ export async function GET() {
         }
       : null;
 
+    const firstDay = new Date(Date.UTC(ano, mes - 1, 1));
+    const lastDay = new Date(Date.UTC(ano, mes, 0, 23, 59, 59, 999));
+
     const reservasMes = await prisma.reserva.groupBy({
       by: ["idUsuarioCriador"],
       where: {
-        dataReserva: {
-          gte: new Date(`${ano}-${mes}-01`),
-          lt: new Date(`${ano}-${mes + 1}-01`),
+        horaInicio: {
+          gte: firstDay,
+        },
+        horaFim: {
+          lte: lastDay,
         },
       },
       _count: {
@@ -75,26 +80,26 @@ export async function GET() {
     });
 
     const topMesRaw = [...reservasMes].sort(
-      (a: CountUser, b: CountUser) => b._count.idReserva - a._count.idReserva
+      (a: CountUser, b: CountUser) => b._count.idReserva - a._count.idReserva,
     );
 
     const top3Mes = await Promise.all(
       topMesRaw.slice(0, 3).map(async (item) => {
         const info = await prisma.usuario.findUnique({
-          where: { id: item.idUsuarioCriador },
+          where: { idUsuario: item.idUsuarioCriador },
         });
 
         return {
           usuario: info?.nome,
           total: item._count.idReserva,
         };
-      })
+      }),
     );
 
     const reservasSemana = await prisma.reserva.groupBy({
       by: ["idUsuarioCriador"],
       where: {
-        dataReserva: {
+        horaInicio: {
           gte: agora.startOf("week").toDate(),
           lt: agora.endOf("week").toDate(),
         },
@@ -105,20 +110,20 @@ export async function GET() {
     });
 
     const topSemanaRaw = [...reservasSemana].sort(
-      (a: CountUser, b: CountUser) => b._count.idReserva - a._count.idReserva
+      (a: CountUser, b: CountUser) => b._count.idReserva - a._count.idReserva,
     );
 
     const top3Semana = await Promise.all(
       topSemanaRaw.slice(0, 3).map(async (item) => {
         const info = await prisma.usuario.findUnique({
-          where: { id: item.idUsuarioCriador },
+          where: { idUsuario: item.idUsuarioCriador },
         });
 
         return {
           usuario: info?.nome,
           total: item._count.idReserva,
         };
-      })
+      }),
     );
 
     return NextResponse.json({
@@ -131,7 +136,7 @@ export async function GET() {
     console.error(error);
     return NextResponse.json(
       { error: "Erro ao buscar dados" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
