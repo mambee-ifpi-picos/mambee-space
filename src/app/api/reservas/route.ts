@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   try {
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
             } catch {}
           },
         },
-      }
+      },
     );
 
     const url = new URL(req.url);
@@ -75,6 +75,7 @@ export async function GET(req: Request) {
 
     // objeto where
     const where: Prisma.ReservaWhereInput = {};
+    const filters: Prisma.ReservaWhereInput[] = [];
 
     if (typeof idUsuario === "number" && Number.isFinite(idUsuario)) {
       const userFilter: Prisma.ReservaWhereInput = {
@@ -149,7 +150,7 @@ export async function GET(req: Request) {
         success: false,
         error: erro instanceof Error ? erro.message : "Erro desconhecido",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -169,7 +170,7 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.json(
         { success: false, error: "Dados obrigatórios faltando." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -182,7 +183,7 @@ export async function POST(req: Request) {
           success: false,
           error: "Horário de início ou fim inválido.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -192,7 +193,7 @@ export async function POST(req: Request) {
           success: false,
           error: "Horário de início deve ser antes do horário de fim.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -216,7 +217,7 @@ export async function POST(req: Request) {
           success: false,
           error: "Já existe uma reserva neste horário para este espaço.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -233,7 +234,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { success: true, reserva: novaReserva },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (erro) {
     const mensagem =
@@ -242,7 +243,7 @@ export async function POST(req: Request) {
         : "Erro desconhecido ao processar reserva";
     return NextResponse.json(
       { success: false, error: mensagem },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -259,7 +260,7 @@ export async function DELETE(req: Request) {
           success: false,
           error: "Parâmetros idReserva e idUsuario necessários.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -274,7 +275,7 @@ export async function DELETE(req: Request) {
     if (!reserva) {
       return NextResponse.json(
         { success: false, error: "Reserva não encontrada." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -289,7 +290,7 @@ export async function DELETE(req: Request) {
     if (!solicitanteIsAdmin && !ehCriador) {
       return NextResponse.json(
         { success: false, error: "Não autorizado para apagar esta reserva." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -299,7 +300,7 @@ export async function DELETE(req: Request) {
     const mensagem = erro instanceof Error ? erro.message : "Erro desconhecido";
     return NextResponse.json(
       { success: false, error: mensagem },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
