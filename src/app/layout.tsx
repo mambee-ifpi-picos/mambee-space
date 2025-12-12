@@ -1,10 +1,11 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
-import Navbar from "@/components/Navbar";
+import AuthGuard from "@/components/AuthGuard";
 import { Menu } from "@/components/Menu";
+import Navbar from "@/components/Navbar";
 import { Menu as MenuIcon, X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import "./globals.css";
 
 type RootLayoutProps = {
@@ -25,13 +26,15 @@ export default function RootLayout({ children }: RootLayoutProps) {
     return (
       <html lang="pt-BR">
         <body>
-          {pathname === "/" && <Navbar />}
-          <main>{children}</main>
-          {pathname === "/" && (
-            <footer className="row-start-3 flex flex-wrap items-center justify-center gap-6 bg-gray-700 p-4 text-white">
-              Mambee2025
-            </footer>
-          )}
+          <AuthGuard>
+            {pathname === "/" && <Navbar />}
+            <main>{children}</main>
+            {pathname === "/" && (
+              <footer className="row-start-3 flex flex-wrap items-center justify-center gap-6 bg-gray-700 p-4 text-white">
+                Mambee2025
+              </footer>
+            )}
+          </AuthGuard>
         </body>
       </html>
     );

@@ -1,9 +1,10 @@
 "use client";
 
+import { ClipboardList, FileText, Home, PlusCircle, User } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, User, FileText, PlusCircle, ClipboardList } from "lucide-react";
-import Image from "next/image";
+import LogoutButton from "./LogoutButton";
 
 export function Menu({ isOpen }: { isOpen: boolean }) {
   const pathname = usePathname();
@@ -63,6 +64,7 @@ export function Menu({ isOpen }: { isOpen: boolean }) {
           <PlusCircle size={18} />
           <span>Nova Reserva</span>
         </Link>
+        <LogoutButton />
       </nav>
     </aside>
   );

@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { Auth } from "@/lib/middleware/Auth";
 import { prisma } from "@/lib/prisma";
 import type { TopUsuario } from "@/utils/tipos";
+import type { User } from "@supabase/supabase-js";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 dayjs.extend(weekOfYear);
 
@@ -21,8 +23,10 @@ type CountUser = {
   };
 };
 
-export async function GET() {
+export const GET = Auth(async (req: NextRequest, user: User | null) => {
   try {
+    console.log("user logado", user);
+
     const agora = dayjs();
 
     const ano = agora.year();
@@ -144,4 +148,4 @@ export async function GET() {
       { status: 500 },
     );
   }
-}
+});
