@@ -21,7 +21,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       } = await supabase.auth.getSession();
 
       const user = session?.user ?? null;
-      const publicRoutes = ["/", "/login"];
+      const publicRoutes = ["/", "/login","relatorio_guarita"];
 
       if (!user && !publicRoutes.includes(pathname)) {
         // not logged in -> redirect to login

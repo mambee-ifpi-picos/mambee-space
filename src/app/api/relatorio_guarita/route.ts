@@ -2,8 +2,9 @@ import {supabase} from "@/lib/supabaseClient";
 import { NextResponse } from "next/server";
 
 type UsuarioInfo = {
+    foto: string;
+    email: string;
     nome: string;
-    email:string;
 };
 
 type SalaInfo = {
@@ -21,7 +22,7 @@ type ReservaComUsuario = {
     inicio: string;
     fim: string;
     situacao: string;
-    Usuario?: UsuarioInfo[];
+    UsuarioCriador?: UsuarioInfo[];
     Espaco?: EspacoInfo[]
 };
 
@@ -37,7 +38,7 @@ export async function GET(_req: Request) {
             horaInicio,
             horaFim,
             situacao,
-            Usuario: idUsuarioCriador(nome,email),
+            Usuario: idUsuarioCriador(nome,email,foto),
             Espaco: idEspacoReservado(codigoEspaco, Sala: idSalaPertence (nomeSala))
             `).order('horaInicio', {ascending: true});
         
@@ -50,9 +51,11 @@ export async function GET(_req: Request) {
         const reservas = rawData as unknown as ReservaComUsuario[];
 
         const relatorio = reservas.map((reserva) => {
-            const usuarioData = Array.isArray(reserva.Usuario)
-            ? reserva.Usuario[0]
-            : reserva.Usuario;
+            const usuarioData = Array.isArray(reserva.UsuarioCriador)
+            ? reserva.UsuarioCriador[0]
+            : reserva.UsuarioCriador;
+            console.log (reserva)
+            console.log (usuarioData)
 
             const espacoData = Array.isArray(reserva.Espaco)
             ? reserva.Espaco[0]
@@ -70,6 +73,7 @@ export async function GET(_req: Request) {
                 situacao: reserva.situacao ?? "",
                 usuario: usuarioData?.nome?? "",
                 email: usuarioData?.email ?? "",
+                foto: usuarioData?.foto ?? "",
                 sala: reserva?.Espaco ?? "",
                 espaco: reserva?.Espaco ?? ""
             };

@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
 import React, { useEffect } from 'react';
+import Image from "next/image";
 
 type UsuarioInfo = {
     nome: string;
     email:string;
+    foto?: string;
 };
 
 type SalaInfo = {
@@ -67,7 +69,7 @@ export default function RelatorioPage() {
     setCarregando(true);
     try {
 
-      const res = await fetch(`/api/relatorioguarita`); 
+      const res = await fetch(`/api/relatorio_guarita`); 
       const json = await res.json();
 
       if (json.success) {
@@ -82,7 +84,7 @@ export default function RelatorioPage() {
       setCarregando(false);
     }
   }
-
+ 
   useEffect(() => {
     buscarRelatorio();
   }, []); // O array vazio [] garante que a função seja executada apenas na montagem
@@ -123,11 +125,11 @@ export default function RelatorioPage() {
         <table className="min-w-full border-separate border-spacing-y-4 text-sm">
           <thead>
             <tr className="text-left text-gray-600">
-              <th className="p-2 font-normal pl-6">Sala</th>
+              <th className="p-2 font-normal pl-6">Usuário</th>
+              <th className="p-2 font-normal">Sala</th>
               <th className="p-2 font-normal">Espaço</th>
               <th className="p-2 font-normal text-center">Horário</th>
               <th className="p-2 font-normal text-center">Data</th>
-              <th className="p-2 font-normal text-right pr-6">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -146,53 +148,50 @@ export default function RelatorioPage() {
                   key={item.idReserva}
                   className="group transition-transform hover:scale-[1.01]"
                 >
-                  { <td className="bg-gray-50 p-4 rounded-l-lg border-l-[6px] border-teal-500 relative">
+                  <td className="bg-gray-50 p-4 rounded-l-lg border-l-[6px] border-teal-500 relative">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-500">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-6 w-6"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                          role="img"
-                        >
-                          <title>Ícone de usuário</title>
-                          <path
-                            fillRule="evenodd"
-                            d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
-                      <span className="text-gray-700 font-medium">
-                        {item.Espaco?.Sala.nomeSala}
-                      </span>
-                    </div>
-                  </td> }
+                      {item.Usuario?.foto ? (
+                        <Image
+                          src={item.Usuario?.foto}
+                          alt={item.Usuario?.nome}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <Image
+                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
+                            item.Usuario?.nome ?? "Usuário",
+                          )}&background=0c9488&color=fff&size=64`}
+                          alt={item.Usuario?.nome || "—"}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      )}
 
-                  { <td className="bg-gray-50 p-4 text-gray-600">
-                    {item.Espaco?.codigoEspaco}
-                  </td> }
+                      <div>
+                        <div className="text-gray-700 font-medium">
+                          {item.Usuario?.nome || "—"}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className="bg-gray-50 p-4 text-gray-600">
+                    {item.Espaco?.Sala.nomeSala || "—"}
+                  </td>
+
+                  <td className="bg-gray-50 p-4 text-gray-600">
+                    {item.Espaco?.codigoEspaco || "—"}
+                  </td>
 
                   <td className="bg-gray-50 p-4 text-center text-gray-600 font-medium">
                     {formatarHora(item.horaInicio)} - {formatarHora(item.horaFim)}
                   </td>
 
-                  <td className="bg-gray-50 p-4 text-center text-gray-600">
-                    {formatarData(item.horaInicio)}
-                  </td>
-
-                  <td
-                    className={`bg-gray-50 p-4 text-right pr-6 rounded-r-lg font-medium
-                    ${
-                      item.situacao === "Finalizado"
-                        ? "text-teal-400"
-                        : item.situacao === "Em aberto"
-                          ? "text-pink-400"
-                          : "text-gray-500"
-                    }`}
-                  >
-                    {item.situacao}
+                  <td className="bg-gray-50 p-4 text-center text-gray-600 rounded-r-lg">
+                    {formatarData(item.horaInicio) || "—"}
                   </td>
                 </tr>
               ))
