@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
-import { User, Camera, CheckCircle, XCircle } from "lucide-react";
+import { User, Camera, CheckCircle, XCircle, LogOut } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
@@ -79,6 +79,13 @@ export default function ProfilePage() {
     type: "success" | "error" | "";
   }>({ message: "", type: "" });
 
+  
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.refresh();
+    router.push("/login");
+  };
+
   useEffect(() => {
     const fetchUser = async () => {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -99,7 +106,7 @@ export default function ProfilePage() {
       const { data: dbUser } = await supabase
         .from("Usuario")
         .select("nome, foto")
-        .eq("email", user.email)
+        .ilike("email", user.email || "")
         .maybeSingle();
 
       const userName =
@@ -173,7 +180,7 @@ export default function ProfilePage() {
         finalAvatarUrl = publicUrl;
       }
 
-      // Atualiza AUTH (parte visual)
+      // Atualiza AUTH
       const { error: updateAuth } = await supabase.auth.updateUser({
         data: {
           full_name: nome,
@@ -183,7 +190,7 @@ export default function ProfilePage() {
 
       if (updateAuth) throw updateAuth;
 
-      // Atualiza BANCO (parte definitiva)
+      // Atualiza BANCO
       await supabase
         .from("Usuario")
         .update({
@@ -296,9 +303,23 @@ export default function ProfilePage() {
         </div>
 
         <form onSubmit={handleSalvar} className="mt-8 p-6 sm:p-8 rounded-xl">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6 pb-2">
-            Perfil
-          </h2>
+          
+         
+          <div className="flex justify-between items-center mb-6 pb-2">
+            <h2 className="text-2xl font-semibold text-gray-800">
+              Perfil
+            </h2>
+            
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-red-500 font-bold hover:text-red-700 transition-colors"
+              title="Sair da conta"
+            >
+              <LogOut size={20} />
+              Sair
+            </button>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
