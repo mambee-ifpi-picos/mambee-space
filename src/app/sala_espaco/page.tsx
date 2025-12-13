@@ -1,10 +1,12 @@
 "use client";
+
 import Image from "next/image";
 import { useState } from "react";
 import { Inria_Serif } from "next/font/google";
+import { supabase } from "@/lib/supabaseClient";
 
 type MapaInfo = {
-  file: Blob | MediaSource;
+  file: File;
   preview: string;
 };
 
@@ -32,18 +34,23 @@ export default function CriarSalaEspacos() {
   const [toast, setToast] = useState({
     visible: false,
     message: "",
-    type: "success",
+    type: "success" as "success" | "error",
   });
 
-  const showToast = (msg: string, type = "success") => {
+  /* =====================
+     TOAST
+  ====================== */
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ visible: true, message: msg, type });
     setTimeout(() => {
       setToast({ visible: false, message: "", type: "success" });
     }, 3500);
   };
 
-  const handleFile = (file: Blob | MediaSource) => {
-    if (!file) return;
+  /* =====================
+     UPLOAD MAPA
+  ====================== */
+  const handleFile = (file: File) => {
     setMapa({
       file,
       preview: URL.createObjectURL(file),
@@ -59,8 +66,8 @@ export default function CriarSalaEspacos() {
     e.preventDefault();
     e.stopPropagation();
     setArrastando(false);
-    const file = e.dataTransfer.files[0];
-    handleFile(file);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
@@ -69,9 +76,7 @@ export default function CriarSalaEspacos() {
     setArrastando(true);
   };
 
-  const handleDragLeave = (e: React.DragEvent<HTMLLabelElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDragLeave = () => {
     setArrastando(false);
   };
 
@@ -79,9 +84,12 @@ export default function CriarSalaEspacos() {
     setMapa(null);
   };
 
+  /* =====================
+     ESPAÇOS
+  ====================== */
   const adicionarEspaco = () => {
-    if (espaco.trim() !== "") {
-      setEspacos([...espacos, espaco]);
+    if (espaco.trim()) {
+      setEspacos([...espacos, espaco.trim()]);
       setEspaco("");
     }
   };
@@ -95,10 +103,13 @@ export default function CriarSalaEspacos() {
     setEspacos(espacos.filter((_, i) => i !== index));
   };
 
+  /* =====================
+     SITUAÇÃO
+  ====================== */
   const toggleSituacao = () => {
     if (animando) return;
     setAnimando(true);
-    setSituacao(situacao === "Ativa" ? "Inativa" : "Ativa");
+    setSituacao((prev) => (prev === "Ativa" ? "Inativa" : "Ativa"));
     setTimeout(() => setAnimando(false), 300);
   };
 
@@ -111,19 +122,49 @@ export default function CriarSalaEspacos() {
     setMapa(null);
   };
 
-  const handleSubmit = async (e: { preventDefault: () => void }) => {
+  /* =====================
+     SUBMIT
+  ====================== */
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const idUsuarioCriador = "1";
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error || !data.user) {
+        showToast("Usuário não autenticado", "error");
+        setLoading(false);
+        return;
+      }
+
+      const idAuth = data.user.id;
+
+      if (!nomeSala.trim()) {
+        showToast("Informe o nome da sala", "error");
+        setLoading(false);
+        return;
+      }
+
+      const limite = Number(tempoReserva);
+      if (!tempoReserva || Number.isNaN(limite)) {
+        showToast("Informe um tempo de reserva válido", "error");
+        setLoading(false);
+        return;
+      }
+
+      if (espacos.length === 0) {
+        showToast("Adicione pelo menos um espaço", "error");
+        setLoading(false);
+        return;
+      }
 
       const body = {
         nomeSala,
+        mapa: mapa ? mapa.file.name : "sem_mapa",
+        limiteHorasReserva: limite,
         ativa: situacao === "Ativa",
-        mapa: mapa ? (mapa.file as File).name : "sem_mapa",
-        limiteHorasReserva: parseFloat(tempoReserva) || 1,
-        idUsuarioCriador,
+        idAuth,
       };
 
       const res = await fetch("/api/salas", {
@@ -132,35 +173,45 @@ export default function CriarSalaEspacos() {
         body: JSON.stringify(body),
       });
 
-      const data = await res.json();
+      const result = await res.json();
 
-      if (!data.success) {
+      if (!result.success) {
+        showToast(result.error, "error");
         setLoading(false);
-        showToast(`Erro: ${data.error}`, "error");
         return;
       }
 
-      const idSalaCriada = data.sala.idSala;
+      const idSalaCriada = result.sala.idSala;
 
       for (const codigoEspaco of espacos) {
-        await fetch("/api/salas/espacos", {
+        const resEspaco = await fetch("/api/salas/espacos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             codigoEspaco,
             idSalaPertence: idSalaCriada,
-            idUsuarioCriador,
+            idAuth,
           }),
         });
+
+        const resultEspaco = await resEspaco.json().catch(() => null);
+
+        if (!resEspaco.ok || !resultEspaco?.success) {
+          const msg =
+            resultEspaco?.error || `Erro ao criar espaço "${codigoEspaco}".`;
+
+          showToast(msg, "error");
+          setLoading(false);
+          return;
+        }
       }
 
-      showToast("Sala criada com sucesso.", "success");
+      showToast("Sala criada com sucesso");
       limparCampos();
-      setLoading(false);
-      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       console.error(err);
-      showToast("Erro ao salvar a sala.", "error");
+      showToast("Erro ao salvar a sala", "error");
+    } finally {
       setLoading(false);
     }
   };
