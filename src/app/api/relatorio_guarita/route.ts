@@ -46,7 +46,7 @@ export async function GET(_req: Request) {
 
         const res = await query;
         if (res.error) throw res.error;
-
+        
         const rawData = Array.isArray(res.data) ? res.data : [];
         const reservas = rawData as unknown as ReservaComUsuario[];
 
@@ -54,8 +54,6 @@ export async function GET(_req: Request) {
             const usuarioData = Array.isArray(reserva.UsuarioCriador)
             ? reserva.UsuarioCriador[0]
             : reserva.UsuarioCriador;
-            console.log (reserva)
-            console.log (usuarioData)
 
             const espacoData = Array.isArray(reserva.Espaco)
             ? reserva.Espaco[0]
