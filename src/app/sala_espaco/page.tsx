@@ -134,6 +134,7 @@ export default function CriarSalaEspacos() {
 
       if (error || !data.user) {
         showToast("Usuário não autenticado", "error");
+        setLoading(false);
         return;
       }
 
@@ -141,17 +142,20 @@ export default function CriarSalaEspacos() {
 
       if (!nomeSala.trim()) {
         showToast("Informe o nome da sala", "error");
+        setLoading(false);
         return;
       }
 
       const limite = Number(tempoReserva);
       if (!tempoReserva || Number.isNaN(limite)) {
         showToast("Informe um tempo de reserva válido", "error");
+        setLoading(false);
         return;
       }
 
       if (espacos.length === 0) {
         showToast("Adicione pelo menos um espaço", "error");
+        setLoading(false);
         return;
       }
 
@@ -173,13 +177,14 @@ export default function CriarSalaEspacos() {
 
       if (!result.success) {
         showToast(result.error, "error");
+        setLoading(false);
         return;
       }
 
       const idSalaCriada = result.sala.idSala;
 
       for (const codigoEspaco of espacos) {
-        await fetch("/api/salas/espacos", {
+        const resEspaco = await fetch("/api/salas/espacos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -188,6 +193,17 @@ export default function CriarSalaEspacos() {
             idAuth,
           }),
         });
+
+        const resultEspaco = await resEspaco.json().catch(() => null);
+
+        if (!resEspaco.ok || !resultEspaco?.success) {
+          const msg =
+            resultEspaco?.error || `Erro ao criar espaço "${codigoEspaco}".`;
+
+          showToast(msg, "error");
+          setLoading(false);
+          return;
+        }
       }
 
       showToast("Sala criada com sucesso");
