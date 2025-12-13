@@ -11,16 +11,16 @@ type RelatorioItem = {
   email: string;
   sala: string;
   espaco: string;
-  foto?: string;
+  foto?: string | null;
 };
 
+// Formata data ISO para hora (HH:mm)
 function formatarHora(dataIso: string) {
   if (!dataIso) return "--:--";
   try {
     const data = new Date(dataIso);
-    if (Number.isNaN(data.getTime())) {
+    if (Number.isNaN(data.getTime()))
       return dataIso.split(" ")[1]?.substring(0, 5) ?? "";
-    }
     return data.toLocaleTimeString("pt-BR", {
       hour: "2-digit",
       minute: "2-digit",
@@ -30,13 +30,12 @@ function formatarHora(dataIso: string) {
   }
 }
 
+// Formata data ISO para data (DD/MM/AAAA)
 function formatarData(dataIso: string) {
   if (!dataIso) return "--/--/----";
   try {
     const data = new Date(dataIso);
-    if (Number.isNaN(data.getTime())) {
-      return dataIso.split(" ")[0] ?? "";
-    }
+    if (Number.isNaN(data.getTime())) return dataIso.split(" ")[0] ?? "";
     return data.toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
@@ -52,17 +51,19 @@ export default function RelatorioPage() {
   const [dataFim, setDataFim] = useState("");
   const [sala, setSala] = useState("");
   const [espaco, setEspaco] = useState("");
+  const [usuario, setUsuario] = useState("");
+
   const [dados, setDados] = useState<RelatorioItem[]>([]);
   const [carregando, setCarregando] = useState(false);
-  const [usuario, setUsuario] = useState("");
 
   async function buscarRelatorio() {
     if (!dataInicio || !dataFim) {
-      alert("Preencha a data de início e a data de fim antes de buscar.");
+      alert("Preencha as datas de início e fim!");
       return;
     }
 
     setCarregando(true);
+    setDados([]);
     try {
       const params = new URLSearchParams();
       params.append("inicio", dataInicio);
@@ -77,10 +78,10 @@ export default function RelatorioPage() {
       if (json.success) {
         setDados(json.reservas ?? []);
       } else {
-        setDados([]);
+        console.error("Erro API:", json.error);
       }
-    } catch {
-      setDados([]);
+    } catch (error) {
+      console.error("Erro fetch:", error);
     } finally {
       setCarregando(false);
     }
@@ -92,192 +93,203 @@ export default function RelatorioPage() {
         Relatório
       </h1>
 
-      <div className="mb-8">
+      {/* ÁREA DE FILTROS */}
+      <div className="mb-8 bg-gray-50 p-6 rounded-lg border border-gray-100">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+          {/* Campo Usuário */}
           <div className="flex flex-col">
             <label
-              htmlFor="usuario"
+              htmlFor="filtro-usuario"
               className="mb-1 text-sm font-medium text-gray-600"
             >
               Usuário
             </label>
             <input
-              id="usuario"
-              type="text"
-              className="bg-gray-200 border border-gray-300 rounded p-3"
+              id="filtro-usuario"
               value={usuario}
               onChange={(e) => setUsuario(e.target.value)}
+              type="text"
+              placeholder="Nome..."
+              className="bg-white border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
 
+          {/* Campo Sala */}
           <div className="flex flex-col">
             <label
-              htmlFor="sala"
+              htmlFor="filtro-sala"
               className="mb-1 text-sm font-medium text-gray-600"
             >
               Sala
             </label>
             <input
-              id="sala"
-              type="text"
-              className="bg-gray-200 border border-gray-300 rounded p-3"
+              id="filtro-sala"
               value={sala}
               onChange={(e) => setSala(e.target.value)}
+              type="text"
+              placeholder="Sala..."
+              className="bg-white border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
 
+          {/* Campo Espaço */}
           <div className="flex flex-col">
             <label
-              htmlFor="espaco"
+              htmlFor="filtro-espaco"
               className="mb-1 text-sm font-medium text-gray-600"
             >
               Espaço
             </label>
             <input
-              id="espaco"
-              type="text"
-              className="bg-gray-200 border border-gray-300 rounded p-3"
+              id="filtro-espaco"
               value={espaco}
               onChange={(e) => setEspaco(e.target.value)}
+              type="text"
+              placeholder="Mesa..."
+              className="bg-white border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Data Inicial */}
           <div className="flex flex-col">
             <label
-              htmlFor="dataInicio"
+              htmlFor="data-inicio"
               className="mb-1 text-sm font-medium text-gray-600"
             >
-              Data inicial
+              Data Inicial
             </label>
             <input
-              id="dataInicio"
-              type="date"
-              className="bg-gray-200 border border-gray-300 rounded p-3"
+              id="data-inicio"
               value={dataInicio}
               onChange={(e) => setDataInicio(e.target.value)}
+              type="date"
+              className="bg-white border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
 
+          {/* Data Final */}
           <div className="flex flex-col">
             <label
-              htmlFor="dataFim"
+              htmlFor="data-fim"
               className="mb-1 text-sm font-medium text-gray-600"
             >
-              Data final
+              Data Final
             </label>
             <input
-              id="dataFim"
-              type="date"
-              className="bg-gray-200 border border-gray-300 rounded p-3"
+              id="data-fim"
               value={dataFim}
               onChange={(e) => setDataFim(e.target.value)}
+              type="date"
+              className="bg-white border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
-        </div>
 
-        <div className="flex justify-end gap-4 items-center">
-          <button
-            type="button"
-            onClick={buscarRelatorio}
-            disabled={carregando}
-            className="bg-teal-500 text-white px-8 py-3 rounded"
-          >
-            {carregando ? "..." : "Buscar"}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              const params = new URLSearchParams();
-              params.append("inicio", dataInicio);
-              params.append("fim", dataFim);
-              if (sala) params.append("sala", sala);
-              if (espaco) params.append("espaco", espaco);
-              if (usuario) params.append("usuario", usuario);
-
-              window.open(`/api/relatorio/pdf?${params.toString()}`, "_blank");
-            }}
-            className="bg-gray-300 text-teal-600 px-8 py-3 rounded"
-          >
-            Baixar
-          </button>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={buscarRelatorio}
+              disabled={carregando}
+              className="w-full bg-teal-600 hover:bg-teal-700 text-white p-3 rounded font-medium transition disabled:opacity-70"
+            >
+              {carregando ? "Buscando..." : "Buscar Relatório"}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-separate border-spacing-y-4 text-sm">
-          <thead>
-            <tr className="text-left text-gray-600">
-              <th className="p-2 font-normal pl-6">Usuário</th>
-              <th className="p-2 font-normal">Sala</th>
-              <th className="p-2 font-normal">Espaço</th>
-              <th className="p-2 font-normal text-center">Horário</th>
-              <th className="p-2 font-normal text-center">Data</th>
+      {/* TABELA DE RESULTADOS */}
+      <div className="overflow-x-auto shadow-sm rounded-lg border border-gray-200">
+        <table className="min-w-full border-separate border-spacing-0 text-sm">
+          <thead className="bg-gray-100">
+            <tr className="text-left text-gray-700">
+              <th className="p-4 pl-6 font-semibold border-b border-gray-200">
+                Usuário
+              </th>
+              <th className="p-4 font-semibold border-b border-gray-200">
+                Sala
+              </th>
+              <th className="p-4 font-semibold border-b border-gray-200">
+                Espaço
+              </th>
+              <th className="p-4 font-semibold text-center border-b border-gray-200">
+                Horário
+              </th>
+              <th className="p-4 font-semibold text-center border-b border-gray-200">
+                Data
+              </th>
             </tr>
           </thead>
 
-          <tbody>
+          <tbody className="bg-white">
             {dados.length === 0 ? (
               <tr>
-                <td
-                  colSpan={5}
-                  className="text-center p-6 text-gray-500 bg-gray-50 rounded"
-                >
-                  Nenhum resultado encontrado
+                <td colSpan={5} className="text-center p-8 text-gray-500">
+                  {carregando
+                    ? "Carregando..."
+                    : "Nenhum resultado encontrado."}
                 </td>
               </tr>
             ) : (
-              dados.map((item) => (
-                <tr key={item.id} className="group">
-                  <td className="bg-gray-50 p-4 rounded-l-lg border-l-[6px] border-teal-500 relative">
-                    <div className="flex items-center gap-3">
-                      {item.foto ? (
-                        <Image
-                          src={item.foto}
-                          alt={item.usuario}
-                          width={40}
-                          height={40}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <Image
-                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                            item.usuario ?? "Usuário",
-                          )}&background=0c9488&color=fff&size=64`}
-                          alt={item.usuario}
-                          width={40}
-                          height={40}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      )}
+              dados.map((item, index) => {
+                // Lógica de Avatar: Foto ou Iniciais
+                const avatarSrc =
+                  item.foto && item.foto.length > 5
+                    ? item.foto
+                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                        item.usuario,
+                      )}&background=0d9488&color=fff&size=128`;
 
-                      <div>
-                        <div className="text-gray-700 font-medium">
-                          {item.usuario || "—"}
+                return (
+                  <tr
+                    key={item.id}
+                    className={`hover:bg-gray-50 transition ${
+                      index !== dados.length - 1
+                        ? "border-b border-gray-100"
+                        : ""
+                    }`}
+                  >
+                    {/* Coluna Usuário (Foto + Nome) */}
+                    <td className="p-4 pl-6 border-b border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-10 h-10 shrink-0">
+                          <Image
+                            src={avatarSrc}
+                            alt={item.usuario}
+                            fill
+                            unoptimized={true}
+                            className="rounded-full object-cover border border-gray-200"
+                          />
+                        </div>
+                        <div className="flex flex-col justify-center">
+                          <span className="text-gray-900 font-medium text-base">
+                            {item.usuario}
+                          </span>
                         </div>
                       </div>
-                    </div>
-                  </td>
+                    </td>
 
-                  <td className="bg-gray-50 p-4 text-gray-600">
-                    {item.sala || "—"}
-                  </td>
+                    <td className="p-4 text-gray-700 border-b border-gray-100">
+                      {item.sala}
+                    </td>
 
-                  <td className="bg-gray-50 p-4 text-gray-600">
-                    {item.espaco}
-                  </td>
+                    <td className="p-4 border-b border-gray-100">
+                      <span className="inline-block px-2 py-1 bg-teal-50 text-teal-700 rounded text-xs font-semibold">
+                        {item.espaco}
+                      </span>
+                    </td>
 
-                  <td className="bg-gray-50 p-4 text-center text-gray-600 font-medium">
-                    {formatarHora(item.inicio)} - {formatarHora(item.fim)}
-                  </td>
+                    <td className="p-4 text-center text-gray-700 border-b border-gray-100 font-medium">
+                      {formatarHora(item.inicio)} - {formatarHora(item.fim)}
+                    </td>
 
-                  <td className="bg-gray-50 p-4 text-center text-gray-600 rounded-r-lg">
-                    {formatarData(item.inicio)}
-                  </td>
-                </tr>
-              ))
+                    <td className="p-4 text-center text-gray-700 border-b border-gray-100">
+                      {formatarData(item.inicio)}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
