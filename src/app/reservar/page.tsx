@@ -1,440 +1,284 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { useState, useEffect, useCallback } from "react";
+import { Inria_Serif } from "next/font/google";
+import { createClient, type Session } from "@supabase/supabase-js";
 
-interface Espaco {
-  idEspaco: number;
-  codigoEspaco: string;
-}
-interface Reserva {
+const inriaSerif700 = Inria_Serif({ subsets: ["latin"], weight: ["700"] });
+
+// Configuração Supabase
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabase =
+  supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+// Tipos
+type Sala = { idSala: number; nomeSala: string; mapa: string | null };
+type Espaco = { idEspaco: number; codigoEspaco: string };
+type CronogramaItem = {
   idReserva: number;
-  motivo: string;
   horaInicio: string;
   horaFim: string;
-  espaco: Espaco | null;
-  criador: { nome?: string; email?: string | null } | null;
-}
-interface SalaResposta {
-  espacos?: Espaco[];
-}
+  motivo: string;
+  criador: { nome: string; foto: string | null };
+};
 
-type LinhaIdUsuario = { idUsuario?: number };
+export default function ReservarEspaco() {
+  const [salas, setSalas] = useState<Sala[]>([]);
+  const [espacos, setEspacos] = useState<Espaco[]>([]);
+  const [cronograma, setCronograma] = useState<CronogramaItem[]>([]);
 
-function obterUrlApi(caminho: string) {
-  if (typeof window === "undefined" || !("location" in globalThis))
-    return caminho;
-  return `${window.location.origin}${caminho}`;
-}
-
-export default function ReservarPage() {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  const [idUsuario, setIdUsuario] = useState<number | null>(null);
-  const [uuidSupabase, setUuidSupabase] = useState<string | null>(null);
-  const [emailUsuario, setEmailUsuario] = useState<string | null>(null);
-  const [carregandoUsuario, setCarregandoUsuario] = useState<boolean>(true);
-  const [listaEspacos, setListaEspacos] = useState<Espaco[]>([]);
-  const [carregandoEspacos, setCarregandoEspacos] = useState(true);
-  const [espacoSelecionado, setEspacoSelecionado] = useState<number | null>(
-    null
-  );
-  const [dataSelecionada, setDataSelecionada] = useState<string>("");
-  const [listaReservas, setListaReservas] = useState<Reserva[]>([]);
+  const [salaSelecionada, setSalaSelecionada] = useState<Sala | null>(null);
+  const [idEspaco, setIdEspaco] = useState("");
+  const [data, setData] = useState("");
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFim, setHoraFim] = useState("");
   const [motivo, setMotivo] = useState("");
-  const [carregandoReservas, setCarregandoReservas] = useState(false);
-  const [erroReservas, setErroReservas] = useState<string | null>(null);
 
-  const buscarIdUsuario = useCallback(async () => {
-    setCarregandoUsuario(true);
-    setIdUsuario(null);
-    setUuidSupabase(null);
-    setEmailUsuario(null);
-    try {
-      const { data } = await supabase.auth.getUser();
-      const usuarioAuth = data?.user ?? null;
-      if (!usuarioAuth) {
-        setCarregandoUsuario(false);
-        return;
-      }
-      const uuid = usuarioAuth.id;
-      const email = (usuarioAuth.email ?? "").trim();
-      setUuidSupabase(uuid);
-      setEmailUsuario(email || null);
+  const [idUsuarioAuth, setIdUsuarioAuth] = useState<string | null>(null);
+  const [emailUsuario, setEmailUsuario] = useState<string>("");
 
-      if (email) {
-        try {
-          const resEmailRaw = await supabase
-            .from("Usuario")
-            .select("idUsuario")
-            .ilike("email", email)
-            .maybeSingle();
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState({
+    visible: false,
+    message: "",
+    type: "success",
+  });
 
-          const resEmail = resEmailRaw as {
-            data?: LinhaIdUsuario | null;
-            error?: unknown;
-          };
-          if (
-            !resEmail.error &&
-            resEmail.data &&
-            typeof resEmail.data.idUsuario === "number"
-          ) {
-            setIdUsuario(resEmail.data.idUsuario);
-            setCarregandoUsuario(false);
-            return;
-          }
-        } catch (_erroLookupEmail) {
-          console.warn("Lookup por email falhou (não fatal).");
-        }
-      }
-
-      const colunasPossiveis = [
-        "auth_id",
-        "supabase_uuid",
-        "supabase_id",
-        "id_supabase",
-        "idSupabase",
-      ];
-
-      for (const coluna of colunasPossiveis) {
-        try {
-          const resRaw = await supabase
-            .from("Usuario")
-            .select("idUsuario")
-            .eq(coluna, uuid)
-            .maybeSingle();
-
-          const res = resRaw as {
-            data?: LinhaIdUsuario | null;
-            error?: unknown;
-          };
-          if (
-            !res.error &&
-            res.data &&
-            typeof res.data.idUsuario === "number"
-          ) {
-            setIdUsuario(res.data.idUsuario);
-            setCarregandoUsuario(false);
-            return;
-          }
-        } catch {
-
-        }
-      }
-
-      setIdUsuario(null);
-      setCarregandoUsuario(false);
-    } catch (erroBuscar) {
-      console.error("Erro buscarIdUsuario:", erroBuscar);
-      setIdUsuario(null);
-      setCarregandoUsuario(false);
-    }
-  }, [supabase]);
-
-  useEffect(() => {
-    buscarIdUsuario();
-    const inscricao = supabase.auth.onAuthStateChange((_evento, sessao) => {
-      if (sessao?.user) buscarIdUsuario();
-      else {
-        setIdUsuario(null);
-        setUuidSupabase(null);
-        setEmailUsuario(null);
-        setCarregandoUsuario(false);
-      }
-    });
-
-    return () => {
-      try {
-        const inscricaoUnknown = inscricao as unknown;
-
-        if (inscricaoUnknown && typeof inscricaoUnknown === "object") {
-          const maybeWithData = inscricaoUnknown as {
-            data?: { subscription?: { unsubscribe?: () => void } };
-          };
-          if (maybeWithData?.data?.subscription?.unsubscribe) {
-            maybeWithData.data.subscription.unsubscribe();
-            return;
-          }
-
-          const maybeWithUnsubscribe = inscricaoUnknown as {
-            unsubscribe?: unknown;
-          };
-          if (typeof maybeWithUnsubscribe.unsubscribe === "function") {
-            (maybeWithUnsubscribe.unsubscribe as () => void)();
-            return;
-          }
-        }
-
-        if (typeof inscricao === "function") {
-          (inscricao as unknown as () => void)();
-        }
-      } catch {
-
-      }
-    };
-  }, [buscarIdUsuario, supabase]);
-
-  useEffect(() => {
-    const buscarEspacos = async () => {
-      setCarregandoEspacos(true);
-      try {
-        const url = obterUrlApi("/api/salas");
-        const res = await fetch(url);
-
-        let json: unknown = null;
-        try {
-          json = await res.json();
-        } catch {
-          const txt = await res.text().catch(() => null);
-          json = txt ? { success: false, error: txt } : null;
-        }
-
-        if (
-          json &&
-          typeof json === "object" &&
-          "success" in json &&
-          (json as { success?: unknown }).success === true &&
-          Array.isArray((json as { salas?: unknown }).salas)
-        ) {
-          const salasRaw = (json as { salas?: SalaResposta[] }).salas ?? [];
-          const todos = salasRaw.flatMap((s) => s.espacos ?? []);
-          setListaEspacos(todos);
-          const hoje = new Date().toISOString().split("T")[0];
-          setDataSelecionada((prev) => prev || hoje);
-          setEspacoSelecionado(
-            (prev) => prev ?? (todos.length > 0 ? todos[0].idEspaco : null)
-          );
-        } else {
-          console.warn("/api/salas retornou formato inesperado:", json);
-        }
-      } catch (erro) {
-        console.error("Erro ao buscar salas:", erro);
-      } finally {
-        setCarregandoEspacos(false);
-      }
-    };
-    buscarEspacos();
+  const showToast = useCallback((msg: string, type = "success") => {
+    setToast({ visible: true, message: msg, type });
+    setTimeout(
+      () => setToast({ visible: false, message: "", type: "success" }),
+      3500,
+    );
   }, []);
 
-  const buscarReservas = useCallback(async () => {
-    if (espacoSelecionado == null || !dataSelecionada) {
-      setListaReservas([]);
-      setErroReservas(null);
-      return;
-    }
-    setCarregandoReservas(true);
-    setErroReservas(null);
-    try {
-      const url = obterUrlApi(
-        `/api/reservas?data=${encodeURIComponent(
-          dataSelecionada
-        )}&idEspaco=${encodeURIComponent(String(espacoSelecionado))}`
-      );
-      const res = await fetch(url);
-
-      let json: unknown = null;
-      try {
-        json = await res.json();
-      } catch {
-        const texto = await res.text().catch(() => null);
-        json = texto ? { success: false, error: texto } : null;
-      }
-
-      if (
-        res.ok &&
-        json &&
-        typeof json === "object" &&
-        "success" in json &&
-        (json as { success?: unknown }).success === true &&
-        Array.isArray((json as { reservas?: unknown }).reservas)
-      ) {
-        setListaReservas((json as { reservas?: Reserva[] }).reservas ?? []);
-      } else {
-        setListaReservas([]);
-        const errMsg =
-          json && typeof json === "object" && "error" in json
-            ? String((json as { error?: unknown }).error)
-            : `HTTP ${res.status}`;
-        setErroReservas(String(errMsg));
-      }
-    } catch (erro) {
-      const mensagem = erro instanceof Error ? erro.message : String(erro);
-      console.error("Erro buscarReservas:", erro);
-      setListaReservas([]);
-      setErroReservas(`Erro de conexão: ${mensagem}`);
-    } finally {
-      setCarregandoReservas(false);
-    }
-  }, [espacoSelecionado, dataSelecionada]);
-
+  // Gerenciamento de Sessão (Auth)
   useEffect(() => {
-    buscarReservas();
-  }, [buscarReservas]);
-
-  const salvarReserva = useCallback(async () => {
-    if (
-      !espacoSelecionado ||
-      !dataSelecionada ||
-      !horaInicio ||
-      !horaFim ||
-      !motivo
-    ) {
-      alert("Todos os campos do formulário são obrigatórios.");
-      return;
-    }
-
-    const inicioDate = new Date(`${dataSelecionada}T${horaInicio}:00`);
-    const fimDate = new Date(`${dataSelecionada}T${horaFim}:00`);
-    if (inicioDate >= fimDate) {
-      alert("Horário de início deve ser antes do horário de fim.");
-      return;
-    }
-
-    try {
-      const payload: Record<string, unknown> = {
-        idEspaco: espacoSelecionado,
-        data: dataSelecionada,
-        inicio: horaInicio,
-        fim: horaFim,
-        motivo: motivo.trim(),
-      };
-
-      if (idUsuario) {
-        payload.idUsuario = idUsuario;
-        payload.idCriador = idUsuario;
-      } else if (uuidSupabase) {
-        payload.auth_id = uuidSupabase;
-        payload.supabase_uuid = uuidSupabase;
+    if (!supabase) return;
+    const handleSession = (session: Session | null) => {
+      if (session?.user) {
+        setIdUsuarioAuth(session.user.id);
+        setEmailUsuario(session.user.email || "");
       } else {
-        payload.idUsuario = null;
+        setIdUsuarioAuth(null);
+        setEmailUsuario("");
       }
+    };
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => handleSession(session));
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_, session) => handleSession(session));
+    return () => subscription.unsubscribe();
+  }, []);
 
-      const url = obterUrlApi("/api/reservas");
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+  // Carregar Salas
+  useEffect(() => {
+    fetch("/api/reservar?tipo=salas")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setSalas(data);
+      })
+      .catch((e) => console.error("Erro salas:", e));
+  }, []);
 
-      let parsed: unknown = null;
-      try {
-        parsed = await res.json();
-      } catch {
-        const texto = await res.text().catch(() => null);
-        parsed = texto ?? null;
-      }
+  // Seleção de Sala
+  const handleSalaChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = Number(e.target.value);
+    const sala = salas.find((s) => s.idSala === id) || null;
 
-      if (!res.ok) {
-        const errMsg =
-          parsed && typeof parsed === "object" && "error" in parsed
-            ? String((parsed as { error?: unknown }).error)
-            : typeof parsed === "string"
-            ? parsed
-            : `Status ${res.status}`;
-        alert(`Erro do servidor: ${String(errMsg)}`);
+    setSalaSelecionada(sala);
+    setIdEspaco("");
+    setCronograma([]);
+    setEspacos([]);
+
+    if (sala) {
+      fetch(`/api/reservar?tipo=espacos&idSala=${id}`)
+        .then((res) => res.json())
+        .then((d) => Array.isArray(d) && setEspacos(d));
+    }
+  };
+
+  // Carregar Cronograma
+  useEffect(() => {
+    if (idEspaco && data) {
+      fetch(`/api/reservar?idEspaco=${idEspaco}&data=${data}`)
+        .then((res) => res.json())
+        .then((d) => Array.isArray(d) && setCronograma(d));
+    }
+  }, [idEspaco, data]);
+
+  // Função para processar imagem
+  const tratarCaminhoImagem = (caminho: string | null) => {
+    if (!caminho) return "";
+    const limpo = caminho.trim().replace(/[\n\r\s]/g, "");
+
+    if (limpo.startsWith("data:") || limpo.startsWith("http")) return limpo;
+
+    if (limpo.length > 200) return `data:image/png;base64,${limpo}`;
+    return `/${encodeURIComponent(caminho)}`;
+  };
+
+  const formatarDataBonita = (dataStr: string) => {
+    if (!dataStr) return "";
+    const parts = dataStr.split("-");
+    const date = new Date(
+      Number(parts[0]),
+      Number(parts[1]) - 1,
+      Number(parts[2]),
+    );
+    return date.toLocaleDateString("pt-BR", {
+      weekday: "long",
+      day: "2-digit",
+      month: "2-digit",
+    });
+  };
+
+  // Envio do Formulário
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const dtParts = data.split("-");
+    const dtObj = new Date(
+      Number(dtParts[0]),
+      Number(dtParts[1]) - 1,
+      Number(dtParts[2]),
+    );
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    if (dtObj < hoje) {
+      showToast("Data passada não pode, boy!", "error");
+      setLoading(false);
+      return;
+    }
+    if (horaFim <= horaInicio) {
+      showToast("Hora final deve ser maior que inicial.", "error");
+      setLoading(false);
+      return;
+    }
+
+    let finalId = idUsuarioAuth;
+    let finalEmail = emailUsuario;
+
+    if (!finalId && supabase) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.user) {
+        finalId = session.user.id;
+        finalEmail = session.user.email || "";
+      } else {
+        showToast("Faça login para reservar.", "error");
+        setLoading(false);
         return;
       }
-
-      if (
-        parsed &&
-        typeof parsed === "object" &&
-        "success" in parsed &&
-        (parsed as { success?: unknown }).success === true
-      ) {
-        alert("Reserva criada com sucesso!");
-        setHoraInicio("");
-        setHoraFim("");
-        setMotivo("");
-        buscarReservas();
-      } else {
-        const errMsg =
-          parsed && typeof parsed === "object" && "error" in parsed
-            ? String((parsed as { error?: unknown }).error)
-            : "Erro desconhecido ao criar reserva.";
-        alert(`Erro ao criar reserva: ${String(errMsg)}`);
-      }
-    } catch (erroSalvar) {
-      console.error("Erro ao salvar reserva:", erroSalvar);
-      alert(
-        "Erro ao criar reserva (falha de conexão). Veja o console para detalhes."
-      );
     }
-  }, [
-    espacoSelecionado,
-    dataSelecionada,
-    horaInicio,
-    horaFim,
-    motivo,
-    idUsuario,
-    uuidSupabase,
-    buscarReservas,
-  ]);
 
-  const nomeEspacoSelecionado =
-    listaEspacos.find((e) => e.idEspaco === espacoSelecionado)?.codigoEspaco ??
-    "Não Selecionado";
+    try {
+      const res = await fetch("/api/reservar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idEspaco,
+          data,
+          horaInicio,
+          horaFim,
+          motivo,
+          idUsuarioSupabase: finalId,
+          emailUsuario: finalEmail,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        showToast(
+          res.status === 404 ? "Usuário sem cadastro." : `Erro: ${json.error}`,
+          "error",
+        );
+      } else {
+        showToast("Reserva feita com sucesso!", "success");
+        fetch(`/api/reservar?idEspaco=${idEspaco}&data=${data}`)
+          .then((r) => r.json())
+          .then(setCronograma);
+        setMotivo("");
+      }
+    } catch {
+      showToast("Erro de conexão.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 p-8">
-      <div className="max-w-5xl mx-auto">
-        <header className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-800">
-            Nova Reserva de Espaço
-          </h1>
-          <div className="text-sm text-gray-500 mt-2">
-            {carregandoUsuario ? (
-              "Carregando autenticação..."
-            ) : idUsuario ? (
-              <span>
-                Usuário ID:{" "}
-                <span className="font-medium text-teal-600">{idUsuario}</span>
-              </span>
-            ) : uuidSupabase ? (
-              <span>
-                Autenticado (UUID):{" "}
-                <span className="font-medium">{uuidSupabase}</span>
-                {emailUsuario ? ` — ${emailUsuario}` : ""}
-              </span>
-            ) : (
-              <span>Não autenticado</span>
-            )}
-          </div>
-        </header>
+    <>
+      {toast.visible && (
+        <div
+          className={`fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-md shadow-lg z-50 border ${toast.type === "success" ? "bg-teal-500 border-teal-300 text-white" : "bg-red-500 border-red-500 text-white"}`}
+        >
+          {toast.message}
+        </div>
+      )}
 
-        <main className="grid grid-cols-12 gap-6">
-          <section className="col-span-12 lg:col-span-5">
-            <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5 shadow-lg">
-              <h2 className="text-xl font-bold mb-4">Detalhes da Reserva</h2>
+      <div className="flex justify-center items-start mt-5 pb-10 w-full px-4">
+        <div className="bg-white shadow-md rounded-xl w-full max-w-6xl border border-gray-300 flex flex-col lg:flex-row overflow-hidden">
+          {/* ESQUERDA - FORMULÁRIO */}
+          <div className="w-full lg:w-[35%] p-6 border-b lg:border-b-0 lg:border-r border-gray-300">
+            <div className="mb-6">
+              <h1
+                className={`${inriaSerif700.className} text-3xl text-gray-900`}
+              >
+                RESERVAR ESPAÇO
+              </h1>
+              <div className="text-sm font-bold mt-1">
+                {emailUsuario ? (
+                  <span className="text-teal-600">Logado: {emailUsuario}</span>
+                ) : (
+                  <span className="text-gray-400">Verificando login...</span>
+                )}
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <p className="mb-1 text-gray-700 font-medium">
+                  Sala: <span className="text-red-500">*</span>
+                </p>
+                <select
+                  required
+                  className="w-full h-10 border border-gray-300 rounded p-2 bg-white"
+                  onChange={handleSalaChange}
+                  value={salaSelecionada?.idSala || ""}
+                >
+                  <option value="" disabled>
+                    Selecione...
+                  </option>
+                  {salas.map((s) => (
+                    <option key={s.idSala} value={s.idSala}>
+                      {s.nomeSala}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               <div>
-                <label
-                  htmlFor="espaco"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Espaço
-                </label>
+                <p className="mb-1 text-gray-700 font-medium">
+                  Espaço: <span className="text-red-500">*</span>
+                </p>
                 <select
-                  id="espaco"
-                  value={espacoSelecionado ?? ""}
-                  onChange={(e) =>
-                    setEspacoSelecionado(
-                      e.target.value === "" ? null : Number(e.target.value)
-                    )
-                  }
-                  className="w-full border border-gray-300 rounded-lg p-2 bg-white focus:ring-teal-500 focus:border-teal-500"
-                  disabled={carregandoEspacos}
+                  required
+                  className="w-full h-10 border border-gray-300 rounded p-2 bg-white disabled:bg-gray-100"
+                  value={idEspaco}
+                  onChange={(e) => setIdEspaco(e.target.value)}
+                  disabled={!salaSelecionada}
                 >
-                  <option value="">
-                    {carregandoEspacos
-                      ? "Carregando..."
-                      : "Selecione um espaço"}
+                  <option value="" disabled>
+                    Selecione...
                   </option>
-                  {listaEspacos.map((e) => (
+                  {espacos.map((e) => (
                     <option key={e.idEspaco} value={e.idEspaco}>
                       {e.codigoEspaco}
                     </option>
@@ -443,201 +287,173 @@ export default function ReservarPage() {
               </div>
 
               <div>
-                <label
-                  htmlFor="data"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Data
-                </label>
+                <p className="mb-1 text-gray-700 font-medium">
+                  Data: <span className="text-red-500">*</span>
+                </p>
                 <input
-                  id="data"
+                  required
                   type="date"
-                  value={dataSelecionada}
-                  onChange={(e) => setDataSelecionada(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-2 bg-white focus:ring-teal-500 focus:border-teal-500"
-                  max={
-                    new Date(new Date().setDate(new Date().getDate() + 30))
-                      .toISOString()
-                      .split("T")[0]
-                  }
+                  className="w-full h-10 border border-gray-300 rounded p-2"
+                  onChange={(e) => setData(e.target.value)}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="horaInicio"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Hora Início
-                  </label>
+              <div className="flex gap-2">
+                <div className="w-1/2">
+                  <p className="mb-1 text-gray-700 font-medium">
+                    Início <span className="text-red-500">*</span>
+                  </p>
                   <input
-                    id="horaInicio"
+                    required
                     type="time"
-                    value={horaInicio}
+                    className="w-full h-10 border border-gray-300 rounded p-2"
                     onChange={(e) => setHoraInicio(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-2 bg-white focus:ring-teal-500 focus:border-teal-500"
-                    step="1800"
                   />
                 </div>
-                <div>
-                  <label
-                    htmlFor="horaFim"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Hora Fim
-                  </label>
+                <div className="w-1/2">
+                  <p className="mb-1 text-gray-700 font-medium">
+                    Fim <span className="text-red-500">*</span>
+                  </p>
                   <input
-                    id="horaFim"
+                    required
                     type="time"
-                    value={horaFim}
+                    className="w-full h-10 border border-gray-300 rounded p-2"
                     onChange={(e) => setHoraFim(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-2 bg-white focus:ring-teal-500 focus:border-teal-500"
-                    step="1800"
                   />
                 </div>
               </div>
 
               <div>
-                <label
-                  htmlFor="motivo"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Motivo
-                </label>
+                <p className="mb-1 text-gray-700 font-medium">
+                  Motivo: <span className="text-red-500">*</span>
+                </p>
                 <textarea
-                  id="motivo"
+                  required
                   rows={3}
+                  className="w-full border border-gray-300 rounded p-2 resize-none"
                   value={motivo}
                   onChange={(e) => setMotivo(e.target.value)}
-                  placeholder="Descreva brevemente o motivo da reserva..."
-                  className="w-full border border-gray-300 rounded-lg p-2 bg-white focus:ring-teal-500 focus:border-teal-500 resize-none"
                 />
               </div>
 
-              <div className="flex gap-3 justify-end pt-2">
+              <div className="flex justify-center gap-16 pt-2">
                 <button
                   type="button"
-                  className="px-5 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-                  onClick={() => {
-                    setHoraInicio("");
-                    setHoraFim("");
-                    setMotivo("");
-                  }}
+                  className="px-10 py-2 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 text-gray-700"
                 >
-                  Limpar Campos
+                  Cancelar
                 </button>
-
                 <button
-                  type="button"
-                  className="px-5 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition disabled:opacity-50"
-                  onClick={salvarReserva}
-                  disabled={
-                    carregandoEspacos ||
-                    !espacoSelecionado ||
-                    !dataSelecionada ||
-                    !horaInicio ||
-                    !horaFim ||
-                    !motivo
-                  }
+                  type="submit"
+                  disabled={loading}
+                  className="px-10 py-2 bg-teal-500 text-white rounded hover:bg-teal-600 disabled:opacity-50"
                 >
-                  Reservar
+                  {loading ? "Salvando..." : "✓ Salvar"}
                 </button>
               </div>
-            </div>
-          </section>
+            </form>
+          </div>
 
-          <section className="col-span-12 lg:col-span-7">
-            <h2 className="text-xl font-semibold mb-3 text-gray-800">
-              Cronograma do Dia:{" "}
-              {dataSelecionada
-                ? new Date(`${dataSelecionada}T00:00:00`).toLocaleDateString(
-                    "pt-BR",
-                    { weekday: "long", day: "2-digit", month: "short" }
-                  )
-                : "Selecione uma data"}
-            </h2>
-            <p className="text-sm text-gray-500 mb-4">
-              Visualizando reservas para o espaço{" "}
-              <span className="font-medium text-teal-600">
-                {nomeEspacoSelecionado}
-              </span>
-            </p>
-
-            <div className="grid grid-cols-1 gap-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-              {erroReservas && (
-                <div className="text-sm text-red-700 p-4 bg-red-50 rounded-lg shadow-sm border border-red-200">
-                  Erro: {erroReservas}
+          {/* DIREITA - MAPA E CRONOGRAMA */}
+          <div className="flex-1 p-6 bg-gray-50 flex flex-col gap-6">
+            {/* Exibição do Mapa */}
+            <div className="w-full h-[300px] bg-white border border-gray-300 rounded relative flex items-center justify-center overflow-hidden">
+              {salaSelecionada?.mapa ? (
+                <img
+                  key={salaSelecionada.idSala}
+                  src={tratarCaminhoImagem(salaSelecionada.mapa)}
+                  alt={`Mapa da ${salaSelecionada.nomeSala}`}
+                  className="w-full h-full object-contain p-2"
+                />
+              ) : (
+                <div className="text-gray-400 flex flex-col items-center">
+                  <span className="text-3xl">🗺️</span>
+                  <span className="text-sm mt-1">
+                    {salaSelecionada
+                      ? "Sala sem mapa cadastrado"
+                      : "Selecione uma sala"}
+                  </span>
                 </div>
               )}
-              {carregandoReservas ? (
-                <div className="text-sm text-gray-500 p-4 bg-white rounded-lg shadow-sm">
-                  Carregando cronograma...
+            </div>
+
+            {/* Lista Cronograma */}
+            <div className="flex-1 border border-gray-300 rounded p-4 bg-white overflow-y-auto custom-scrollbar min-h-[250px]">
+              <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
+                <h3
+                  className={`${inriaSerif700.className} text-gray-800 text-lg`}
+                >
+                  Cronograma
+                </h3>
+                {data && (
+                  <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded uppercase">
+                    {formatarDataBonita(data)}
+                  </span>
+                )}
+              </div>
+
+              {!idEspaco || !data ? (
+                <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                  <p className="text-sm italic">Selecione espaço e data.</p>
                 </div>
-              ) : listaReservas.length === 0 ? (
-                <div className="text-sm text-gray-500 p-4 bg-white rounded-lg shadow-sm">
-                  {espacoSelecionado && dataSelecionada
-                    ? `Nenhuma reserva encontrada para ${nomeEspacoSelecionado} em ${dataSelecionada}.`
-                    : "Selecione um espaço e uma data para ver o cronograma."}
+              ) : cronograma.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center">
+                  <p className="text-green-600 font-bold">
+                    Todos os horários estão livres!
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Nenhuma reserva para hoje.
+                  </p>
                 </div>
               ) : (
-                listaReservas.map((r) => {
-                  const nomeProprietario =
-                    r.criador?.nome && r.criador.nome.trim().length > 0
-                      ? r.criador.nome
-                      : formatarNomeAPartirDoEmail(r.criador?.email ?? null);
-                  return (
-                    <div
-                      key={r.idReserva}
-                      className="flex items-center gap-4 bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:border-teal-400 transition"
-                    >
-                      <div className="shrink-0 w-2 h-full min-h-10 rounded-full bg-teal-500" />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-800">
-                          {nomeProprietario}
+                <div className="space-y-2">
+                  {cronograma.map((res) => {
+                    const hIni = new Date(res.horaInicio).toLocaleTimeString(
+                      "pt-BR",
+                      { timeZone: "UTC", hour: "2-digit", minute: "2-digit" },
+                    );
+                    const hFim = new Date(res.horaFim).toLocaleTimeString(
+                      "pt-BR",
+                      { timeZone: "UTC", hour: "2-digit", minute: "2-digit" },
+                    );
+                    return (
+                      <div
+                        key={res.idReserva}
+                        className="bg-white border-l-4 border-teal-500 p-2 shadow-sm text-sm flex gap-3 items-start hover:bg-gray-50 transition"
+                      >
+                        <div className="flex-shrink-0">
+                          {res.criador.foto ? (
+                            <img
+                              src={tratarCaminhoImagem(res.criador.foto)}
+                              alt="Avatar"
+                              className="w-[40px] h-[40px] rounded-full object-cover border border-gray-200"
+                            />
+                          ) : (
+                            <div className="w-[40px] h-[40px] rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold border border-gray-300">
+                              {res.criador.nome.charAt(0).toUpperCase()}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-xs text-gray-600 truncate">
-                          {r.motivo}
+                        <div className="flex-1">
+                          <div className="flex justify-between font-bold text-gray-800">
+                            <span>{res.criador.nome}</span>
+                            <span className="text-xs font-normal bg-gray-100 px-1 rounded">
+                              {hIni} - {hFim}
+                            </span>
+                          </div>
+                          <p className="text-gray-500 text-xs mt-1 truncate">
+                            "{res.motivo}"
+                          </p>
                         </div>
                       </div>
-                      <div className="shrink-0 text-sm font-semibold text-gray-700 text-right w-32">
-                        {formatarIntervaloHorario(r.horaInicio, r.horaFim)}
-                      </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </div>
               )}
             </div>
-          </section>
-        </main>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
-}
-
-function formatarNomeAPartirDoEmail(email?: string | null) {
-  if (!email) return "Usuário";
-  const local = email.split("@")[0];
-  const partes = local.split(/[._-]+/).filter(Boolean);
-  return (
-    partes.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ") || local
-  );
-}
-
-function formatarIntervaloHorario(inicioIso: string, fimIso: string) {
-  try {
-    const inicio = new Date(inicioIso);
-    const fim = new Date(fimIso);
-    const h1 = inicio.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    const h2 = fim.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    return `${h1} — ${h2}`;
-  } catch {
-    return "";
-  }
 }

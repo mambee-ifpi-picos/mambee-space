@@ -1,10 +1,37 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 
+/**
+ * Função auxiliar para recuperar valor de uma propriedade em um objeto
+ * ignorando se a chave está em maiúsculo ou minúsculo (Case Insensitive).
+ */
+function pegarValor(
+  obj: Record<string, unknown> | null,
+  chavesPossiveis: string[]
+) {
+  if (!obj) return null;
+  const chavesDoObjeto = Object.keys(obj);
+
+  for (const chave of chavesPossiveis) {
+    // 1. Tenta pegar a chave exata
+    if (obj[chave] !== undefined && obj[chave] !== null) return obj[chave];
+
+    // 2. Tenta encontrar a chave ignorando Case Sensitive
+    const chaveReal = chavesDoObjeto.find(
+      (k) => k.toLowerCase() === chave.toLowerCase()
+    );
+    if (chaveReal && obj[chaveReal] !== undefined && obj[chaveReal] !== null) {
+      return obj[chaveReal];
+    }
+  }
+  return null;
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
 
+    // --- Filtros ---
     const filtroSala = (searchParams.get("sala") ?? "").trim().toLowerCase();
     const filtroEspaco = (searchParams.get("espaco") ?? "")
       .trim()
@@ -21,59 +48,106 @@ export async function GET(req: Request) {
 
     if (!dataInicio || !dataFim) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Os campos 'inicio' e 'fim' são obrigatórios.",
-        },
+        { success: false, error: "Datas obrigatórias" },
         { status: 400 }
       );
     }
 
-    const dtInicio = new Date(`${dataInicio}T00:00:00`);
-    const dtFim = new Date(`${dataFim}T23:59:59`);
-
-    const { data: reservasData, error: errorReservas } = await supabase
+    // 1. Busca Reservas (Ordenadas por Data Crescente)
+    const { data: reservasData, error: errRes } = await supabase
       .from("Reserva")
       .select("*")
-      .order("horaInicio", { ascending: false });
+      .order("horaInicio", { ascending: true });
 
-    if (errorReservas) throw new Error(errorReservas.message);
+    if (errRes) throw new Error(`Erro Reserva: ${errRes.message}`);
 
-    const { data: espacos } = await supabase
-      .from("Espaco")
-      .select("idEspaco, codigoEspaco, idSalaPertence");
+    // 2. Busca Dados Auxiliares (Usuários, Espaços, Salas)
+    const { data: usuarios } = await supabase.from("Usuario").select("*");
+    const { data: espacos } = await supabase.from("Espaco").select("*");
+    const { data: salas } = await supabase.from("Sala").select("*");
 
-    const { data: salas } = await supabase
-      .from("Sala")
-      .select("idSala, nomeSala");
-
-    const { data: usuarios } = await supabase
-      .from("Usuario")
-      .select("idUsuario, nome, email, foto");
-
+    // 3. Processamento e Cruzamento de Dados
     const reservasMapeadas =
       reservasData?.map((r) => {
-        const espaco = espacos?.find((e) => e.idEspaco === r.idEspacoReservado);
-        const sala = espaco
-          ? salas?.find((s) => s.idSala === espaco.idSalaPertence)
-          : null;
-        const usuario = usuarios?.find(
-          (u) => u.idUsuario === r.idUsuarioCriador
+        // Recupera ID do Criador (suporta variações de nome da coluna)
+        const idCriadorRaw = pegarValor(r, [
+          "idUsuarioCriador",
+          "idusuariocriador",
+          "id_usuario_criador",
+          "idUsuario",
+          "idusuario",
+          "criador_id",
+        ]);
+        const idCriadorString = String(idCriadorRaw);
+
+        // Encontra o usuário na lista
+        const usuarioReal = usuarios?.find((u) => {
+          const idUserRaw = pegarValor(u, [
+            "idUsuario",
+            "idusuario",
+            "id_usuario",
+            "id",
+            "userId",
+          ]);
+          return String(idUserRaw) === idCriadorString;
+        });
+
+        // Fallback: Tenta encontrar via idAuth se o idUsuario falhar
+        let usuarioFinal = usuarioReal;
+        if (!usuarioFinal && usuarios) {
+          const idAuthReserva = pegarValor(r, ["idAuth", "id_auth"]);
+          if (idAuthReserva) {
+            usuarioFinal = usuarios.find((u) => {
+              const idAuthUser = pegarValor(u, ["idAuth", "id_auth"]);
+              return String(idAuthUser) === String(idAuthReserva);
+            });
+          }
+        }
+
+        // Recupera ID do Espaço
+        const idEspacoResRaw = pegarValor(r, [
+          "idEspacoReservado",
+          "id_espaco_reservado",
+          "idespacoreservado",
+        ]);
+
+        // Encontra Espaço e Sala vinculada
+        const espaco = espacos?.find(
+          (e) =>
+            String(pegarValor(e, ["idEspaco", "idespaco"])) ===
+            String(idEspacoResRaw)
         );
+
+        const sala = espaco
+          ? salas?.find(
+              (s) =>
+                String(pegarValor(s, ["idSala", "idsala"])) ===
+                String(pegarValor(espaco, ["idSalaPertence", "idsalapertence"]))
+            )
+          : null;
+
+        // Define nome de exibição (Nome do usuário ou ID caso não encontrado)
+        let nomeDisplay = "Usuário Desconhecido";
+        if (usuarioFinal?.nome) {
+          nomeDisplay = usuarioFinal.nome;
+        } else {
+          nomeDisplay = `Desconhecido (ID: ${idCriadorRaw})`;
+        }
 
         return {
           id: r.idReserva,
           motivo: r.motivo ?? "",
           inicio: r.horaInicio ?? "",
           fim: r.horaFim ?? "",
-          usuario: usuario?.nome ?? "",
-          email: usuario?.email ?? "",
-          foto: usuario?.foto || undefined,
+          usuario: nomeDisplay,
+          email: usuarioFinal?.email ?? "",
+          foto: usuarioFinal?.foto || null,
           sala: sala?.nomeSala ?? "",
           espaco: espaco?.codigoEspaco ?? "",
         };
       }) ?? [];
 
+    // 4. Filtragem no Servidor
     const reservasFiltradas = reservasMapeadas.filter((res) => {
       const salaOK = res.sala.toLowerCase().includes(filtroSala);
       const espacoOK = res.espaco.toLowerCase().includes(filtroEspaco);
@@ -81,18 +155,23 @@ export async function GET(req: Request) {
       const usuarioOK = res.usuario.toLowerCase().includes(filtroUsuario);
 
       const dtInicioRes = new Date(res.inicio);
-      const dataOK = dtInicioRes >= dtInicio && dtInicioRes <= dtFim;
+      const dtInicioFiltro = new Date(`${dataInicio}T00:00:00`);
+      const dtFimFiltro = new Date(`${dataFim}T23:59:59`);
+
+      const dataOK =
+        dtInicioRes.getTime() >= dtInicioFiltro.getTime() &&
+        dtInicioRes.getTime() <= dtFimFiltro.getTime();
 
       return salaOK && espacoOK && motivoOK && usuarioOK && dataOK;
     });
 
     return NextResponse.json({
       success: true,
-      total: reservasFiltradas.length,
       reservas: reservasFiltradas,
     });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Erro inesperado";
+    console.error("Erro no Relatório:", err);
+    const msg = err instanceof Error ? err.message : "Erro interno";
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
