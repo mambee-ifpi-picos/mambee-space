@@ -125,6 +125,9 @@ export default function CriarSalaEspacos() {
   /* =====================
      SUBMIT
   ====================== */
+  /* =====================
+      SUBMIT (COM UPLOAD DE VERDADE)
+  ====================== */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -159,9 +162,32 @@ export default function CriarSalaEspacos() {
         return;
       }
 
+      let nomeMapaNoBanco = "sem_mapa"; // Valor padrão se não tiver imagem
+
+      if (mapa) {
+        // 1. Gera um nome único pra não dar conflito
+        const fileExt = mapa.file.name.split(".").pop();
+        const nomeArquivo = `mapa-${Date.now()}.${fileExt}`;
+
+        // 2. Sobe o arquivo pro bucket "mapas_salas"
+        const { error: uploadError } = await supabase.storage
+          .from("mapas_salas")
+          .upload(nomeArquivo, mapa.file);
+
+        if (uploadError) {
+          console.error("Erro no upload:", uploadError);
+          showToast("Erro ao subir a imagem do mapa!", "error");
+          setLoading(false);
+          return;
+        }
+
+        nomeMapaNoBanco = nomeArquivo;
+      }
+      // -------------------------------------------------
+
       const body = {
         nomeSala,
-        mapa: mapa ? mapa.file.name : "sem_mapa",
+        mapa: nomeMapaNoBanco,
         limiteHorasReserva: limite,
         ativa: situacao === "Ativa",
         idAuth,

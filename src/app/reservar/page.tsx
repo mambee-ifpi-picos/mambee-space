@@ -1,19 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { Inria_Serif } from "next/font/google";
-import { createClient, type Session } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabaseClient";
+import type { Session } from "@supabase/supabase-js"; // Mantido conforme seu original
 
 const inriaSerif700 = Inria_Serif({ subsets: ["latin"], weight: ["700"] });
 
-// Configuração Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase =
-  supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
-
-// Tipos
-type Sala = { idSala: number; nomeSala: string; mapa: string | null };
+type Sala = { idSala: number; nomeSala: string; mapa?: string | null };
 type Espaco = { idEspaco: number; codigoEspaco: string };
 type CronogramaItem = {
   idReserva: number;
@@ -24,21 +19,29 @@ type CronogramaItem = {
 };
 
 export default function ReservarEspaco() {
+  // ESTADOS DE DADOS
   const [salas, setSalas] = useState<Sala[]>([]);
   const [espacos, setEspacos] = useState<Espaco[]>([]);
   const [cronograma, setCronograma] = useState<CronogramaItem[]>([]);
 
+  // ESTADOS DE UI
   const [salaSelecionada, setSalaSelecionada] = useState<Sala | null>(null);
+  const [mapaAtual, setMapaAtual] = useState<string | null>(null);
+  const [carregandoMapa, setCarregandoMapa] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // ESTADOS DO FORMULÁRIO
   const [idEspaco, setIdEspaco] = useState("");
   const [data, setData] = useState("");
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFim, setHoraFim] = useState("");
   const [motivo, setMotivo] = useState("");
 
+  // ESTADOS DE AUTH
   const [idUsuarioAuth, setIdUsuarioAuth] = useState<string | null>(null);
   const [emailUsuario, setEmailUsuario] = useState<string>("");
+  const [authLoading, setAuthLoading] = useState(true);
 
-  const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({
     visible: false,
     message: "",
@@ -46,50 +49,63 @@ export default function ReservarEspaco() {
   });
 
   const showToast = useCallback((msg: string, type = "success") => {
-    setToast({ visible: true, message: msg, type });
+    setToast({ visible: true, message: msg, type: type as string });
     setTimeout(
       () => setToast({ visible: false, message: "", type: "success" }),
       3500,
     );
   }, []);
 
-  // Gerenciamento de Sessão (Auth)
   useEffect(() => {
-    if (!supabase) return;
-    const handleSession = (session: Session | null) => {
+    const setupAuth = async () => {
+      setAuthLoading(true);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (session?.user) {
         setIdUsuarioAuth(session.user.id);
         setEmailUsuario(session.user.email || "");
-      } else {
-        setIdUsuarioAuth(null);
-        setEmailUsuario("");
       }
+      setAuthLoading(false);
+
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          setIdUsuarioAuth(session.user.id);
+          setEmailUsuario(session.user.email || "");
+        } else {
+          setIdUsuarioAuth(null);
+          setEmailUsuario("");
+        }
+        setAuthLoading(false);
+      });
+
+      return () => subscription.unsubscribe();
     };
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => handleSession(session));
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_, session) => handleSession(session));
-    return () => subscription.unsubscribe();
+
+    setupAuth();
   }, []);
 
-  // Carregar Salas
+  // CARREGAMENTO DE SALAS
   useEffect(() => {
     fetch("/api/reservar?tipo=salas")
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setSalas(data);
       })
-      .catch((e) => console.error("Erro salas:", e));
+      .catch((e) => console.error("Erro ao buscar salas:", e));
   }, []);
 
-  // Seleção de Sala
+  // LÓGICA DE SELEÇÃO E MAPA
   const handleSalaChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = Number(e.target.value);
     const sala = salas.find((s) => s.idSala === id) || null;
 
     setSalaSelecionada(sala);
+    setMapaAtual(null);
     setIdEspaco("");
     setCronograma([]);
     setEspacos([]);
@@ -98,10 +114,24 @@ export default function ReservarEspaco() {
       fetch(`/api/reservar?tipo=espacos&idSala=${id}`)
         .then((res) => res.json())
         .then((d) => Array.isArray(d) && setEspacos(d));
+
+      setCarregandoMapa(true);
+      fetch(`/api/reservar?tipo=sala_mapa&idSala=${id}`)
+        .then((res) => res.json())
+        .then((d) => {
+          console.log("O QUE VEIO DO BANCO:", d);
+
+          // CORREÇÃO 1: Optional Chain (d?.mapa)
+          if (d?.mapa) {
+            setMapaAtual(d.mapa);
+          } else {
+            setMapaAtual(null);
+          }
+        })
+        .finally(() => setCarregandoMapa(false));
     }
   };
 
-  // Carregar Cronograma
   useEffect(() => {
     if (idEspaco && data) {
       fetch(`/api/reservar?idEspaco=${idEspaco}&data=${data}`)
@@ -110,33 +140,31 @@ export default function ReservarEspaco() {
     }
   }, [idEspaco, data]);
 
-  // Função para processar imagem
   const tratarCaminhoImagem = (caminho: string | null) => {
-    if (!caminho) return "";
+    if (!caminho || caminho === "sem_mapa") return "";
     const limpo = caminho.trim().replace(/[\n\r\s]/g, "");
-
-    if (limpo.startsWith("data:") || limpo.startsWith("http")) return limpo;
-
-    if (limpo.length > 200) return `data:image/png;base64,${limpo}`;
-    return `/${encodeURIComponent(caminho)}`;
+    if (limpo.startsWith("http") || limpo.startsWith("data:")) {
+      return limpo;
+    }
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const nomeDoBucket = "mapas_salas";
+    return `${supabaseUrl}/storage/v1/object/public/${nomeDoBucket}/${limpo}`;
   };
 
   const formatarDataBonita = (dataStr: string) => {
     if (!dataStr) return "";
     const parts = dataStr.split("-");
-    const date = new Date(
+    return new Date(
       Number(parts[0]),
       Number(parts[1]) - 1,
       Number(parts[2]),
-    );
-    return date.toLocaleDateString("pt-BR", {
+    ).toLocaleDateString("pt-BR", {
       weekday: "long",
       day: "2-digit",
       month: "2-digit",
     });
   };
 
-  // Envio do Formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -151,12 +179,12 @@ export default function ReservarEspaco() {
     hoje.setHours(0, 0, 0, 0);
 
     if (dtObj < hoje) {
-      showToast("Data passada não pode, boy!", "error");
+      showToast("Data passada não pode!", "error");
       setLoading(false);
       return;
     }
     if (horaFim <= horaInicio) {
-      showToast("Hora final deve ser maior que inicial.", "error");
+      showToast("Hora inválida.", "error");
       setLoading(false);
       return;
     }
@@ -164,7 +192,7 @@ export default function ReservarEspaco() {
     let finalId = idUsuarioAuth;
     let finalEmail = emailUsuario;
 
-    if (!finalId && supabase) {
+    if (!finalId) {
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -172,7 +200,7 @@ export default function ReservarEspaco() {
         finalId = session.user.id;
         finalEmail = session.user.email || "";
       } else {
-        showToast("Faça login para reservar.", "error");
+        showToast("Você precisa estar logado!", "error");
         setLoading(false);
         return;
       }
@@ -196,11 +224,13 @@ export default function ReservarEspaco() {
       const json = await res.json();
       if (!res.ok) {
         showToast(
-          res.status === 404 ? "Usuário sem cadastro." : `Erro: ${json.error}`,
+          res.status === 404
+            ? "Usuário não cadastrado."
+            : `Erro: ${json.error}`,
           "error",
         );
       } else {
-        showToast("Reserva feita com sucesso!", "success");
+        showToast("Reserva realizada!", "success");
         fetch(`/api/reservar?idEspaco=${idEspaco}&data=${data}`)
           .then((r) => r.json())
           .then(setCronograma);
@@ -225,7 +255,7 @@ export default function ReservarEspaco() {
 
       <div className="flex justify-center items-start mt-5 pb-10 w-full px-4">
         <div className="bg-white shadow-md rounded-xl w-full max-w-6xl border border-gray-300 flex flex-col lg:flex-row overflow-hidden">
-          {/* ESQUERDA - FORMULÁRIO */}
+          {/* ESQUERDA */}
           <div className="w-full lg:w-[35%] p-6 border-b lg:border-b-0 lg:border-r border-gray-300">
             <div className="mb-6">
               <h1
@@ -233,20 +263,22 @@ export default function ReservarEspaco() {
               >
                 RESERVAR ESPAÇO
               </h1>
-              <div className="text-sm font-bold mt-1">
-                {emailUsuario ? (
+              <div className="text-sm font-bold mt-1 min-h-5">
+                {authLoading ? (
+                  <span className="text-gray-400 animate-pulse">
+                    Verificando usuário...
+                  </span>
+                ) : emailUsuario ? (
                   <span className="text-teal-600">Logado: {emailUsuario}</span>
                 ) : (
-                  <span className="text-gray-400">Verificando login...</span>
+                  <span className="text-red-400">Não logado (Faça login)</span>
                 )}
               </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <p className="mb-1 text-gray-700 font-medium">
-                  Sala: <span className="text-red-500">*</span>
-                </p>
+                <p className="mb-1 text-gray-700 font-medium">Sala: *</p>
                 <select
                   required
                   className="w-full h-10 border border-gray-300 rounded p-2 bg-white"
@@ -263,11 +295,8 @@ export default function ReservarEspaco() {
                   ))}
                 </select>
               </div>
-
               <div>
-                <p className="mb-1 text-gray-700 font-medium">
-                  Espaço: <span className="text-red-500">*</span>
-                </p>
+                <p className="mb-1 text-gray-700 font-medium">Espaço: *</p>
                 <select
                   required
                   className="w-full h-10 border border-gray-300 rounded p-2 bg-white disabled:bg-gray-100"
@@ -285,11 +314,8 @@ export default function ReservarEspaco() {
                   ))}
                 </select>
               </div>
-
               <div>
-                <p className="mb-1 text-gray-700 font-medium">
-                  Data: <span className="text-red-500">*</span>
-                </p>
+                <p className="mb-1 text-gray-700 font-medium">Data: *</p>
                 <input
                   required
                   type="date"
@@ -297,12 +323,9 @@ export default function ReservarEspaco() {
                   onChange={(e) => setData(e.target.value)}
                 />
               </div>
-
               <div className="flex gap-2">
                 <div className="w-1/2">
-                  <p className="mb-1 text-gray-700 font-medium">
-                    Início <span className="text-red-500">*</span>
-                  </p>
+                  <p className="mb-1 text-gray-700 font-medium">Início *</p>
                   <input
                     required
                     type="time"
@@ -311,9 +334,7 @@ export default function ReservarEspaco() {
                   />
                 </div>
                 <div className="w-1/2">
-                  <p className="mb-1 text-gray-700 font-medium">
-                    Fim <span className="text-red-500">*</span>
-                  </p>
+                  <p className="mb-1 text-gray-700 font-medium">Fim *</p>
                   <input
                     required
                     type="time"
@@ -322,11 +343,8 @@ export default function ReservarEspaco() {
                   />
                 </div>
               </div>
-
               <div>
-                <p className="mb-1 text-gray-700 font-medium">
-                  Motivo: <span className="text-red-500">*</span>
-                </p>
+                <p className="mb-1 text-gray-700 font-medium">Motivo: *</p>
                 <textarea
                   required
                   rows={3}
@@ -336,17 +354,17 @@ export default function ReservarEspaco() {
                 />
               </div>
 
-              <div className="flex justify-center gap-16 pt-2">
+              <div className="flex justify-center gap-3 pt-2">
                 <button
                   type="button"
-                  className="px-10 py-2 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 text-gray-700"
+                  className="px-4 py-2 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 text-gray-700"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-10 py-2 bg-teal-500 text-white rounded hover:bg-teal-600 disabled:opacity-50"
+                  className="px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600 disabled:opacity-50"
                 >
                   {loading ? "Salvando..." : "✓ Salvar"}
                 </button>
@@ -354,30 +372,34 @@ export default function ReservarEspaco() {
             </form>
           </div>
 
-          {/* DIREITA - MAPA E CRONOGRAMA */}
+          {/* DIREITA - MAPA */}
           <div className="flex-1 p-6 bg-gray-50 flex flex-col gap-6">
-            {/* Exibição do Mapa */}
             <div className="w-full h-[300px] bg-white border border-gray-300 rounded relative flex items-center justify-center overflow-hidden">
-              {salaSelecionada?.mapa ? (
-                <img
-                  key={salaSelecionada.idSala}
-                  src={tratarCaminhoImagem(salaSelecionada.mapa)}
-                  alt={`Mapa da ${salaSelecionada.nomeSala}`}
-                  className="w-full h-full object-contain p-2"
+              {carregandoMapa ? (
+                <span className="text-teal-600 font-bold animate-pulse">
+                  Carregando mapa...
+                </span>
+              ) : mapaAtual ? (
+                <Image
+                  src={tratarCaminhoImagem(mapaAtual)}
+                  alt="Mapa"
+                  fill
+                  className="object-contain p-2"
+                  unoptimized={true}
                 />
               ) : (
                 <div className="text-gray-400 flex flex-col items-center">
-                  <span className="text-3xl">🗺️</span>
+                  <span className="text-3xl"></span>
                   <span className="text-sm mt-1">
                     {salaSelecionada
-                      ? "Sala sem mapa cadastrado"
+                      ? "Sem mapa disponível"
                       : "Selecione uma sala"}
                   </span>
                 </div>
               )}
             </div>
 
-            {/* Lista Cronograma */}
+            {/* CRONOGRAMA */}
             <div className="flex-1 border border-gray-300 rounded p-4 bg-white overflow-y-auto custom-scrollbar min-h-[250px]">
               <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
                 <h3
@@ -391,10 +413,9 @@ export default function ReservarEspaco() {
                   </span>
                 )}
               </div>
-
               {!idEspaco || !data ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                  <p className="text-sm italic">Selecione espaço e data.</p>
+                  <p className="text-sm italic">Selecione espaço e data...</p>
                 </div>
               ) : cronograma.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center">
@@ -410,26 +431,38 @@ export default function ReservarEspaco() {
                   {cronograma.map((res) => {
                     const hIni = new Date(res.horaInicio).toLocaleTimeString(
                       "pt-BR",
-                      { timeZone: "UTC", hour: "2-digit", minute: "2-digit" },
+                      {
+                        timeZone: "UTC",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
                     );
                     const hFim = new Date(res.horaFim).toLocaleTimeString(
                       "pt-BR",
-                      { timeZone: "UTC", hour: "2-digit", minute: "2-digit" },
+                      {
+                        timeZone: "UTC",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
                     );
                     return (
                       <div
                         key={res.idReserva}
                         className="bg-white border-l-4 border-teal-500 p-2 shadow-sm text-sm flex gap-3 items-start hover:bg-gray-50 transition"
                       >
-                        <div className="flex-shrink-0">
+                        {/* CORREÇÃO 2: shrink-0 */}
+                        <div className="shrink-0">
                           {res.criador.foto ? (
-                            <img
+                            <Image
                               src={tratarCaminhoImagem(res.criador.foto)}
                               alt="Avatar"
-                              className="w-[40px] h-[40px] rounded-full object-cover border border-gray-200"
+                              width={40}
+                              height={40}
+                              className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                              unoptimized={true}
                             />
                           ) : (
-                            <div className="w-[40px] h-[40px] rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold border border-gray-300">
+                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold border border-gray-300">
                               {res.criador.nome.charAt(0).toUpperCase()}
                             </div>
                           )}

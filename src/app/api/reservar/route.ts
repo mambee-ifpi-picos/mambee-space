@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET: Buscar Salas, Espaços e Cronograma
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const tipo = searchParams.get("tipo");
@@ -10,20 +9,34 @@ export async function GET(request: Request) {
   const data = searchParams.get("data");
 
   try {
-    // 1. Salas
+    // 1. LISTA DE SALAS (LEVE - SÓ ID E NOME)
     if (tipo === "salas") {
       const salas = await prisma.sala.findMany({
         where: { ativa: true },
         select: {
           idSala: true,
           nomeSala: true,
-          mapa: true,
+          // mapa: true, <--- NÃO TEM MAPA AQUI PRA SER RÁPIDO
           limiteHorasReserva: true,
         },
         orderBy: { nomeSala: "asc" },
       });
       return NextResponse.json(salas);
     }
+
+    // 🚨🚨 AQUI ESTAVA FALTANDO! A PARTE QUE BUSCA O MAPA SOZINHO 🚨🚨
+    if (tipo === "sala_mapa" && idSala) {
+      const salaUnica = await prisma.sala.findUnique({
+        where: { idSala: Number(idSala) },
+        select: {
+          mapa: true, // <--- AQUI BUSCA O MAPA PESADO
+          nomeSala: true,
+        },
+      });
+      // Retorna o objeto direto { mapa: "..." }
+      return NextResponse.json(salaUnica);
+    }
+    // 🚨🚨 FIM DA PARTE QUE FALTAVA 🚨🚨
 
     // 2. Espaços
     if (tipo === "espacos" && idSala) {
@@ -35,7 +48,7 @@ export async function GET(request: Request) {
       return NextResponse.json(espacos);
     }
 
-    // 3. Cronograma (Filtrado por dia e espaço)
+    // 3. Cronograma
     if (idEspaco && data) {
       const inicioDia = new Date(`${data}T00:00:00.000Z`);
       const fimDia = new Date(`${data}T23:59:59.999Z`);
@@ -61,6 +74,7 @@ export async function GET(request: Request) {
       return NextResponse.json(reservas);
     }
 
+    // Se não entrou em nenhum if, retorna vazio (foi isso que aconteceu no teu log)
     return NextResponse.json([]);
   } catch (error) {
     console.error("Erro API GET:", error);
@@ -68,7 +82,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST: Criar Reserva
+// O POST CONTINUA O MESMO, NÃO PRECISA MEXER SE JÁ TÁ FUNCIONANDO
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -82,7 +96,6 @@ export async function POST(request: Request) {
       emailUsuario,
     } = body;
 
-    // Validações básicas
     if (!horaInicio || !horaFim)
       return NextResponse.json(
         { error: "Horários obrigatórios!" },
@@ -111,7 +124,6 @@ export async function POST(request: Request) {
         { status: 401 }
       );
 
-    // Busca ou cria usuário local vinculado ao Supabase
     let usuarioReal = await prisma.usuario.findUnique({
       where: { idAuth: idUsuarioSupabase },
     });
@@ -143,7 +155,6 @@ export async function POST(request: Request) {
         { status: 404 }
       );
 
-    // Validação de limite de horas da sala
     const espacoInfo = await prisma.espaco.findUnique({
       where: { idEspaco: Number(idEspaco) },
       include: { sala: true },
@@ -161,7 +172,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Verificação de conflito de horário
     const conflito = await prisma.reserva.findFirst({
       where: {
         idEspacoReservado: Number(idEspaco),
@@ -181,7 +191,6 @@ export async function POST(request: Request) {
         { status: 409 }
       );
 
-    // Criação da reserva
     const novaReserva = await prisma.reserva.create({
       data: {
         motivo,

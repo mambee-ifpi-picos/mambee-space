@@ -56,14 +56,21 @@ export default function RelatorioPage() {
   const [dados, setDados] = useState<RelatorioItem[]>([]);
   const [carregando, setCarregando] = useState(false);
 
+  // Estado para o erro
+  const [erro, setErro] = useState("");
+
   async function buscarRelatorio() {
+    // Validação simples e direta
     if (!dataInicio || !dataFim) {
-      alert("Preencha as datas de início e fim!");
+      setErro("Preencha as datas para buscar o relatório.");
+      setTimeout(() => setErro(""), 3000); // Some depois de 3s
       return;
     }
 
+    setErro("");
     setCarregando(true);
     setDados([]);
+
     try {
       const params = new URLSearchParams();
       params.append("inicio", dataInicio);
@@ -79,9 +86,11 @@ export default function RelatorioPage() {
         setDados(json.reservas ?? []);
       } else {
         console.error("Erro API:", json.error);
+        setErro("Erro ao buscar dados. Tente novamente.");
       }
     } catch (error) {
       console.error("Erro fetch:", error);
+      setErro("Erro de conexão.");
     } finally {
       setCarregando(false);
     }
@@ -89,9 +98,16 @@ export default function RelatorioPage() {
 
   return (
     <div className="min-h-screen bg-white p-8 font-sans text-gray-700">
-      <h1 className="text-4xl font-serif font-bold mb-8 text-black uppercase">
+      <h1 className="text-4xl font-serif font-bold mb-6 text-black uppercase">
         Relatório
       </h1>
+
+      {/* ALERT VERMELHO SIMPLES */}
+      {erro && (
+        <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+          {erro}
+        </div>
+      )}
 
       {/* ÁREA DE FILTROS */}
       <div className="mb-8 bg-gray-50 p-6 rounded-lg border border-gray-100">
@@ -109,7 +125,7 @@ export default function RelatorioPage() {
               value={usuario}
               onChange={(e) => setUsuario(e.target.value)}
               type="text"
-              placeholder="Nome..."
+              // SEM PLACEHOLDER
               className="bg-white border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
@@ -127,7 +143,7 @@ export default function RelatorioPage() {
               value={sala}
               onChange={(e) => setSala(e.target.value)}
               type="text"
-              placeholder="Sala..."
+              // SEM PLACEHOLDER
               className="bg-white border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
@@ -145,7 +161,7 @@ export default function RelatorioPage() {
               value={espaco}
               onChange={(e) => setEspaco(e.target.value)}
               type="text"
-              placeholder="Mesa..."
+              // SEM PLACEHOLDER
               className="bg-white border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
@@ -158,14 +174,17 @@ export default function RelatorioPage() {
               htmlFor="data-inicio"
               className="mb-1 text-sm font-medium text-gray-600"
             >
-              Data Inicial
+              Data Inicial <span className="text-red-500 font-bold">*</span>
             </label>
             <input
               id="data-inicio"
               value={dataInicio}
-              onChange={(e) => setDataInicio(e.target.value)}
+              onChange={(e) => {
+                setDataInicio(e.target.value);
+                if (erro) setErro("");
+              }}
               type="date"
-              className="bg-white border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className={`bg-white border rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 ${erro && !dataInicio ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"}`}
             />
           </div>
 
@@ -175,14 +194,17 @@ export default function RelatorioPage() {
               htmlFor="data-fim"
               className="mb-1 text-sm font-medium text-gray-600"
             >
-              Data Final
+              Data Final <span className="text-red-500 font-bold">*</span>
             </label>
             <input
               id="data-fim"
               value={dataFim}
-              onChange={(e) => setDataFim(e.target.value)}
+              onChange={(e) => {
+                setDataFim(e.target.value);
+                if (erro) setErro("");
+              }}
               type="date"
-              className="bg-white border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className={`bg-white border rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 ${erro && !dataFim ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"}`}
             />
           </div>
 
@@ -233,7 +255,6 @@ export default function RelatorioPage() {
               </tr>
             ) : (
               dados.map((item, index) => {
-                // Lógica de Avatar: Foto ou Iniciais
                 const avatarSrc =
                   item.foto && item.foto.length > 5
                     ? item.foto
@@ -250,7 +271,6 @@ export default function RelatorioPage() {
                         : ""
                     }`}
                   >
-                    {/* Coluna Usuário (Foto + Nome) */}
                     <td className="p-4 pl-6 border-b border-gray-100">
                       <div className="flex items-center gap-3">
                         <div className="relative w-10 h-10 shrink-0">
