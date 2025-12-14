@@ -18,7 +18,7 @@ export function Menu({ isOpen }: { isOpen: boolean }) {
     },
     { href: "/relatorio", label: "Relatório", icon: <FileText size={18} /> },
     {
-      href: "/relatorioguarita",
+      href: "/relatorio_guarita",
       label: "Relatorio Guarita",
       icon: <FileText size={18} />,
     },
