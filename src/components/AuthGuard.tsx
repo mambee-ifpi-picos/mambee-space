@@ -28,7 +28,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         router.replace("/login");
       } else if (user && publicRoutes.includes(pathname)) {
         // logged in but visiting public route -> redirect to dashboard
-        router.replace("/dashboard");
+        router.replace("/reservar");
       }
 
       setLoading(false);
