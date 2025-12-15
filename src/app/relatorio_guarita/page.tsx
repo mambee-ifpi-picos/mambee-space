@@ -93,7 +93,7 @@ export default function RelatorioPage() {
   return (
     <div className="min-h-screen bg-white p-8 font-sans text-gray-700">
       <h1 className="text-4xl font-serif font-bold mb-8 text-black uppercase">
-        Relatório
+        Relatório Guarita
       </h1>
       <div className="mb-8">
         <div className="overflow-x-auto">
