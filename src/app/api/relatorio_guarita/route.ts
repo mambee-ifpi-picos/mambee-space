@@ -29,6 +29,7 @@ type ReservaComUsuario = {
 export async function GET(_req: Request) {
     try {
         const hoje = new Date()
+        
         const depois24 = new Date(hoje.getTime() + (1000 * 60 * 60 * 12));
 
         let query = supabase.from("Reserva")
@@ -42,7 +43,7 @@ export async function GET(_req: Request) {
             Espaco: idEspacoReservado(codigoEspaco, Sala: idSalaPertence (nomeSala))
             `).order('horaInicio', {ascending: true});
         
-        query = query.gte("horaFim", hoje.toISOString()).lte("horaFim", depois24.toISOString());
+        query = query.gte("horaFim", hoje.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"})).lte("horaFim", depois24.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
 
         const res = await query;
         if (res.error) throw res.error;
