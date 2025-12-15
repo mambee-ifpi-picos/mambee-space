@@ -374,26 +374,14 @@ export default function ReservasPage() {
   const totalPaginas = Math.max(1, Math.ceil(totalReservas / itensPorPagina));
   const estaNaUltimaPagina = pagina >= totalPaginas;
 
-  function formatarHoraData(inicioStr: string, fimStr: string) {
-    const inicio = new Date(inicioStr);
-    const fim = new Date(fimStr);
+  function formatarReservaHora(inicioIso: string, fimIso: string) {
+    if (!inicioIso || !fimIso) return "";
 
-    const fmtHora = new Intl.DateTimeFormat("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "America/Sao_Paulo",
-    });
+    const horaInicio = inicioIso.substring(11, 16);
+    const horaFim = fimIso.substring(11, 16);
+    const data = fimIso.substring(0, 10).split("-").reverse().join("/");
 
-    const fmtData = new Intl.DateTimeFormat("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      timeZone: "America/Sao_Paulo",
-    });
-
-    return `${fmtHora.format(inicio)} - ${fmtHora.format(fim)} - ${fmtData.format(
-      inicio,
-    )}`;
+    return `${horaInicio} - ${horaFim} : ${data}`;
   }
 
   return (
@@ -550,7 +538,7 @@ export default function ReservasPage() {
                 </p>
 
                 <p className="text-xs text-gray-600 mb-3">
-                  {formatarHoraData(reserva.horaInicio, reserva.horaFim)}
+                  {formatarReservaHora(reserva.horaInicio, reserva.horaFim)}
                 </p>
 
                 {podeCancelar && (
