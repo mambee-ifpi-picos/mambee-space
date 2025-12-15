@@ -69,6 +69,13 @@ function initialsFromNameOrEmail(name?: string | null, email?: string | null) {
   return "US";
 }
 
+function reservaJaFinalizada(reserva: Reserva) {
+  const fim = new Date(reserva.horaFim);
+  const agora = new Date();
+
+  return fim.getTime() <= agora.getTime();
+}
+
 export default function ReservasPage() {
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [usuarios, setUsuarios] = useState<Record<number, Usuario>>({});
@@ -94,7 +101,7 @@ export default function ReservasPage() {
       const text = await res.text();
       return { ok: res.ok, status: res.status, text };
     },
-    []
+    [],
   );
 
   const carregarSalas = useCallback(async () => {
@@ -129,7 +136,7 @@ export default function ReservasPage() {
     async (opts: { ids?: number[]; emails?: string[] }) => {
       try {
         const idsClean = (opts.ids ?? []).filter(
-          (i) => Number.isFinite(i) && i > 0
+          (i) => Number.isFinite(i) && i > 0,
         );
         const emailsClean = (opts.emails ?? [])
           .map((e) => String(e).trim().toLowerCase())
@@ -158,7 +165,7 @@ export default function ReservasPage() {
         if (emailsClean.length > 0) {
           const uniqueEmails = [...new Set(emailsClean)];
           const url = `/api/usuarios?emails=${encodeURIComponent(
-            uniqueEmails.join(",")
+            uniqueEmails.join(","),
           )}`;
           const r = await debugFetch(url, { cache: "no-store" });
           if (r.ok) {
@@ -182,7 +189,7 @@ export default function ReservasPage() {
         console.error("[carregarUsuarios] erro", err);
       }
     },
-    [debugFetch]
+    [debugFetch],
   );
 
   const carregarReservas = useCallback(
@@ -214,7 +221,7 @@ export default function ReservasPage() {
             "❌ [carregarReservas] Erro HTTP. Status:",
             r.status,
             "Corpo:",
-            r.text
+            r.text,
           );
           throw new Error(`HTTP ${r.status}`);
         }
@@ -272,14 +279,14 @@ export default function ReservasPage() {
       }
     },
     [
-      buscaAtiva, 
+      buscaAtiva,
       carregarUsuarios,
       debugFetch,
       defaultEspacoId,
       carregarSalas,
       usuarios,
       usuariosPorEmail,
-    ]
+    ],
   );
 
   useEffect(() => {
@@ -302,7 +309,7 @@ export default function ReservasPage() {
       if (busca !== buscaAtiva) {
         executarBusca();
       }
-    }, 500); 
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [busca, buscaAtiva, executarBusca]);
@@ -339,7 +346,7 @@ export default function ReservasPage() {
     } catch (error) {
       console.error("Erro ao cancelar reserva:", error);
       alert(
-        error instanceof Error ? error.message : "Erro ao cancelar reserva"
+        error instanceof Error ? error.message : "Erro ao cancelar reserva",
       );
     } finally {
       setDeletingId(null);
@@ -348,6 +355,11 @@ export default function ReservasPage() {
 
   const podeCancelarReserva = (reserva: Reserva) => {
     if (!usuarioLogado) return false;
+
+    const agora = new Date();
+    const fim = new Date(reserva.horaFim);
+
+    if (fim < agora) return false;
 
     if (usuarioLogado.admin) return true;
 
@@ -365,16 +377,23 @@ export default function ReservasPage() {
   function formatarHoraData(inicioStr: string, fimStr: string) {
     const inicio = new Date(inicioStr);
     const fim = new Date(fimStr);
-    const h1 = inicio.toLocaleTimeString("pt-BR", {
+
+    const fmtHora = new Intl.DateTimeFormat("pt-BR", {
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "America/Sao_Paulo",
     });
-    const h2 = fim.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
+
+    const fmtData = new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "America/Sao_Paulo",
     });
-    const data = inicio.toLocaleDateString("pt-BR");
-    return `${h1} - ${h2} - ${data}`;
+
+    return `${fmtHora.format(inicio)} - ${fmtHora.format(fim)} - ${fmtData.format(
+      inicio,
+    )}`;
   }
 
   return (
@@ -457,7 +476,7 @@ export default function ReservasPage() {
           const avatarFoto = user?.foto ?? null;
           const initials = initialsFromNameOrEmail(
             user?.nome ?? displayEmail,
-            displayEmail
+            displayEmail,
           );
 
           const podeCancelar = podeCancelarReserva(reserva);
@@ -467,6 +486,12 @@ export default function ReservasPage() {
               key={reserva.idReserva}
               className="flex rounded-xl shadow-sm bg-[#F5F5F5] overflow-hidden h-full relative group hover:shadow-md transition-shadow"
             >
+              {reservaJaFinalizada(reserva) && (
+                <span className="absolute top-2 right-2 text-xs bg-gray-300 text-gray-700 px-2 py-0.5 rounded z-10">
+                  Finalizada
+                </span>
+              )}
+
               <div className="w-2 bg-teal-500" />
               <div className="flex-1 px-4 py-3 flex flex-col justify-between h-full">
                 <div className="flex items-center gap-3 mb-2">

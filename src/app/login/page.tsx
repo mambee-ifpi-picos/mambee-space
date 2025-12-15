@@ -1,61 +1,68 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
-import { useRouter } from "next/navigation";
 import { FaApple } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 
 export default function LoginPage() {
-  const router = useRouter();
-
   const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
   );
 
   const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/api/auth/callback`,
       },
     });
-    if (error) console.error("Erro no login:", error.message);
   };
 
   const handleAppleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    await supabase.auth.signInWithOAuth({
       provider: "apple",
       options: {
         redirectTo: `${window.location.origin}/api/auth/callback`,
       },
     });
-    if (error) console.error("Erro no login com Apple:", error.message);
   };
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="bg-white p-8 rounded-2xl shadow-lg text-center w-80">
-        <h1 className="text-2xl font-semibold mb-6">Login 🔐</h1>
+    <>
+      <div className="fixed inset-0 bg-gradient-to-br from-[#36B8B6] via-[#36B8B6] to-[#36B8B6]" />
 
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded transition w-full mb-4"
-        >
-          <FcGoogle className="w-6 h-6 bg-white rounded-full p-1" />
-          Entrar com Google
-        </button>
+      <main className="relative min-h-screen flex items-center justify-center px-6 font-sans">
+        <div className="w-full max-w-xl bg-white rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.25)] p-12">
+          <div className="flex justify-center mb-10">
+            <img src="/logoMambee2.png" alt="Mambee" className="w-90" />
+          </div>
 
-        <button
-          type="button"
-          onClick={handleAppleLogin}
-          className="flex items-center justify-center gap-2 bg-black hover:bg-gray-900 text-white px-6 py-2 rounded transition w-full"
-        >
-          <FaApple className="w-5 h-5" />
-          Entrar com Apple
-        </button>
-      </div>
-    </main>
+          <h1 className="text-4xl font-semibold text-center text-gray-800 mb-12">
+            Entrar no sistema
+          </h1>
+
+          {/* Google */}
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            className="w-full flex items-center justify-center gap-5 border-2 border-gray-300 py-5 rounded-2xl text-xl font-semibold text-gray-800 hover:bg-gray-50 transition mb-6"
+          >
+            <FcGoogle className="w-8 h-8" />
+            Entrar com Google
+          </button>
+
+          {/* Apple */}
+          <button
+            type="button"
+            onClick={handleAppleLogin}
+            className="w-full flex items-center justify-center gap-5 bg-black text-white py-5 rounded-2xl text-xl font-semibold hover:bg-gray-900 transition"
+          >
+            <FaApple className="w-7 h-7" />
+            Entrar com Apple
+          </button>
+        </div>
+      </main>
+    </>
   );
 }

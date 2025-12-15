@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Inria_Serif } from "next/font/google";
 import { supabase } from "@/lib/supabaseClient";
-import type { Session } from "@supabase/supabase-js"; // Mantido conforme seu original
 
 const inriaSerif700 = Inria_Serif({ subsets: ["latin"], weight: ["700"] });
 
