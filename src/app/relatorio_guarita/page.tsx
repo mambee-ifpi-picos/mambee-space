@@ -95,7 +95,6 @@ export default function RelatorioPage() {
       <h1 className="text-4xl font-serif font-bold mb-8 text-black uppercase">
         Relatório
       </h1>
-
       <div className="mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
           <div className="flex flex-col">
@@ -200,7 +199,7 @@ export default function RelatorioPage() {
         </table>
       </div>
     </div>
-    </div>
+  </div>
   );
 }
 
