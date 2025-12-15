@@ -95,32 +95,6 @@ export default function RelatorioPage() {
       <h1 className="text-4xl font-serif font-bold mb-8 text-black uppercase">
         Relatório
       </h1>
-
-      <div className="mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-          <div className="flex flex-col">
-            <label
-              htmlFor="sala-input"
-              className="mb-1 text-sm font-medium text-gray-600"
-            >
-              Sala
-            </label>
-          </div>
-
-          <div className="flex flex-col">
-            <label
-              htmlFor="espaco-input"
-              className="mb-1 text-sm font-medium text-gray-600"
-            >
-              Espaço
-            </label>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          
-
-      </div>
-
       <div className="overflow-x-auto">
         <table className="min-w-full border-separate border-spacing-y-4 text-sm">
           <thead>
