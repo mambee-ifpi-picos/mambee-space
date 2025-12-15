@@ -96,110 +96,86 @@ export default function RelatorioPage() {
         Relatório
       </h1>
       <div className="mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-          <div className="flex flex-col">
-            <label
-              htmlFor="sala-input"
-              className="mb-1 text-sm font-medium text-gray-600"
-            >
-              Sala
-            </label>
-          </div>
-
-          <div className="flex flex-col">
-            <label
-              htmlFor="espaco-input"
-              className="mb-1 text-sm font-medium text-gray-600"
-            >
-              Espaço
-            </label>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          
-
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-separate border-spacing-y-4 text-sm">
-          <thead>
-            <tr className="text-left text-gray-600">
-              <th className="p-2 font-normal pl-6">Usuário</th>
-              <th className="p-2 font-normal">Sala</th>
-              <th className="p-2 font-normal">Espaço</th>
-              <th className="p-2 font-normal text-center">Horário</th>
-              <th className="p-2 font-normal text-center">Data</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dados.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="text-center p-6 text-gray-500 bg-gray-50 rounded"
-                >
-                  Nenhum resultado encontrado
-                </td>
+        <div className="overflow-x-auto">
+          <table className="min-w-full border-separate border-spacing-y-4 text-sm">
+            <thead>
+              <tr className="text-left text-gray-600">
+                <th className="p-2 font-normal pl-6">Usuário</th>
+                <th className="p-2 font-normal">Sala</th>
+                <th className="p-2 font-normal">Espaço</th>
+                <th className="p-2 font-normal text-center">Horário</th>
+                <th className="p-2 font-normal text-center">Data</th>
               </tr>
-            ) : (
-              dados.map((item) => (
-                <tr
-                  key={item.idReserva}
-                  className="group transition-transform hover:scale-[1.01]"
-                >
-                  <td className="bg-gray-50 p-4 rounded-l-lg border-l-[6px] border-teal-500 relative">
-                    <div className="flex items-center gap-3">
-                      {item.Usuario?.foto ? (
-                        <Image
-                          src={item.Usuario?.foto}
-                          alt={item.Usuario?.nome}
-                          width={40}
-                          height={40}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <Image
-                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                            item.Usuario?.nome ?? "Usuário",
-                          )}&background=0c9488&color=fff&size=64`}
-                          alt={item.Usuario?.nome || "—"}
-                          width={40}
-                          height={40}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      )}
-
-                      <div>
-                        <div className="text-gray-700 font-medium">
-                          {item.Usuario?.nome || "—"}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-
-                  <td className="bg-gray-50 p-4 text-gray-600">
-                    {item.Espaco?.Sala.nomeSala || "—"}
-                  </td>
-
-                  <td className="bg-gray-50 p-4 text-gray-600">
-                    {item.Espaco?.codigoEspaco || "—"}
-                  </td>
-
-                  <td className="bg-gray-50 p-4 text-center text-gray-600 font-medium">
-                    {formatarHora(item.horaInicio)} - {formatarHora(item.horaFim)}
-                  </td>
-
-                  <td className="bg-gray-50 p-4 text-center text-gray-600 rounded-r-lg">
-                    {formatarData(item.horaInicio) || "—"}
+            </thead>
+            <tbody>
+              {dados.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="text-center p-6 text-gray-500 bg-gray-50 rounded"
+                  >
+                    Nenhum resultado encontrado
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                dados.map((item) => (
+                  <tr
+                    key={item.idReserva}
+                    className="group transition-transform hover:scale-[1.01]"
+                  >
+                    <td className="bg-gray-50 p-4 rounded-l-lg border-l-[6px] border-teal-500 relative">
+                      <div className="flex items-center gap-3">
+                        {item.Usuario?.foto ? (
+                          <Image
+                            src={item.Usuario?.foto}
+                            alt={item.Usuario?.nome}
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <Image
+                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
+                              item.Usuario?.nome ?? "Usuário",
+                            )}&background=0c9488&color=fff&size=64`}
+                            alt={item.Usuario?.nome || "—"}
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        )}
+
+                        <div>
+                          <div className="text-gray-700 font-medium">
+                            {item.Usuario?.nome || "—"}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="bg-gray-50 p-4 text-gray-600">
+                      {item.Espaco?.Sala.nomeSala || "—"}
+                    </td>
+
+                    <td className="bg-gray-50 p-4 text-gray-600">
+                      {item.Espaco?.codigoEspaco || "—"}
+                    </td>
+
+                    <td className="bg-gray-50 p-4 text-center text-gray-600 font-medium">
+                      {formatarHora(item.horaInicio)} - {formatarHora(item.horaFim)}
+                    </td>
+
+                    <td className="bg-gray-50 p-4 text-center text-gray-600 rounded-r-lg">
+                      {formatarData(item.horaInicio) || "—"}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-  </div>
   );
 }
 
