@@ -42,7 +42,7 @@ export async function GET(_req: Request) {
             Espaco: idEspacoReservado(codigoEspaco, Sala: idSalaPertence (nomeSala))
             `).order('horaInicio', {ascending: true});
         
-        query = query.gte("horaInicio", hoje.toISOString()).lte("horaFim", depois24.toISOString());
+        query = query.gte("horaFim", hoje.toISOString()).lte("horaInicio", depois24.toISOString());
 
         const res = await query;
         if (res.error) throw res.error;
