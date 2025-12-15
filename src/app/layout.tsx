@@ -1,5 +1,12 @@
+import type { Metadata } from "next";
 import "./globals.css";
 import ClientLayout from "./ClientLayout";
+
+export const metadata: Metadata = {
+  icons: {
+    icon: "/logo-mambee.png",
+  },
+};
 
 export default function RootLayout({
   children,
