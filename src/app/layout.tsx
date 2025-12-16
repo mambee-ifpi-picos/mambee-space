@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import ClientLayout from "./ClientLayout";
+import AuthGuard from "@/components/AuthGuard";
 
 export const metadata: Metadata = {
   icons: {
@@ -16,7 +17,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body>
-        <ClientLayout>{children}</ClientLayout>
+        <AuthGuard>
+          <ClientLayout>{children}</ClientLayout>
+        </AuthGuard>
       </body>
     </html>
   );

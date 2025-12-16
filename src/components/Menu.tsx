@@ -119,10 +119,9 @@ export function Menu({ isOpen, isAdmin, onClose }: MenuProps) {
             <span>Nova Reserva</span>
           </Link>
 
-          <div className="mt-5">
-            <LogoutButton />
-          </div>
+          <div className="mt-5"></div>
         </nav>
+        <LogoutButton />
       </aside>
     </>
   );

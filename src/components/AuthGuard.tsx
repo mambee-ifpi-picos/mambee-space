@@ -1,6 +1,6 @@
 "use client";
 
-import { createBrowserClient } from "@supabase/ssr";
+import { supabase } from "@/lib/supabaseClient";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -9,11 +9,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-
   useEffect(() => {
     async function checkAuth() {
       const {
@@ -21,7 +16,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       } = await supabase.auth.getSession();
 
       const user = session?.user ?? null;
-      const publicRoutes = ["/", "/login","relatorio_guarita"];
+      const publicRoutes = ["/", "/login"];
 
       if (!user && !publicRoutes.includes(pathname)) {
         // not logged in -> redirect to login
@@ -42,7 +37,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(() => checkAuth());
 
     return () => subscription.unsubscribe();
-  }, [pathname, router, supabase]);
+  }, [pathname, router]);
 
   if (loading) return null; // or a spinner
 
