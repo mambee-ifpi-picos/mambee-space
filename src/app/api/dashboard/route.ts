@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Auth } from "@/lib/middleware/Auth";
 import { prisma } from "@/lib/prisma";
-import type { TopUsuario } from "@/utils/tipos";
 import type { User } from "@supabase/supabase-js";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
@@ -23,8 +22,13 @@ type CountUser = {
   };
 };
 
+type UsuarioInfo = {
+  idUsuario: number;
+  nome: string | null;
+};
+
 export const GET = Auth(
-  async (_req: NextRequest, user) => {
+  async (_req: NextRequest, _user: User | null) => {
     try {
       const now = dayjs();
       const [year, month] = [now.year(), now.month() + 1];
@@ -57,7 +61,8 @@ export const GET = Auth(
 
       // Most used space
       const maisUsado = reservasPorEspaco.sort(
-        (a, b) => b._count.idReserva - a._count.idReserva,
+        (a: CountGroup, b: CountGroup) =>
+          b._count.idReserva - a._count.idReserva,
       )[0];
       const espacoInfo = maisUsado
         ? await prisma.espaco.findUnique({
@@ -67,35 +72,45 @@ export const GET = Auth(
 
       // Top 3 users of the month
       const topMesRaw = reservasMes
-        .sort((a, b) => b._count.idReserva - a._count.idReserva)
+        .sort(
+          (a: CountGroup, b: CountGroup) =>
+            b._count.idReserva - a._count.idReserva,
+        )
         .slice(0, 3);
-      const topMesIds = topMesRaw.map((r) => r.idUsuarioCriador);
+      const topMesIds = topMesRaw.map((r: CountUser) => r.idUsuarioCriador);
       const topMesUsers = await prisma.usuario.findMany({
         where: { idUsuario: { in: topMesIds } },
         select: { idUsuario: true, nome: true },
       });
 
-      const top3Mes = topMesRaw.map((r) => ({
+      const top3Mes = topMesRaw.map((r: CountUser) => ({
         nome:
-          topMesUsers.find((u) => u.idUsuario === r.idUsuarioCriador)?.nome ??
-          "Desconhecido",
+          topMesUsers.find(
+            (u: UsuarioInfo) => u.idUsuario === r.idUsuarioCriador,
+          )?.nome ?? "Desconhecido",
         total: r._count.idReserva,
       }));
 
       // Top 3 users of the week
       const topSemanaRaw = reservasSemana
-        .sort((a, b) => b._count.idReserva - a._count.idReserva)
+        .sort(
+          (a: CountGroup, b: CountGroup) =>
+            b._count.idReserva - a._count.idReserva,
+        )
         .slice(0, 3);
-      const topSemanaIds = topSemanaRaw.map((r) => r.idUsuarioCriador);
+      const topSemanaIds = topSemanaRaw.map(
+        (r: CountUser) => r.idUsuarioCriador,
+      );
       const topSemanaUsers = await prisma.usuario.findMany({
         where: { idUsuario: { in: topSemanaIds } },
         select: { idUsuario: true, nome: true },
       });
 
-      const top3Semana = topSemanaRaw.map((r) => ({
+      const top3Semana = topSemanaRaw.map((r: CountUser) => ({
         nome:
-          topSemanaUsers.find((u) => u.idUsuario === r.idUsuarioCriador)
-            ?.nome ?? "Desconhecido",
+          topSemanaUsers.find(
+            (u: UsuarioInfo) => u.idUsuario === r.idUsuarioCriador,
+          )?.nome ?? "Desconhecido",
         total: r._count.idReserva,
       }));
 

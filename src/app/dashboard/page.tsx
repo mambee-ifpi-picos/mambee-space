@@ -31,6 +31,7 @@ type DashboardData = {
   totalInatividade: number;
   topMes: TopUsuario[];
   topSemana: TopUsuario[];
+  totalReservas: number;
 };
 
 export default function Dashboard() {
