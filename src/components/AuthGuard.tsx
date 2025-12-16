@@ -11,23 +11,27 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function checkAuth() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      const user = session?.user ?? null;
-      const login = "/login";
-      const publicRoutes = ["/", "/login", "/agendamentos"];
+        const user = session?.user ?? null;
+        const login = "/login";
+        const publicRoutes = ["/", "/login", "/agendamentos"];
 
-      if (!user && !publicRoutes.includes(pathname)) {
-        // not logged in -> redirect to login
-        router.replace("/login");
-      } else if (user && login === pathname) {
-        // logged in but visiting public route -> redirect to dashboard
-        router.replace("/reservar");
+        if (!user && !publicRoutes.includes(pathname)) {
+          // not logged in -> redirect to login
+          router.replace("/login");
+        } else if (user && login === pathname) {
+          // logged in but visiting public route -> redirect to dashboard
+          router.replace("/reservar");
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error(error);
       }
-
-      setLoading(false);
     }
 
     checkAuth();
