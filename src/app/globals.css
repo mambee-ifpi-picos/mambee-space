@@ -45,9 +45,43 @@ h2 {
   animation: slideDown 0.3s ease-out forwards;
 }
 
+.min-h-screen {
+  display: flex;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.btn-close {
+  position: absolute;
+  top: 1rem;
+  right: 01rem;
+}
+
+.overlay-mobile {
+  display: none;
+}
+
+aside {
+  min-height: 100vh;
+}
+
+main {
+  width: 100%;
+}
+
 @media (max-width: 768px) {
   .col-span-1,
   .col-span-2 {
     grid-column: 1 / -1;
+  }
+
+  aside {
+    position: fixed;
+  }
+
+  .overlay-mobile {
+    display: block;
   }
 }

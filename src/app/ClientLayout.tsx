@@ -6,6 +6,7 @@ import { Menu as MenuIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function ClientLayout({
   children,
@@ -14,16 +15,16 @@ export default function ClientLayout({
 }) {
   const pathname = usePathname();
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const loadUser = async () => {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      );
+    if (window.innerWidth < 768) {
+      // if mobile
+      setOpen(false);
+    }
 
+    const loadUser = async () => {
       const { data } = await supabase.auth.getUser();
 
       if (!data?.user) {
@@ -59,10 +60,15 @@ export default function ClientLayout({
               onClose={() => setOpen(false)}
             />
 
-            {/* Botão abrir menu (desktop + mobile) */}
-            <button type="button" onClick={() => setOpen(true)} className="p-3">
-              <MenuIcon size={24} />
-            </button>
+            {!open && (
+              <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="p-3 absolute"
+              >
+                <MenuIcon size={24} />
+              </button>
+            )}
           </>
         )}
 

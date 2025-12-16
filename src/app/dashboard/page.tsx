@@ -57,6 +57,7 @@ export default function Dashboard() {
     graficos,
     frequenciaDias,
     totalInatividade,
+    totalReservas,
     topMes,
     topSemana,
   } = data;
@@ -87,9 +88,9 @@ export default function Dashboard() {
           className="col-span-1 bg-teal-500 text-white p-5 rounded-lg shadow flex flex-col"
           aria-label="Card espaço mais utilizado"
         >
-          <p className="text-xs font-semibold">ESPAÇO MAIS UTILIZADO</p>
-          <p className="text-5xl font-extrabold mt-2">{percentualOcupacao}%</p>
-          <p className="text-xl font-semibold mt-2">{espacoMaisUtilizado}</p>
+          <p className="text-xs font-semibold">Total de reservas</p>
+          <p className="text-5xl font-extrabold mt-2">{totalReservas}</p>
+          {/*<p className="text-xl font-semibold mt-2">{espacoMaisUtilizado}</p>*/}
         </div>
 
         <div

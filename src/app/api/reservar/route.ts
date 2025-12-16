@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Auth } from "@/lib/middleware/Auth";
+import type { User } from "@supabase/supabase-js";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -83,7 +85,7 @@ export async function GET(request: Request) {
 }
 
 // O POST CONTINUA O MESMO, NÃO PRECISA MEXER SE JÁ TÁ FUNCIONANDO
-export async function POST(request: Request) {
+export const POST = Auth(async (request: NextRequest, _user: User | null) => {
   try {
     const body = await request.json();
     const {
@@ -99,7 +101,7 @@ export async function POST(request: Request) {
     if (!horaInicio || !horaFim)
       return NextResponse.json(
         { error: "Horários obrigatórios!" },
-        { status: 400 }
+        { status: 400 },
       );
 
     const inicio = new Date(`${data}T${horaInicio}:00.000Z`);
@@ -111,17 +113,17 @@ export async function POST(request: Request) {
     if (diaReserva < hoje)
       return NextResponse.json(
         { error: "Data passada não pode." },
-        { status: 400 }
+        { status: 400 },
       );
     if (inicio >= fim)
       return NextResponse.json(
         { error: "Hora final deve ser maior que a inicial." },
-        { status: 400 }
+        { status: 400 },
       );
     if (!idUsuarioSupabase)
       return NextResponse.json(
         { error: "Usuário não identificado." },
-        { status: 401 }
+        { status: 401 },
       );
 
     let usuarioReal = await prisma.usuario.findUnique({
@@ -152,7 +154,7 @@ export async function POST(request: Request) {
     if (!usuarioReal)
       return NextResponse.json(
         { error: "Erro: Usuário não encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
 
     const espacoInfo = await prisma.espaco.findUnique({
@@ -167,7 +169,7 @@ export async function POST(request: Request) {
           {
             error: `Tempo excedido! Limite: ${espacoInfo.sala.limiteHorasReserva}h.`,
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -188,7 +190,7 @@ export async function POST(request: Request) {
     if (conflito)
       return NextResponse.json(
         { error: "Já existe reserva neste horário!" },
-        { status: 409 }
+        { status: 409 },
       );
 
     const novaReserva = await prisma.reserva.create({
@@ -207,4 +209,4 @@ export async function POST(request: Request) {
     console.error(error);
     return NextResponse.json({ error: "Erro no servidor" }, { status: 500 });
   }
-}
+});

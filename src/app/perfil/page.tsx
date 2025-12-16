@@ -4,7 +4,7 @@ import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import { User, Camera, CheckCircle, XCircle, LogOut } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
+import { supabase } from "@/lib/supabaseClient";
 
 const COLOR_PRIMARY = "#33b5b5";
 const COLOR_INPUT_BG = "#e0e0e0";
@@ -54,11 +54,6 @@ const Notification: React.FC<NotificationProps> = ({
 };
 
 export default function ProfilePage() {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-  );
-
   const router = useRouter();
 
   const [initialData, setInitialData] = useState({
@@ -79,7 +74,6 @@ export default function ProfilePage() {
     type: "success" | "error" | "";
   }>({ message: "", type: "" });
 
-  
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.refresh();
@@ -303,13 +297,9 @@ export default function ProfilePage() {
         </div>
 
         <form onSubmit={handleSalvar} className="mt-8 p-6 sm:p-8 rounded-xl">
-          
-         
           <div className="flex justify-between items-center mb-6 pb-2">
-            <h2 className="text-2xl font-semibold text-gray-800">
-              Perfil
-            </h2>
-            
+            <h2 className="text-2xl font-semibold text-gray-800">Perfil</h2>
+
             <button
               type="button"
               onClick={handleLogout}
