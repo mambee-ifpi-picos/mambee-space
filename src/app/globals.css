@@ -44,3 +44,10 @@ h2 {
 .animate-slideDown {
   animation: slideDown 0.3s ease-out forwards;
 }
+
+@media (max-width: 768px) {
+  .col-span-1,
+  .col-span-2 {
+    grid-column: 1 / -1;
+  }
+}
