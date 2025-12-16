@@ -72,5 +72,5 @@ export async function GET(req: Request) {
     { onConflict: "email" },
   );
 
-  return NextResponse.redirect(new URL("/dashboard", url));
+  return NextResponse.redirect(new URL("/reservar", url));
 }
