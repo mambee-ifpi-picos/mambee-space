@@ -18,9 +18,10 @@ export default function ClientLayout({
   const [open, setOpen] = useState(true);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
+  const isMobile = window.innerWidth < 768;
+
   useEffect(() => {
-    if (window.innerWidth < 768) {
-      // if mobile
+    if (isMobile) {
       setOpen(false);
     }
 
@@ -42,7 +43,13 @@ export default function ClientLayout({
     };
 
     loadUser();
-  }, []);
+  }, [isMobile]);
+
+  const handleClose = () => {
+    if (isMobile) {
+      setOpen(false);
+    }
+  };
 
   const hiddenMenuRoutes = ["/", "/login"];
   const isMenuHidden = hiddenMenuRoutes.includes(pathname);
@@ -54,11 +61,7 @@ export default function ClientLayout({
       <div className="min-h-screen">
         {!isMenuHidden && isAdmin !== null && (
           <>
-            <Menu
-              isOpen={open}
-              isAdmin={isAdmin}
-              onClose={() => setOpen(false)}
-            />
+            <Menu isOpen={open} isAdmin={isAdmin} onClose={handleClose} />
 
             {!open && (
               <button

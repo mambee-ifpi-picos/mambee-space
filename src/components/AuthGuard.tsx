@@ -16,12 +16,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       } = await supabase.auth.getSession();
 
       const user = session?.user ?? null;
-      const publicRoutes = ["/", "/login"];
+      const login = "/login";
+      const publicRoutes = ["/", "/login", "/agendamentos"];
 
       if (!user && !publicRoutes.includes(pathname)) {
         // not logged in -> redirect to login
         router.replace("/login");
-      } else if (user && publicRoutes.includes(pathname)) {
+      } else if (user && login === pathname) {
         // logged in but visiting public route -> redirect to dashboard
         router.replace("/reservar");
       }
