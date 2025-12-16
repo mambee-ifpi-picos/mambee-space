@@ -5,6 +5,7 @@ import { User, Camera, CheckCircle, XCircle, LogOut } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import LogoutButton from "@/components/LogoutButton";
 
 const COLOR_PRIMARY = "#33b5b5";
 const COLOR_INPUT_BG = "#e0e0e0";
@@ -300,15 +301,7 @@ export default function ProfilePage() {
           <div className="flex justify-between items-center mb-6 pb-2">
             <h2 className="text-2xl font-semibold text-gray-800">Perfil</h2>
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-red-500 font-bold hover:text-red-700 transition-colors"
-              title="Sair da conta"
-            >
-              <LogOut size={20} />
-              Sair
-            </button>
+            <LogoutButton />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

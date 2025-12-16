@@ -4,7 +4,6 @@ import {
   FileText,
   PlusCircle,
   User,
-  LayoutGrid,
   X,
   LayoutDashboard,
   CalendarCheck,
@@ -14,7 +13,6 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import LogoutButton from "./LogoutButton";
 
 type MenuProps = {
   isOpen: boolean;
@@ -131,7 +129,6 @@ export function Menu({ isOpen, isAdmin, onClose, mobileClose }: MenuProps) {
 
           <div className="mt-5"></div>
         </nav>
-        <LogoutButton />
       </aside>
     </>
   );
