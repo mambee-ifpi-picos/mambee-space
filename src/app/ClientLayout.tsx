@@ -46,6 +46,9 @@ export default function ClientLayout({
   }, [isMobile]);
 
   const handleClose = () => {
+    setOpen(false);
+  };
+  const mobileClose = () => {
     if (isMobile) {
       setOpen(false);
     }
@@ -58,10 +61,15 @@ export default function ClientLayout({
     <>
       {pathname === "/" && <Navbar />}
 
-      <div className="min-h-screen">
+      <div className="min-h-screen page">
         {!isMenuHidden && isAdmin !== null && (
           <>
-            <Menu isOpen={open} isAdmin={isAdmin} onClose={handleClose} />
+            <Menu
+              isOpen={open}
+              isAdmin={isAdmin}
+              onClose={handleClose}
+              mobileClose={mobileClose}
+            />
 
             {!open && (
               <button

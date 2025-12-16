@@ -45,7 +45,7 @@ h2 {
   animation: slideDown 0.3s ease-out forwards;
 }
 
-.min-h-screen {
+.page {
   display: flex;
 }
 

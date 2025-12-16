@@ -20,9 +20,10 @@ type MenuProps = {
   isOpen: boolean;
   isAdmin: boolean;
   onClose: () => void;
+  mobileClose: () => void;
 };
 
-export function Menu({ isOpen, isAdmin, onClose }: MenuProps) {
+export function Menu({ isOpen, isAdmin, onClose, mobileClose }: MenuProps) {
   const pathname = usePathname();
 
   const links = [
@@ -90,7 +91,7 @@ export function Menu({ isOpen, isAdmin, onClose }: MenuProps) {
             <Link
               key={link.href}
               href={link.href}
-              onClick={onClose}
+              onClick={mobileClose}
               className={`flex items-center gap-2 px-3 py-2 rounded transition
                 ${
                   pathname === link.href
@@ -106,7 +107,7 @@ export function Menu({ isOpen, isAdmin, onClose }: MenuProps) {
           {isAdmin && (
             <Link
               href="/sala_espaco"
-              onClick={onClose}
+              onClick={mobileClose}
               className={`flex items-center gap-2 px-3 py-2 rounded transition
                 ${
                   pathname === "/sala_espaco"
@@ -121,7 +122,7 @@ export function Menu({ isOpen, isAdmin, onClose }: MenuProps) {
 
           <Link
             href="/reservar"
-            onClick={onClose}
+            onClick={mobileClose}
             className="mt-4 flex items-center gap-2 px-3 py-2 rounded bg-teal-500 text-white hover:bg-teal-600 transition"
           >
             <PlusCircle size={18} />
