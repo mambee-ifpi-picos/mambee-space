@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
-import { User, Camera, CheckCircle, XCircle, LogOut } from "lucide-react";
+import { User, Camera, CheckCircle, XCircle } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -75,12 +75,6 @@ export default function ProfilePage() {
     type: "success" | "error" | "";
   }>({ message: "", type: "" });
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.refresh();
-    router.push("/login");
-  };
-
   useEffect(() => {
     const fetchUser = async () => {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -131,7 +125,7 @@ export default function ProfilePage() {
     };
 
     fetchUser();
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     return () => {
@@ -306,7 +300,10 @@ export default function ProfilePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm text-gray-700 font-medium mb-2">
+              <label
+                htmlFor="nome"
+                className="block text-sm text-gray-700 font-medium mb-2"
+              >
                 Nome
               </label>
               <input
@@ -320,7 +317,10 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-700 font-medium mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm text-gray-700 font-medium mb-2"
+              >
                 E-mail
               </label>
               <input
