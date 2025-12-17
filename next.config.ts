@@ -1,5 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
+  swcMinify: true,
+  onDemandEntries: {
+    // remover depois de estabilizado
+    maxInactiveAge: 25 * 1000,
+  },
+  // remover depois de estabilizado
+  generateEtags: false,
   images: {
     remotePatterns: [
       {
