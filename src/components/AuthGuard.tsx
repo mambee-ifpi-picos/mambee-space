@@ -12,9 +12,11 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function checkAuth() {
       try {
+        console.log("init checkAuth...");
         const {
           data: { session },
         } = await supabase.auth.getSession();
+        console.log("user:", session?.user);
 
         const user = session?.user ?? null;
         const login = "/login";
@@ -44,7 +46,12 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [pathname, router]);
 
-  if (loading) return null; // or a spinner
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-300 border-solid"></div>
+      </div>
+    );
 
   return <>{children}</>;
 }
