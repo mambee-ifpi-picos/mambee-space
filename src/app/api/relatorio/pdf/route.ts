@@ -1,18 +1,14 @@
-import { NextRequest } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import type { NextRequest } from "next/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server/supabaseServer";
 import PDFDocument from "pdfkit";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-
+    const supabase = await createSupabaseServerClient();
     const filtroSala = (searchParams.get("sala") ?? "").trim().toLowerCase();
-    const filtroEspaco = (searchParams.get("espaco") ?? "")
-      .trim()
-      .toLowerCase();
-    const filtroUsuario = (searchParams.get("usuario") ?? "")
-      .trim()
-      .toLowerCase();
+    const filtroEspaco = (searchParams.get("espaco") ?? "").trim().toLowerCase();
+    const filtroUsuario = (searchParams.get("usuario") ?? "").trim().toLowerCase();
 
     const dataInicio = searchParams.get("inicio");
     const dataFim = searchParams.get("fim");
@@ -25,32 +21,19 @@ export async function GET(req: NextRequest) {
     const dtFim = new Date(`${dataFim}T23:59:59`);
 
     // === PEGAR DADOS IGUAL A ROTA ORIGINAL ===
-    const { data: reservas } = await supabase
-      .from("Reserva")
-      .select("*")
-      .order("horaInicio", { ascending: false });
+    const { data: reservas } = await supabase.from("Reserva").select("*").order("horaInicio", { ascending: false });
 
-    const { data: espacos } = await supabase
-      .from("Espaco")
-      .select("idEspaco, codigoEspaco, idSalaPertence");
+    const { data: espacos } = await supabase.from("Espaco").select("idEspaco, codigoEspaco, idSalaPertence");
 
-    const { data: salas } = await supabase
-      .from("Sala")
-      .select("idSala, nomeSala");
+    const { data: salas } = await supabase.from("Sala").select("idSala, nomeSala");
 
-    const { data: usuarios } = await supabase
-      .from("Usuario")
-      .select("idUsuario, nome, email, foto");
+    const { data: usuarios } = await supabase.from("Usuario").select("idUsuario, nome, email, foto");
 
     const mapeadas =
       reservas?.map((r) => {
         const espaco = espacos?.find((e) => e.idEspaco === r.idEspacoReservado);
-        const sala = espaco
-          ? salas?.find((s) => s.idSala === espaco.idSalaPertence)
-          : null;
-        const usuario = usuarios?.find(
-          (u) => u.idUsuario === r.idUsuarioCriador
-        );
+        const sala = espaco ? salas?.find((s) => s.idSala === espaco.idSalaPertence) : null;
+        const usuario = usuarios?.find((u) => u.idUsuario === r.idUsuarioCriador);
 
         return {
           usuario: usuario?.nome ?? "",

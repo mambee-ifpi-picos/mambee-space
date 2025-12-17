@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { Inria_Serif } from "next/font/google";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/browser/supabaseClient";
 
 type MapaInfo = {
   file: File;
@@ -170,9 +170,7 @@ export default function CriarSalaEspacos() {
         const nomeArquivo = `mapa-${Date.now()}.${fileExt}`;
 
         // 2. Sobe o arquivo pro bucket "mapas_salas"
-        const { error: uploadError } = await supabase.storage
-          .from("mapas_salas")
-          .upload(nomeArquivo, mapa.file);
+        const { error: uploadError } = await supabase.storage.from("mapas_salas").upload(nomeArquivo, mapa.file);
 
         if (uploadError) {
           console.error("Erro no upload:", uploadError);
@@ -223,8 +221,7 @@ export default function CriarSalaEspacos() {
         const resultEspaco = await resEspaco.json().catch(() => null);
 
         if (!resEspaco.ok || !resultEspaco?.success) {
-          const msg =
-            resultEspaco?.error || `Erro ao criar espaço "${codigoEspaco}".`;
+          const msg = resultEspaco?.error || `Erro ao criar espaço "${codigoEspaco}".`;
 
           showToast(msg, "error");
           setLoading(false);
@@ -247,13 +244,9 @@ export default function CriarSalaEspacos() {
       {toast.visible && (
         <div
           className={`fixed top-4 left-1/2 -translate-x-1/2 ml-[13%]
-          px-6 py-3 rounded-md shadow-lg flex items-center justify-between 
+          px-6 py-3 rounded-md shadow-lg flex items-center justify-between
           w-[450px] border animate-slideDown z-50
-          ${
-            toast.type === "success"
-              ? "bg-teal-500 border-teal-300"
-              : "bg-red-500 border-red-500"
-          }
+          ${toast.type === "success" ? "bg-teal-500 border-teal-300" : "bg-red-500 border-red-500"}
         `}
         >
           <div className="flex items-center gap-2">
@@ -263,9 +256,7 @@ export default function CriarSalaEspacos() {
 
           <button
             type="button"
-            onClick={() =>
-              setToast({ visible: false, message: "", type: "success" })
-            }
+            onClick={() => setToast({ visible: false, message: "", type: "success" })}
             className="cursor-pointer"
           >
             <Image src="/close.png" width={18} height={18} alt="fechar" />
@@ -281,17 +272,11 @@ export default function CriarSalaEspacos() {
 
       <div className="min-h-screen flex justify-center items-start mt-[20px]">
         <div className="bg-white shadow-md rounded-xl p-8 w-[910px] border border-gray-300">
-          <h1
-            className={`${inriaSerif700.className} text-3xl mb-3 text-gray-900`}
-          >
-            CRIAR SALA E ESPAÇOS
-          </h1>
+          <h1 className={`${inriaSerif700.className} text-3xl mb-3 text-gray-900`}>CRIAR SALA E ESPAÇOS</h1>
 
           <form onSubmit={handleSubmit} className="space-y-6 ml-[60px]">
             <div>
-              <span
-                className={`${inriaSerif400.className} block text-gray-700`}
-              >
+              <span className={`${inriaSerif400.className} block text-gray-700`}>
                 Mapa da sala:<span className="text-red-500">*</span>
               </span>
 
@@ -300,18 +285,14 @@ export default function CriarSalaEspacos() {
                   htmlFor="mapa"
                   tabIndex={-1}
                   className={`w-[730px] border-2 border-dashed rounded-none p-6 transition flex flex-col items-center justify-center cursor-pointer ${
-                    arrastando
-                      ? "bg-teal-100 border-teal-400"
-                      : "bg-gray-50 border-gray-300"
+                    arrastando ? "bg-teal-100 border-teal-400" : "bg-gray-50 border-gray-300"
                   }`}
                   onDragLeave={handleDragLeave}
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
                 >
                   <Image src="/upload.png" width={40} height={40} alt="Up" />
-                  <p className="text-gray-700 mt-2 text-sm">
-                    Arraste e solte a imagem aqui
-                  </p>
+                  <p className="text-gray-700 mt-2 text-sm">Arraste e solte a imagem aqui</p>
 
                   <button
                     type="button"
@@ -320,13 +301,7 @@ export default function CriarSalaEspacos() {
                     Fazer upload do computador
                   </button>
 
-                  <input
-                    type="file"
-                    id="mapa"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                  />
+                  <input type="file" id="mapa" className="hidden" accept="image/*" onChange={handleFileChange} />
                 </label>
               )}
 
@@ -337,12 +312,7 @@ export default function CriarSalaEspacos() {
                     onClick={removerImagem}
                     className="absolute top-3 right-3 p-1 rounded-full shadow hover:bg-gray-100 cursor-pointer"
                   >
-                    <Image
-                      src="/lixeira.png"
-                      width={30}
-                      height={30}
-                      alt="Lixeira"
-                    />
+                    <Image src="/lixeira.png" width={30} height={30} alt="Lixeira" />
                   </button>
 
                   <Image
@@ -359,9 +329,7 @@ export default function CriarSalaEspacos() {
 
             <div className="flex flex-row items-start gap-8">
               <div className="w-[600px]">
-                <p
-                  className={`${inriaSerif400.className} block text-gray-700 mb-1`}
-                >
+                <p className={`${inriaSerif400.className} block text-gray-700 mb-1`}>
                   Nome da Sala:<span className="text-red-500">*</span>
                 </p>
 
@@ -374,9 +342,7 @@ export default function CriarSalaEspacos() {
               </div>
 
               <div className="flex flex-col">
-                <p className={`${inriaSerif400.className} text-gray-700 mb-1`}>
-                  Situação:
-                </p>
+                <p className={`${inriaSerif400.className} text-gray-700 mb-1`}>Situação:</p>
 
                 <div
                   role="switch"
@@ -395,17 +361,13 @@ export default function CriarSalaEspacos() {
                 >
                   <div
                     className={`absolute h-full w-[25px] bg-gray-300 transition-all duration-300 ${
-                      situacao === "Ativa"
-                        ? "translate-x-[74px]"
-                        : "translate-x-0"
+                      situacao === "Ativa" ? "translate-x-[74px]" : "translate-x-0"
                     }`}
                   />
 
                   <span
                     className={`${inriaSerif700.className} absolute inset-0 flex items-center text-white font-semibold transition-all ${
-                      situacao === "Ativa"
-                        ? "justify-start pl-5 opacity-100"
-                        : "opacity-0"
+                      situacao === "Ativa" ? "justify-start pl-5 opacity-100" : "opacity-0"
                     }`}
                   >
                     Ativo
@@ -413,9 +375,7 @@ export default function CriarSalaEspacos() {
 
                   <span
                     className={`${inriaSerif700.className} absolute inset-0 flex items-center text-white font-semibold transition-all ${
-                      situacao === "Inativa"
-                        ? "justify-end pr-2 opacity-100"
-                        : "opacity-0"
+                      situacao === "Inativa" ? "justify-end pr-2 opacity-100" : "opacity-0"
                     }`}
                   >
                     Inativo
@@ -439,9 +399,7 @@ export default function CriarSalaEspacos() {
             </div>
 
             <div>
-              <p
-                className={`${inriaSerif400.className} block text-gray-700 font-medium mb-1`}
-              >
+              <p className={`${inriaSerif400.className} block text-gray-700 font-medium mb-1`}>
                 Espaços:<span className="text-red-500">*</span>
               </p>
 
@@ -458,12 +416,7 @@ export default function CriarSalaEspacos() {
                   onClick={adicionarEspaco}
                   className="w-[130px] h-[30px] bg-gray-100 border border-gray-300 rounded-none px-3 py-2 hover:bg-gray-200 text-gray-600 flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Image
-                    src="/adicionar.png"
-                    alt="add"
-                    width={18}
-                    height={18}
-                  />
+                  <Image src="/adicionar.png" alt="add" width={18} height={18} />
                   <span>Adicionar</span>
                 </button>
               </div>
@@ -471,10 +424,7 @@ export default function CriarSalaEspacos() {
               {espacos.length > 0 && (
                 <div className="mt-4 w-[650px] space-y-3">
                   {espacos.map((item, i) => (
-                    <div
-                      key={item}
-                      className="flex justify-between items-center"
-                    >
+                    <div key={item} className="flex justify-between items-center">
                       <span className="text-gray-800 border-gray-300 border-x border-y text-center w-[494px] h-[40px] flex items-center justify-center">
                         {item}
                       </span>
@@ -485,13 +435,7 @@ export default function CriarSalaEspacos() {
                           onClick={() => editarEspaco(i)}
                           className="border-gray-300 border-x border-y p-3 cursor-pointer"
                         >
-                          <Image
-                            src="/editar.png"
-                            alt="editar"
-                            width={30}
-                            height={10}
-                            className="mt-[-7px]"
-                          />
+                          <Image src="/editar.png" alt="editar" width={30} height={10} className="mt-[-7px]" />
                         </button>
 
                         <button
@@ -499,13 +443,7 @@ export default function CriarSalaEspacos() {
                           onClick={() => apagarEspaco(i)}
                           className="mr-[20px] border-gray-300 border-x border-y p-3 h-[40px] cursor-pointer"
                         >
-                          <Image
-                            src="/lixeira.png"
-                            alt="deletar"
-                            width={30}
-                            height={10}
-                            className="mt-[-7px]"
-                          />
+                          <Image src="/lixeira.png" alt="deletar" width={30} height={10} className="mt-[-7px]" />
                         </button>
                       </div>
                     </div>

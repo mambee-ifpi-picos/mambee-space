@@ -4,8 +4,8 @@ import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import { User, Camera, CheckCircle, XCircle } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 import LogoutButton from "@/components/LogoutButton";
+import { supabase } from "@/lib/supabase/browser/supabaseClient";
 
 const COLOR_PRIMARY = "#33b5b5";
 const COLOR_INPUT_BG = "#e0e0e0";
@@ -16,11 +16,7 @@ interface NotificationProps {
   onClose: () => void;
 }
 
-const Notification: React.FC<NotificationProps> = ({
-  message,
-  type,
-  onClose,
-}) => {
+const Notification: React.FC<NotificationProps> = ({ message, type, onClose }) => {
   const isSuccess = type === "success";
   const bgColor = isSuccess ? "bg-green-500" : "bg-red-500";
   const Icon = isSuccess ? CheckCircle : XCircle;
@@ -42,11 +38,7 @@ const Notification: React.FC<NotificationProps> = ({
       >
         <Icon className="w-5 h-5 mr-3" />
         <p>{message}</p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="ml-4 text-white hover:text-gray-200"
-        >
+        <button type="button" onClick={onClose} className="ml-4 text-white hover:text-gray-200">
           &times;
         </button>
       </div>
@@ -98,17 +90,9 @@ export default function ProfilePage() {
         .ilike("email", user.email || "")
         .maybeSingle();
 
-      const userName =
-        dbUser?.nome ||
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        "";
+      const userName = dbUser?.nome || user.user_metadata?.full_name || user.user_metadata?.name || "";
 
-      const userPhoto =
-        dbUser?.foto ||
-        user.user_metadata?.avatar_url ||
-        user.user_metadata?.picture ||
-        "";
+      const userPhoto = dbUser?.foto || user.user_metadata?.avatar_url || user.user_metadata?.picture || "";
 
       const userEmail = user.email || "";
 
@@ -156,9 +140,7 @@ export default function ProfilePage() {
         const fileName = `${Date.now()}.${fileExt}`;
         const filePath = fileName;
 
-        const { error: uploadError } = await supabase.storage
-          .from("avatars")
-          .upload(filePath, selectedFile);
+        const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, selectedFile);
 
         if (uploadError) throw uploadError;
 
@@ -204,8 +186,7 @@ export default function ProfilePage() {
     } catch (error) {
       console.error("Erro ao atualizar:", error);
 
-      const message =
-        error instanceof Error ? error.message : "Erro desconhecido";
+      const message = error instanceof Error ? error.message : "Erro desconhecido";
 
       setNotification({
         message: `Erro ao salvar: ${message}`,
@@ -229,36 +210,19 @@ export default function ProfilePage() {
   const closeNotification = () => setNotification({ message: "", type: "" });
 
   if (isLoadingUser) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[#f5f5f5]">
-        Carregando perfil...
-      </div>
-    );
+    return <div className="flex h-screen items-center justify-center bg-[#f5f5f5]">Carregando perfil...</div>;
   }
 
   return (
-    <div
-      className="flex flex-col bg-[#f5f5f5] min-h-screen"
-      style={{ fontFamily: '"Inria Serif", serif' }}
-    >
-      <Notification
-        message={notification.message}
-        type={notification.type}
-        onClose={closeNotification}
-      />
+    <div className="flex flex-col bg-[#f5f5f5] min-h-screen" style={{ fontFamily: '"Inria Serif", serif' }}>
+      <Notification message={notification.message} type={notification.type} onClose={closeNotification} />
 
-      <div
-        className="h-[100px] w-full shadow-lg"
-        style={{ backgroundColor: COLOR_PRIMARY }}
-      />
+      <div className="h-[100px] w-full shadow-lg" style={{ backgroundColor: COLOR_PRIMARY }} />
 
       <div className="relative mx-auto w-full max-w-4xl p-4 sm:p-6 md:p-8 -mt-16">
         <div className="flex items-center gap-2 sm:gap-2 sm:-mt-9">
           <div className="relative rounded-full w-24 h-24 sm:w-32 sm:h-32 shadow-xl border-4 border-white overflow-hidden group bg-gray-200">
-            <label
-              htmlFor="foto"
-              className="cursor-pointer flex items-center justify-center w-full h-full"
-            >
+            <label htmlFor="foto" className="cursor-pointer flex items-center justify-center w-full h-full">
               {fotoUrl ? (
                 <Image
                   src={fotoUrl}
@@ -276,19 +240,11 @@ export default function ProfilePage() {
                 <Camera size={32} color="white" />
               </div>
 
-              <input
-                id="foto"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFotoChange}
-              />
+              <input id="foto" type="file" accept="image/*" className="hidden" onChange={handleFotoChange} />
             </label>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl text-gray-800 font-extrabold mt-10">
-            {nome}
-          </h1>
+          <h1 className="text-3xl sm:text-4xl text-gray-800 font-extrabold mt-10">{nome}</h1>
         </div>
 
         <form onSubmit={handleSalvar} className="mt-8 p-6 sm:p-8 rounded-xl">
@@ -300,10 +256,7 @@ export default function ProfilePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label
-                htmlFor="nome"
-                className="block text-sm text-gray-700 font-medium mb-2"
-              >
+              <label htmlFor="nome" className="block text-sm text-gray-700 font-medium mb-2">
                 Nome
               </label>
               <input
@@ -317,10 +270,7 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm text-gray-700 font-medium mb-2"
-              >
+              <label htmlFor="email" className="block text-sm text-gray-700 font-medium mb-2">
                 E-mail
               </label>
               <input

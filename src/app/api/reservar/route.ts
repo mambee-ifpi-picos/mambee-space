@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Auth } from "@/lib/middleware/Auth";
 import type { User } from "@supabase/supabase-js";
+import { Auth } from "@/lib/supabase/server/Auth";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -59,10 +59,7 @@ export async function GET(request: Request) {
         where: {
           idEspacoReservado: Number(idEspaco),
           situacao: "ATIVO",
-          AND: [
-            { horaInicio: { gte: inicioDia } },
-            { horaInicio: { lte: fimDia } },
-          ],
+          AND: [{ horaInicio: { gte: inicioDia } }, { horaInicio: { lte: fimDia } }],
         },
         select: {
           idReserva: true,
@@ -88,21 +85,9 @@ export async function GET(request: Request) {
 export const POST = Auth(async (request: NextRequest, _user: User | null) => {
   try {
     const body = await request.json();
-    const {
-      idEspaco,
-      data,
-      horaInicio,
-      horaFim,
-      motivo,
-      idUsuarioSupabase,
-      emailUsuario,
-    } = body;
+    const { idEspaco, data, horaInicio, horaFim, motivo, idUsuarioSupabase, emailUsuario } = body;
 
-    if (!horaInicio || !horaFim)
-      return NextResponse.json(
-        { error: "Horários obrigatórios!" },
-        { status: 400 },
-      );
+    if (!horaInicio || !horaFim) return NextResponse.json({ error: "Horários obrigatórios!" }, { status: 400 });
 
     const inicio = new Date(`${data}T${horaInicio}:00.000Z`);
     const fim = new Date(`${data}T${horaFim}:00.000Z`);
@@ -110,21 +95,9 @@ export const POST = Auth(async (request: NextRequest, _user: User | null) => {
     hoje.setUTCHours(0, 0, 0, 0);
     const diaReserva = new Date(`${data}T00:00:00.000Z`);
 
-    if (diaReserva < hoje)
-      return NextResponse.json(
-        { error: "Data passada não pode." },
-        { status: 400 },
-      );
-    if (inicio >= fim)
-      return NextResponse.json(
-        { error: "Hora final deve ser maior que a inicial." },
-        { status: 400 },
-      );
-    if (!idUsuarioSupabase)
-      return NextResponse.json(
-        { error: "Usuário não identificado." },
-        { status: 401 },
-      );
+    if (diaReserva < hoje) return NextResponse.json({ error: "Data passada não pode." }, { status: 400 });
+    if (inicio >= fim) return NextResponse.json({ error: "Hora final deve ser maior que a inicial." }, { status: 400 });
+    if (!idUsuarioSupabase) return NextResponse.json({ error: "Usuário não identificado." }, { status: 401 });
 
     let usuarioReal = await prisma.usuario.findUnique({
       where: { idAuth: idUsuarioSupabase },
@@ -151,11 +124,7 @@ export const POST = Auth(async (request: NextRequest, _user: User | null) => {
       }
     }
 
-    if (!usuarioReal)
-      return NextResponse.json(
-        { error: "Erro: Usuário não encontrado." },
-        { status: 404 },
-      );
+    if (!usuarioReal) return NextResponse.json({ error: "Erro: Usuário não encontrado." }, { status: 404 });
 
     const espacoInfo = await prisma.espaco.findUnique({
       where: { idEspaco: Number(idEspaco) },
@@ -187,11 +156,7 @@ export const POST = Auth(async (request: NextRequest, _user: User | null) => {
         ],
       },
     });
-    if (conflito)
-      return NextResponse.json(
-        { error: "Já existe reserva neste horário!" },
-        { status: 409 },
-      );
+    if (conflito) return NextResponse.json({ error: "Já existe reserva neste horário!" }, { status: 409 });
 
     const novaReserva = await prisma.reserva.create({
       data: {

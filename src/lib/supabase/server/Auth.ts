@@ -1,13 +1,10 @@
 import type { User } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getLoggedUser } from "../supabase/getLoggedUser";
+import { getLoggedUser } from "./getLoggedUser";
 
 export function Auth(
-  handler: (
-    req: NextRequest,
-    user: User | null,
-  ) => Promise<Response> | Response,
+  handler: (req: NextRequest, user: User | null) => Promise<Response> | Response,
   options = { required: true },
 ) {
   return async (req: NextRequest) => {

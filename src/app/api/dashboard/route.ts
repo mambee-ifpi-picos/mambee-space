@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Auth } from "@/lib/middleware/Auth";
 import { prisma } from "@/lib/prisma";
+import { Auth } from "@/lib/supabase/server/Auth";
 import type { User } from "@supabase/supabase-js";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
@@ -35,34 +35,32 @@ export const GET = Auth(
       const firstDay = new Date(Date.UTC(year, month - 1, 1));
       const lastDay = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
 
-      const [totalReservas, reservasPorEspaco, reservasMes, reservasSemana] =
-        await Promise.all([
-          prisma.reserva.count(),
-          prisma.reserva.groupBy({
-            by: ["idEspacoReservado"],
-            _count: { idReserva: true },
-          }),
-          prisma.reserva.groupBy({
-            by: ["idUsuarioCriador"],
-            where: { horaInicio: { gte: firstDay }, horaFim: { lte: lastDay } },
-            _count: { idReserva: true },
-          }),
-          prisma.reserva.groupBy({
-            by: ["idUsuarioCriador"],
-            where: {
-              horaInicio: {
-                gte: now.startOf("week").toDate(),
-                lt: now.endOf("week").toDate(),
-              },
+      const [totalReservas, reservasPorEspaco, reservasMes, reservasSemana] = await Promise.all([
+        prisma.reserva.count(),
+        prisma.reserva.groupBy({
+          by: ["idEspacoReservado"],
+          _count: { idReserva: true },
+        }),
+        prisma.reserva.groupBy({
+          by: ["idUsuarioCriador"],
+          where: { horaInicio: { gte: firstDay }, horaFim: { lte: lastDay } },
+          _count: { idReserva: true },
+        }),
+        prisma.reserva.groupBy({
+          by: ["idUsuarioCriador"],
+          where: {
+            horaInicio: {
+              gte: now.startOf("week").toDate(),
+              lt: now.endOf("week").toDate(),
             },
-            _count: { idReserva: true },
-          }),
-        ]);
+          },
+          _count: { idReserva: true },
+        }),
+      ]);
 
       // Most used space
       const maisUsado = reservasPorEspaco.sort(
-        (a: CountGroup, b: CountGroup) =>
-          b._count.idReserva - a._count.idReserva,
+        (a: CountGroup, b: CountGroup) => b._count.idReserva - a._count.idReserva,
       )[0];
       const espacoInfo = maisUsado
         ? await prisma.espaco.findUnique({
@@ -72,10 +70,7 @@ export const GET = Auth(
 
       // Top 3 users of the month
       const topMesRaw = reservasMes
-        .sort(
-          (a: CountGroup, b: CountGroup) =>
-            b._count.idReserva - a._count.idReserva,
-        )
+        .sort((a: CountGroup, b: CountGroup) => b._count.idReserva - a._count.idReserva)
         .slice(0, 3);
       const topMesIds = topMesRaw.map((r: CountUser) => r.idUsuarioCriador);
       const topMesUsers = await prisma.usuario.findMany({
@@ -84,50 +79,34 @@ export const GET = Auth(
       });
 
       const top3Mes = topMesRaw.map((r: CountUser) => ({
-        nome:
-          topMesUsers.find(
-            (u: UsuarioInfo) => u.idUsuario === r.idUsuarioCriador,
-          )?.nome ?? "Desconhecido",
+        nome: topMesUsers.find((u: UsuarioInfo) => u.idUsuario === r.idUsuarioCriador)?.nome ?? "Desconhecido",
         total: r._count.idReserva,
       }));
 
       // Top 3 users of the week
       const topSemanaRaw = reservasSemana
-        .sort(
-          (a: CountGroup, b: CountGroup) =>
-            b._count.idReserva - a._count.idReserva,
-        )
+        .sort((a: CountGroup, b: CountGroup) => b._count.idReserva - a._count.idReserva)
         .slice(0, 3);
-      const topSemanaIds = topSemanaRaw.map(
-        (r: CountUser) => r.idUsuarioCriador,
-      );
+      const topSemanaIds = topSemanaRaw.map((r: CountUser) => r.idUsuarioCriador);
       const topSemanaUsers = await prisma.usuario.findMany({
         where: { idUsuario: { in: topSemanaIds } },
         select: { idUsuario: true, nome: true },
       });
 
       const top3Semana = topSemanaRaw.map((r: CountUser) => ({
-        nome:
-          topSemanaUsers.find(
-            (u: UsuarioInfo) => u.idUsuario === r.idUsuarioCriador,
-          )?.nome ?? "Desconhecido",
+        nome: topSemanaUsers.find((u: UsuarioInfo) => u.idUsuario === r.idUsuarioCriador)?.nome ?? "Desconhecido",
         total: r._count.idReserva,
       }));
 
       return NextResponse.json({
         totalReservas,
-        maisReservado: espacoInfo
-          ? { nome: espacoInfo.nome, total: maisUsado._count.idReserva }
-          : null,
+        maisReservado: espacoInfo ? { nome: espacoInfo.nome, total: maisUsado._count.idReserva } : null,
         topMes: top3Mes,
         topSemana: top3Semana,
       });
     } catch (error) {
       console.error(error);
-      return NextResponse.json(
-        { error: "Erro ao buscar dados" },
-        { status: 500 },
-      );
+      return NextResponse.json({ error: "Erro ao buscar dados" }, { status: 500 });
     }
   },
   { required: true },

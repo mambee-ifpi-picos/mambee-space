@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Inria_Serif } from "next/font/google";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/browser/supabaseClient";
 
 const inriaSerif700 = Inria_Serif({ subsets: ["latin"], weight: ["700"] });
 
@@ -49,10 +49,7 @@ export default function ReservarEspaco() {
 
   const showToast = useCallback((msg: string, type = "success") => {
     setToast({ visible: true, message: msg, type: type as string });
-    setTimeout(
-      () => setToast({ visible: false, message: "", type: "success" }),
-      3500,
-    );
+    setTimeout(() => setToast({ visible: false, message: "", type: "success" }), 3500);
   }, []);
 
   useEffect(() => {
@@ -153,11 +150,7 @@ export default function ReservarEspaco() {
   const formatarDataBonita = (dataStr: string) => {
     if (!dataStr) return "";
     const parts = dataStr.split("-");
-    return new Date(
-      Number(parts[0]),
-      Number(parts[1]) - 1,
-      Number(parts[2]),
-    ).toLocaleDateString("pt-BR", {
+    return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).toLocaleDateString("pt-BR", {
       weekday: "long",
       day: "2-digit",
       month: "2-digit",
@@ -169,11 +162,7 @@ export default function ReservarEspaco() {
     setLoading(true);
 
     const dtParts = data.split("-");
-    const dtObj = new Date(
-      Number(dtParts[0]),
-      Number(dtParts[1]) - 1,
-      Number(dtParts[2]),
-    );
+    const dtObj = new Date(Number(dtParts[0]), Number(dtParts[1]) - 1, Number(dtParts[2]));
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
@@ -222,12 +211,7 @@ export default function ReservarEspaco() {
 
       const json = await res.json();
       if (!res.ok) {
-        showToast(
-          res.status === 404
-            ? "Usuário não cadastrado."
-            : `Erro: ${json.error}`,
-          "error",
-        );
+        showToast(res.status === 404 ? "Usuário não cadastrado." : `Erro: ${json.error}`, "error");
       } else {
         showToast("Reserva realizada!", "success");
         fetch(`/api/reservar?idEspaco=${idEspaco}&data=${data}`)
@@ -257,16 +241,10 @@ export default function ReservarEspaco() {
           {/* ESQUERDA */}
           <div className="w-full lg:w-[35%] p-6 border-b lg:border-b-0 lg:border-r border-gray-300">
             <div className="mb-6">
-              <h1
-                className={`${inriaSerif700.className} text-3xl text-gray-900`}
-              >
-                RESERVAR ESPAÇO
-              </h1>
+              <h1 className={`${inriaSerif700.className} text-3xl text-gray-900`}>RESERVAR ESPAÇO</h1>
               <div className="text-sm font-bold mt-1 min-h-5">
                 {authLoading ? (
-                  <span className="text-gray-400 animate-pulse">
-                    Verificando usuário...
-                  </span>
+                  <span className="text-gray-400 animate-pulse">Verificando usuário...</span>
                 ) : emailUsuario ? (
                   <span className="text-teal-600">Logado: {emailUsuario}</span>
                 ) : (
@@ -375,9 +353,7 @@ export default function ReservarEspaco() {
           <div className="flex-1 p-6 bg-gray-50 flex flex-col gap-6">
             <div className="w-full h-[300px] bg-white border border-gray-300 rounded relative flex items-center justify-center overflow-hidden">
               {carregandoMapa ? (
-                <span className="text-teal-600 font-bold animate-pulse">
-                  Carregando mapa...
-                </span>
+                <span className="text-teal-600 font-bold animate-pulse">Carregando mapa...</span>
               ) : mapaAtual ? (
                 <Image
                   src={tratarCaminhoImagem(mapaAtual)}
@@ -389,11 +365,7 @@ export default function ReservarEspaco() {
               ) : (
                 <div className="text-gray-400 flex flex-col items-center">
                   <span className="text-3xl"></span>
-                  <span className="text-sm mt-1">
-                    {salaSelecionada
-                      ? "Sem mapa disponível"
-                      : "Selecione uma sala"}
-                  </span>
+                  <span className="text-sm mt-1">{salaSelecionada ? "Sem mapa disponível" : "Selecione uma sala"}</span>
                 </div>
               )}
             </div>
@@ -401,11 +373,7 @@ export default function ReservarEspaco() {
             {/* CRONOGRAMA */}
             <div className="flex-1 border border-gray-300 rounded p-4 bg-white overflow-y-auto custom-scrollbar min-h-[250px]">
               <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
-                <h3
-                  className={`${inriaSerif700.className} text-gray-800 text-lg`}
-                >
-                  Cronograma
-                </h3>
+                <h3 className={`${inriaSerif700.className} text-gray-800 text-lg`}>Cronograma</h3>
                 {data && (
                   <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded uppercase">
                     {formatarDataBonita(data)}
@@ -418,32 +386,22 @@ export default function ReservarEspaco() {
                 </div>
               ) : cronograma.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center">
-                  <p className="text-green-600 font-bold">
-                    Todos os horários estão livres!
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Nenhuma reserva para hoje.
-                  </p>
+                  <p className="text-green-600 font-bold">Todos os horários estão livres!</p>
+                  <p className="text-xs text-gray-500">Nenhuma reserva para hoje.</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {cronograma.map((res) => {
-                    const hIni = new Date(res.horaInicio).toLocaleTimeString(
-                      "pt-BR",
-                      {
-                        timeZone: "UTC",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      },
-                    );
-                    const hFim = new Date(res.horaFim).toLocaleTimeString(
-                      "pt-BR",
-                      {
-                        timeZone: "UTC",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      },
-                    );
+                    const hIni = new Date(res.horaInicio).toLocaleTimeString("pt-BR", {
+                      timeZone: "UTC",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                    const hFim = new Date(res.horaFim).toLocaleTimeString("pt-BR", {
+                      timeZone: "UTC",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
                     return (
                       <div
                         key={res.idReserva}
@@ -473,9 +431,7 @@ export default function ReservarEspaco() {
                               {hIni} - {hFim}
                             </span>
                           </div>
-                          <p className="text-gray-500 text-xs mt-1 truncate">
-                            "{res.motivo}"
-                          </p>
+                          <p className="text-gray-500 text-xs mt-1 truncate">"{res.motivo}"</p>
                         </div>
                       </div>
                     );

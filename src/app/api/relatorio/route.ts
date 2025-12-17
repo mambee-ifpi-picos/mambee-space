@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import { createSupabaseServerClient } from "@/lib/supabase/server/supabaseServer";
 
 /**
  * Função auxiliar para recuperar valor de uma propriedade em um objeto
  * ignorando se a chave está em maiúsculo ou minúsculo (Case Insensitive).
  */
-function pegarValor(
-  obj: Record<string, unknown> | null,
-  chavesPossiveis: string[]
-) {
+function pegarValor(obj: Record<string, unknown> | null, chavesPossiveis: string[]) {
   if (!obj) return null;
   const chavesDoObjeto = Object.keys(obj);
 
@@ -17,9 +14,7 @@ function pegarValor(
     if (obj[chave] !== undefined && obj[chave] !== null) return obj[chave];
 
     // 2. Tenta encontrar a chave ignorando Case Sensitive
-    const chaveReal = chavesDoObjeto.find(
-      (k) => k.toLowerCase() === chave.toLowerCase()
-    );
+    const chaveReal = chavesDoObjeto.find((k) => k.toLowerCase() === chave.toLowerCase());
     if (chaveReal && obj[chaveReal] !== undefined && obj[chaveReal] !== null) {
       return obj[chaveReal];
     }
@@ -30,27 +25,19 @@ function pegarValor(
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+    const supabase = await createSupabaseServerClient();
 
     // --- Filtros ---
     const filtroSala = (searchParams.get("sala") ?? "").trim().toLowerCase();
-    const filtroEspaco = (searchParams.get("espaco") ?? "")
-      .trim()
-      .toLowerCase();
-    const filtroMotivo = (searchParams.get("motivo") ?? "")
-      .trim()
-      .toLowerCase();
-    const filtroUsuario = (searchParams.get("usuario") ?? "")
-      .trim()
-      .toLowerCase();
+    const filtroEspaco = (searchParams.get("espaco") ?? "").trim().toLowerCase();
+    const filtroMotivo = (searchParams.get("motivo") ?? "").trim().toLowerCase();
+    const filtroUsuario = (searchParams.get("usuario") ?? "").trim().toLowerCase();
 
     const dataInicio = searchParams.get("inicio");
     const dataFim = searchParams.get("fim");
 
     if (!dataInicio || !dataFim) {
-      return NextResponse.json(
-        { success: false, error: "Datas obrigatórias" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Datas obrigatórias" }, { status: 400 });
     }
 
     // 1. Busca Reservas (Ordenadas por Data Crescente)
@@ -82,13 +69,7 @@ export async function GET(req: Request) {
 
         // Encontra o usuário na lista
         const usuarioReal = usuarios?.find((u) => {
-          const idUserRaw = pegarValor(u, [
-            "idUsuario",
-            "idusuario",
-            "id_usuario",
-            "id",
-            "userId",
-          ]);
+          const idUserRaw = pegarValor(u, ["idUsuario", "idusuario", "id_usuario", "id", "userId"]);
           return String(idUserRaw) === idCriadorString;
         });
 
@@ -105,24 +86,16 @@ export async function GET(req: Request) {
         }
 
         // Recupera ID do Espaço
-        const idEspacoResRaw = pegarValor(r, [
-          "idEspacoReservado",
-          "id_espaco_reservado",
-          "idespacoreservado",
-        ]);
+        const idEspacoResRaw = pegarValor(r, ["idEspacoReservado", "id_espaco_reservado", "idespacoreservado"]);
 
         // Encontra Espaço e Sala vinculada
-        const espaco = espacos?.find(
-          (e) =>
-            String(pegarValor(e, ["idEspaco", "idespaco"])) ===
-            String(idEspacoResRaw)
-        );
+        const espaco = espacos?.find((e) => String(pegarValor(e, ["idEspaco", "idespaco"])) === String(idEspacoResRaw));
 
         const sala = espaco
           ? salas?.find(
               (s) =>
                 String(pegarValor(s, ["idSala", "idsala"])) ===
-                String(pegarValor(espaco, ["idSalaPertence", "idsalapertence"]))
+                String(pegarValor(espaco, ["idSalaPertence", "idsalapertence"])),
             )
           : null;
 
@@ -159,8 +132,7 @@ export async function GET(req: Request) {
       const dtFimFiltro = new Date(`${dataFim}T23:59:59`);
 
       const dataOK =
-        dtInicioRes.getTime() >= dtInicioFiltro.getTime() &&
-        dtInicioRes.getTime() <= dtFimFiltro.getTime();
+        dtInicioRes.getTime() >= dtInicioFiltro.getTime() && dtInicioRes.getTime() <= dtFimFiltro.getTime();
 
       return salaOK && espacoOK && motivoOK && usuarioOK && dataOK;
     });

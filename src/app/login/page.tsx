@@ -1,6 +1,6 @@
 "use client";
 
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/browser/supabaseClient";
 import { FaApple } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 
@@ -33,9 +33,7 @@ export default function LoginPage() {
             <img src="/logoMambee2.png" alt="Mambee" className="w-90" />
           </div>
 
-          <h1 className="text-4xl font-semibold text-center text-gray-800 mb-12">
-            Entrar no sistema
-          </h1>
+          <h1 className="text-4xl font-semibold text-center text-gray-800 mb-12">Entrar no sistema</h1>
 
           {/* Google */}
           <button

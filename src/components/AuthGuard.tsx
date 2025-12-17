@@ -1,6 +1,6 @@
 "use client";
 
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/browser/supabaseClient";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -10,39 +10,38 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     async function checkAuth() {
       try {
-        console.log("init checkAuth...");
+        console.log("init checkAuth...", supabase);
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        console.log("user:", session?.user);
+        console.log("after get user from supabase...");
 
         const user = session?.user ?? null;
         const login = "/login";
         const publicRoutes = ["/", "/login", "/agendamentos"];
 
         if (!user && !publicRoutes.includes(pathname)) {
-          // not logged in -> redirect to login
           router.replace("/login");
         } else if (user && login === pathname) {
-          // logged in but visiting public route -> redirect to dashboard
           router.replace("/reservar");
         }
 
         setLoading(false);
       } catch (error) {
-        console.error(error);
+        console.error("Auth check error:", error);
+      } finally {
+        setLoading(false);
       }
     }
 
     checkAuth();
 
-    // listen for real-time auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(() => checkAuth());
-
     return () => subscription.unsubscribe();
   }, [pathname, router]);
 

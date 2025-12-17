@@ -2,19 +2,13 @@
 
 import { Menu } from "@/components/Menu";
 import Navbar from "@/components/Navbar";
+import { supabase } from "@/lib/supabase/browser/supabaseClient";
 import { Menu as MenuIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-import { supabase } from "@/lib/supabaseClient";
 
-export default function ClientLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-
   const [open, setOpen] = useState(true);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
@@ -33,11 +27,7 @@ export default function ClientLayout({
         return;
       }
 
-      const { data: usuario } = await supabase
-        .from("Usuario")
-        .select("admin")
-        .eq("idAuth", data.user.id)
-        .single();
+      const { data: usuario } = await supabase.from("Usuario").select("admin").eq("idAuth", data.user.id).single();
 
       setIsAdmin(usuario?.admin ?? false);
     };
@@ -64,19 +54,10 @@ export default function ClientLayout({
       <div className="min-h-screen page">
         {!isMenuHidden && isAdmin !== null && (
           <>
-            <Menu
-              isOpen={open}
-              isAdmin={isAdmin}
-              onClose={handleClose}
-              mobileClose={mobileClose}
-            />
+            <Menu isOpen={open} isAdmin={isAdmin} onClose={handleClose} mobileClose={mobileClose} />
 
             {!open && (
-              <button
-                type="button"
-                onClick={() => setOpen(true)}
-                className="p-3 absolute"
-              >
+              <button type="button" onClick={() => setOpen(true)} className="p-3 absolute">
                 <MenuIcon size={24} />
               </button>
             )}
