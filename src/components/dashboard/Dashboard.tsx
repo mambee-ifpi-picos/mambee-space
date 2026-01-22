@@ -3,15 +3,14 @@
 
 import { TopUsuario } from "@/utils/tipos";
 import { useEffect, useState } from "react";
-import { LoadingError } from "@/components/dashboard/LoadingError";
-import { CardTotalReservas } from "@/components/dashboard/CardTotalReservas";
-import { CardInfoCinza } from "@/components/dashboard/CardInfoCinza";
-//import { CardUsoEspacos } from "@/components/dashboard/CardUsoEspacos";
-import { GraficoHorarios } from "@/components/dashboard/GraficoHorarios";
-import { GraficoFrequencia } from "@/components/dashboard/GraficoFrequencia";
-import { CardInatividade } from "@/components/dashboard/CardInatividade";
-import { TopFrequentadores } from "@/components/dashboard/TopFrequentadores";
-import { DashboardGrid } from "@/components/dashboard/DashboardGrid";
+import { LoadingError } from "./LoadingError";
+import { CardTotalReservas } from "./CardTotalReservas";
+import { CardInfoCinza } from "./CardInfoCinza";
+//import { CardUsoEspacos } from "./CardUsoEspacos";
+import { GraficoHorarios } from "./GraficoHorarios";
+//import { GraficoFrequencia } from "./GraficoFrequencia";
+//import { CardInatividade } from "./CardMinhasReservas";
+import { TopFrequentadores } from "./TopFrequentadores";
 
 type DashboardData = {
   espacoMaisUtilizado: string;
@@ -61,7 +60,6 @@ export default function Dashboard() {
 
   const { espacosUtilizados, graficos, frequenciaDias, totalInatividade, totalReservas, topMes, topSemana } = data;
 
-  // Preparar dados para os gráficos
   const manhaData = graficos?.manha.map((v, i) => ({
     hora: `${6 + i}h`,
     valor: v,
@@ -72,38 +70,28 @@ export default function Dashboard() {
     valor: v,
   }));
 
-  const ordemDias = [
-  "Domingo",
-  "Segunda",
-  "Terça",
-  "Quarta",
-  "Quinta",
-  "Sexta",
-  "Sábado",
-];
-
-const freqData = ordemDias.map((dia) => ({
-  dia,
-  valor: frequenciaDias[dia] ?? 0,
-}));
-
+  const freqData = Object.entries(frequenciaDias ? frequenciaDias : []).map(([dia, valor]) => ({
+    dia,
+    valor,
+  }));
 
   return (
-    <DashboardGrid>
-      <CardTotalReservas totalReservas={totalReservas} />
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <div className="grid grid-cols-4 gap-4">
+        <CardTotalReservas totalReservas={totalReservas} />
 
-      <CardInfoCinza />
-      <CardInatividade totalInatividade={totalInatividade} />
+        <CardInfoCinza />
 
-      <GraficoHorarios periodo="manha" data={manhaData} />
+        {/* <CardUsoEspacos data={espacosUtilizados} /> */}
 
-      <GraficoHorarios periodo="tarde" data={tardeData} />
+        <GraficoHorarios periodo="manha" data={manhaData} />
 
-      <GraficoFrequencia data={freqData} />
+        <GraficoHorarios periodo="tarde" data={tardeData} />
 
-      <TopFrequentadores titulo="TOP FREQUENTADORES DO MÊS" usuarios={topMes} periodo="mês" />
+        <TopFrequentadores titulo="TOP FREQUENTADORES DO MÊS" usuarios={topMes} periodo="mês" />
 
-      <TopFrequentadores titulo="TOP FREQUENTADORES DA SEMANA" usuarios={topSemana} periodo="semana" />
-    </DashboardGrid>
+        <TopFrequentadores titulo="TOP FREQUENTADORES DA SEMANA" usuarios={topSemana} periodo="semana" />
+      </div>
+    </div>
   );
 }

@@ -44,6 +44,7 @@ export async function GET(req: Request) {
     const { data: reservasData, error: errRes } = await supabase
       .from("Reserva")
       .select("*")
+      .neq("situacao", "CANCELADA")
       .order("horaInicio", { ascending: true });
 
     if (errRes) throw new Error(`Erro Reserva: ${errRes.message}`);

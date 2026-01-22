@@ -76,12 +76,17 @@ function reservaJaFinalizada(reserva: Reserva) {
   return fim.getTime() <= agora.getTime();
 }
 
+function cancelada(reserva: Reserva) {
+  if (reserva.situacao === "CANCELADA") {
+    return true;
+  }
+  return false;
+}
+
 export default function ReservasPage() {
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [usuarios, setUsuarios] = useState<Record<number, Usuario>>({});
-  const [usuariosPorEmail, setUsuariosPorEmail] = useState<
-    Record<string, Usuario>
-  >({});
+  const [usuariosPorEmail, setUsuariosPorEmail] = useState<Record<string, Usuario>>({});
   const [busca, setBusca] = useState("");
   const [buscaAtiva, setBuscaAtiva] = useState("");
   const [pagina, setPagina] = useState(1);
@@ -95,14 +100,11 @@ export default function ReservasPage() {
   } | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const debugFetch = useCallback(
-    async (input: RequestInfo | URL, init?: RequestInit) => {
-      const res = await fetch(input, init);
-      const text = await res.text();
-      return { ok: res.ok, status: res.status, text };
-    },
-    [],
-  );
+  const debugFetch = useCallback(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const res = await fetch(input, init);
+    const text = await res.text();
+    return { ok: res.ok, status: res.status, text };
+  }, []);
 
   const carregarSalas = useCallback(async () => {
     try {
@@ -115,11 +117,7 @@ export default function ReservasPage() {
         const espacos = Array.isArray(first.espacos) ? first.espacos : [];
         if (espacos.length > 0) {
           const espaco = espacos[0];
-          const id =
-            espaco.idEspaco ??
-            espaco.id ??
-            (espaco as { idSala?: number }).idSala ??
-            null;
+          const id = espaco.idEspaco ?? espaco.id ?? (espaco as { idSala?: number }).idSala ?? null;
           setDefaultEspacoId(id ? Number(id) : null);
         }
       }
@@ -135,12 +133,8 @@ export default function ReservasPage() {
   const carregarUsuarios = useCallback(
     async (opts: { ids?: number[]; emails?: string[] }) => {
       try {
-        const idsClean = (opts.ids ?? []).filter(
-          (i) => Number.isFinite(i) && i > 0,
-        );
-        const emailsClean = (opts.emails ?? [])
-          .map((e) => String(e).trim().toLowerCase())
-          .filter((e) => e.length > 0);
+        const idsClean = (opts.ids ?? []).filter((i) => Number.isFinite(i) && i > 0);
+        const emailsClean = (opts.emails ?? []).map((e) => String(e).trim().toLowerCase()).filter((e) => e.length > 0);
 
         if (idsClean.length > 0) {
           const uniqueIds = [...new Set(idsClean)];
@@ -164,9 +158,7 @@ export default function ReservasPage() {
 
         if (emailsClean.length > 0) {
           const uniqueEmails = [...new Set(emailsClean)];
-          const url = `/api/usuarios?emails=${encodeURIComponent(
-            uniqueEmails.join(","),
-          )}`;
+          const url = `/api/usuarios?emails=${encodeURIComponent(uniqueEmails.join(","))}`;
           const r = await debugFetch(url, { cache: "no-store" });
           if (r.ok) {
             const parsed = safeParseApiResponse(r.text);
@@ -217,18 +209,12 @@ export default function ReservasPage() {
         }
 
         if (!r.ok) {
-          console.error(
-            "❌ [carregarReservas] Erro HTTP. Status:",
-            r.status,
-            "Corpo:",
-            r.text,
-          );
+          console.error("❌ [carregarReservas] Erro HTTP. Status:", r.status, "Corpo:", r.text);
           throw new Error(`HTTP ${r.status}`);
         }
 
         const data = safeParseApiResponse(r.text);
-        if (!data || !data.success)
-          throw new Error(data?.error ?? "Erro ao carregar reservas");
+        if (!data || !data.success) throw new Error(data?.error ?? "Erro ao carregar reservas");
 
         if (data.usuarioLogado) {
           setUsuarioLogado(data.usuarioLogado);
@@ -243,10 +229,7 @@ export default function ReservasPage() {
         const idsParaBuscar: number[] = [];
 
         reservasTipadas.forEach((r) => {
-          const email =
-            r.criador?.email ??
-            (r.criador as { emailAddress?: string })?.emailAddress ??
-            null;
+          const email = r.criador?.email ?? (r.criador as { emailAddress?: string })?.emailAddress ?? null;
           if (email && typeof email === "string" && email.trim().length > 0) {
             const e = email.trim().toLowerCase();
             if (!usuariosPorEmail[e]) emailsParaBuscar.push(e);
@@ -257,11 +240,7 @@ export default function ReservasPage() {
             (r as { idUsuarioCriador?: number }).idUsuarioCriador ??
             (r as { idCriador?: number }).idCriador ??
             r.criador?.idUsuario;
-          if (
-            typeof maybeId === "number" &&
-            Number.isFinite(maybeId) &&
-            maybeId > 0
-          ) {
+          if (typeof maybeId === "number" && Number.isFinite(maybeId) && maybeId > 0) {
             if (!usuarios[maybeId]) idsParaBuscar.push(maybeId);
           }
         });
@@ -278,15 +257,7 @@ export default function ReservasPage() {
         setLoading(false);
       }
     },
-    [
-      buscaAtiva,
-      carregarUsuarios,
-      debugFetch,
-      defaultEspacoId,
-      carregarSalas,
-      usuarios,
-      usuariosPorEmail,
-    ],
+    [buscaAtiva, carregarUsuarios, debugFetch, defaultEspacoId, carregarSalas, usuarios, usuariosPorEmail],
   );
 
   useEffect(() => {
@@ -345,9 +316,7 @@ export default function ReservasPage() {
       }
     } catch (error) {
       console.error("Erro ao cancelar reserva:", error);
-      alert(
-        error instanceof Error ? error.message : "Erro ao cancelar reserva",
-      );
+      alert(error instanceof Error ? error.message : "Erro ao cancelar reserva");
     } finally {
       setDeletingId(null);
     }
@@ -356,17 +325,19 @@ export default function ReservasPage() {
   const podeCancelarReserva = (reserva: Reserva) => {
     if (!usuarioLogado) return false;
 
+    // Se já estiver cancelada, ninguém cancela
+    if (reserva.situacao === "CANCELADA") return false;
+
     const agora = new Date();
     const fim = new Date(reserva.horaFim);
 
+    // Admin pode cancelar mesmo se já passou do horário
+    if (usuarioLogado.admin && fim > agora) return true;
+
+    // Usuário comum não pode cancelar reserva finalizada
     if (fim < agora) return false;
 
-    if (usuarioLogado.admin) return true;
-
-    const reservaCriadorId =
-      reserva.idUsuarioCriador ??
-      reserva.criador?.idUsuario ??
-      reserva.idCriador;
+    const reservaCriadorId = reserva.idUsuarioCriador ?? reserva.criador?.idUsuario ?? reserva.idCriador;
 
     return reservaCriadorId === usuarioLogado.idUsuario;
   };
@@ -415,10 +386,7 @@ export default function ReservasPage() {
 
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">
-          Reservas{" "}
-          {usuarioLogado?.admin
-            ? "(Todas as reservas - Admin)"
-            : "(Minhas reservas)"}
+          Reservas {usuarioLogado?.admin ? "(Todas as reservas - Admin)" : "(Minhas reservas)"}
         </h2>
         {buscaAtiva && (
           <div className="text-sm text-gray-600">
@@ -428,14 +396,10 @@ export default function ReservasPage() {
         )}
       </div>
 
-      {loading && reservas.length === 0 && (
-        <p className="text-sm text-gray-500">Carregando reservas...</p>
-      )}
+      {loading && reservas.length === 0 && <p className="text-sm text-gray-500">Carregando reservas...</p>}
       {reservas.length === 0 && !loading && (
         <p className="text-sm text-gray-500">
-          {buscaAtiva
-            ? `Nenhuma reserva encontrada para "${buscaAtiva}"`
-            : "Nenhuma reserva encontrada."}
+          {buscaAtiva ? `Nenhuma reserva encontrada para "${buscaAtiva}"` : "Nenhuma reserva encontrada."}
         </p>
       )}
 
@@ -455,17 +419,10 @@ export default function ReservasPage() {
               : undefined;
           const user = userByEmail ?? userById;
 
-          const displayName =
-            user?.nome ??
-            (creatorEmail
-              ? getLocalPart(creatorEmail)
-              : `Usuário ${creatorId}`);
+          const displayName = user?.nome ?? (creatorEmail ? getLocalPart(creatorEmail) : `Usuário ${creatorId}`);
           const displayEmail = user?.email ?? creatorEmail ?? null;
           const avatarFoto = user?.foto ?? null;
-          const initials = initialsFromNameOrEmail(
-            user?.nome ?? displayEmail,
-            displayEmail,
-          );
+          const initials = initialsFromNameOrEmail(user?.nome ?? displayEmail, displayEmail);
 
           const podeCancelar = podeCancelarReserva(reserva);
 
@@ -515,14 +472,8 @@ export default function ReservasPage() {
                   </div>
 
                   <div className="flex flex-col text-sm text-gray-800">
-                    <span className="font-semibold leading-tight">
-                      {displayName}
-                    </span>
-                    {displayEmail && (
-                      <span className="text-xs text-gray-500 leading-tight">
-                        {displayEmail}
-                      </span>
-                    )}
+                    <span className="font-semibold leading-tight">{displayName}</span>
+                    {displayEmail && <span className="text-xs text-gray-500 leading-tight">{displayEmail}</span>}
                   </div>
                 </div>
 
@@ -537,18 +488,14 @@ export default function ReservasPage() {
                   {reserva.motivo}
                 </p>
 
-                <p className="text-xs text-gray-600 mb-3">
-                  {formatarReservaHora(reserva.horaInicio, reserva.horaFim)}
-                </p>
+                <p className="text-xs text-gray-600 mb-3">{formatarReservaHora(reserva.horaInicio, reserva.horaFim)}</p>
 
                 {podeCancelar && (
                   <div className="absolute bottom-2 right-2">
                     <button
                       type="button"
                       onClick={() => cancelarReserva(reserva.idReserva)}
-                      disabled={
-                        deletingId === reserva.idReserva || !podeCancelar
-                      }
+                      disabled={deletingId === reserva.idReserva || !podeCancelar}
                       className={`
                         px-3 py-1 text-xs font-medium rounded
                         transition-all duration-200
@@ -597,7 +544,7 @@ export default function ReservasPage() {
                       className="px-2 py-1 text-xs text-gray-500 bg-gray-100 rounded"
                       title="Apenas o criador da reserva ou um administrador pode cancelar"
                     >
-                      Não pode cancelar
+                      {reserva.situacao === "CANCELADA" ? "Reserva cancelada" : "Reserva não pode ser cancelada"}
                     </span>
                   </div>
                 )}
@@ -626,8 +573,7 @@ export default function ReservasPage() {
             <button
               type="button"
               onClick={() => {
-                if (!estaNaUltimaPagina)
-                  carregarReservas(pagina + 1, buscaAtiva);
+                if (!estaNaUltimaPagina) carregarReservas(pagina + 1, buscaAtiva);
               }}
               disabled={estaNaUltimaPagina || loading}
               className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 text-sm"

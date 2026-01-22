@@ -1,7 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server/supabaseServer";
 import { NextResponse } from "next/server";
+import { Auth } from "@/lib/supabase/server/Auth";
 
-export async function GET() {
+export const GET = Auth(async () => {
   try {
     const supabase = await createSupabaseServerClient();
 
@@ -15,9 +16,9 @@ export async function GET() {
   } catch {
     return NextResponse.json({ success: false, error: "Erro interno." }, { status: 500 });
   }
-}
+});
 
-export async function POST(req: Request) {
+export const POST = Auth(async (req: Request) => {
   try {
     const supabase = await createSupabaseServerClient();
     const {
@@ -65,4 +66,4 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ success: false, error: "Erro interno." }, { status: 500 });
   }
-}
+});

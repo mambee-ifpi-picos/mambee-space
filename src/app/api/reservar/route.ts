@@ -3,85 +3,81 @@ import { prisma } from "@/lib/prisma";
 import type { User } from "@supabase/supabase-js";
 import { Auth } from "@/lib/supabase/server/Auth";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const tipo = searchParams.get("tipo");
-  const idSala = searchParams.get("idSala");
-  const idEspaco = searchParams.get("idEspaco");
-  const data = searchParams.get("data");
+export const GET = Auth(
+  async (request: NextRequest, _user: User | null) => {
+    const { searchParams } = new URL(request.url);
+    const tipo = searchParams.get("tipo");
+    const idSala = searchParams.get("idSala");
+    const idEspaco = searchParams.get("idEspaco");
+    const data = searchParams.get("data");
 
-  try {
-    // 1. LISTA DE SALAS (LEVE - SÓ ID E NOME)
-    if (tipo === "salas") {
-      const salas = await prisma.sala.findMany({
-        where: { ativa: true },
-        select: {
-          idSala: true,
-          nomeSala: true,
-          // mapa: true, <--- NÃO TEM MAPA AQUI PRA SER RÁPIDO
-          limiteHorasReserva: true,
-        },
-        orderBy: { nomeSala: "asc" },
-      });
-      return NextResponse.json(salas);
+    try {
+      if (tipo === "salas") {
+        const salas = await prisma.sala.findMany({
+          where: { ativa: true },
+          select: {
+            idSala: true,
+            nomeSala: true,
+            limiteHorasReserva: true,
+          },
+          orderBy: { nomeSala: "asc" },
+        });
+        return NextResponse.json(salas);
+      }
+
+      if (tipo === "sala_mapa" && idSala) {
+        const salaUnica = await prisma.sala.findUnique({
+          where: { idSala: Number(idSala) },
+          select: {
+            mapa: true,
+            nomeSala: true,
+          },
+        });
+        return NextResponse.json(salaUnica);
+      }
+
+      // 2. Espaços
+      if (tipo === "espacos" && idSala) {
+        const espacos = await prisma.espaco.findMany({
+          where: { idSalaPertence: Number(idSala) },
+          select: { idEspaco: true, codigoEspaco: true },
+          orderBy: { codigoEspaco: "asc" },
+        });
+        return NextResponse.json(espacos);
+      }
+
+      // 3. Cronograma
+      if (idEspaco && data) {
+        const inicioDia = new Date(`${data}T00:00:00.000Z`);
+        const fimDia = new Date(`${data}T23:59:59.999Z`);
+
+        const reservas = await prisma.reserva.findMany({
+          where: {
+            idEspacoReservado: Number(idEspaco),
+            situacao: "ATIVO",
+            AND: [{ horaInicio: { gte: inicioDia } }, { horaInicio: { lte: fimDia } }],
+          },
+          select: {
+            idReserva: true,
+            horaInicio: true,
+            horaFim: true,
+            motivo: true,
+            criador: { select: { nome: true, foto: true } },
+          },
+          orderBy: { horaInicio: "asc" },
+        });
+        return NextResponse.json(reservas);
+      }
+
+      return NextResponse.json([]);
+    } catch (error) {
+      console.error("Erro API GET:", error);
+      return NextResponse.json({ error: "Erro interno" }, { status: 500 });
     }
+  },
+  { required: true },
+);
 
-    // 🚨🚨 AQUI ESTAVA FALTANDO! A PARTE QUE BUSCA O MAPA SOZINHO 🚨🚨
-    if (tipo === "sala_mapa" && idSala) {
-      const salaUnica = await prisma.sala.findUnique({
-        where: { idSala: Number(idSala) },
-        select: {
-          mapa: true, // <--- AQUI BUSCA O MAPA PESADO
-          nomeSala: true,
-        },
-      });
-      // Retorna o objeto direto { mapa: "..." }
-      return NextResponse.json(salaUnica);
-    }
-    // 🚨🚨 FIM DA PARTE QUE FALTAVA 🚨🚨
-
-    // 2. Espaços
-    if (tipo === "espacos" && idSala) {
-      const espacos = await prisma.espaco.findMany({
-        where: { idSalaPertence: Number(idSala) },
-        select: { idEspaco: true, codigoEspaco: true },
-        orderBy: { codigoEspaco: "asc" },
-      });
-      return NextResponse.json(espacos);
-    }
-
-    // 3. Cronograma
-    if (idEspaco && data) {
-      const inicioDia = new Date(`${data}T00:00:00.000Z`);
-      const fimDia = new Date(`${data}T23:59:59.999Z`);
-
-      const reservas = await prisma.reserva.findMany({
-        where: {
-          idEspacoReservado: Number(idEspaco),
-          situacao: "ATIVO",
-          AND: [{ horaInicio: { gte: inicioDia } }, { horaInicio: { lte: fimDia } }],
-        },
-        select: {
-          idReserva: true,
-          horaInicio: true,
-          horaFim: true,
-          motivo: true,
-          criador: { select: { nome: true, foto: true } },
-        },
-        orderBy: { horaInicio: "asc" },
-      });
-      return NextResponse.json(reservas);
-    }
-
-    // Se não entrou em nenhum if, retorna vazio (foi isso que aconteceu no teu log)
-    return NextResponse.json([]);
-  } catch (error) {
-    console.error("Erro API GET:", error);
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
-  }
-}
-
-// O POST CONTINUA O MESMO, NÃO PRECISA MEXER SE JÁ TÁ FUNCIONANDO
 export const POST = Auth(async (request: NextRequest, _user: User | null) => {
   try {
     const body = await request.json();

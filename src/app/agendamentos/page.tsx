@@ -1,31 +1,31 @@
 "use client";
 import { useState } from "react";
-import React, { useEffect } from 'react';
+import React, { useEffect } from "react";
 import Image from "next/image";
 
 type UsuarioInfo = {
-    nome: string;
-    email:string;
-    foto?: string;
+  nome: string;
+  email: string;
+  foto?: string;
 };
 
 type SalaInfo = {
-    nomeSala: string;
+  nomeSala: string;
 };
 
 type EspacoInfo = {
-    codigoEspaco: string;
-    Sala: SalaInfo;
+  codigoEspaco: string;
+  Sala: SalaInfo;
 };
 
 type RelatorioItem = {
-  idReserva: number,
-  motivo: string,
-  horaInicio: string,
-  horaFim: string,
-  situacao: string,
+  idReserva: number;
+  motivo: string;
+  horaInicio: string;
+  horaFim: string;
+  situacao: string;
   Usuario?: UsuarioInfo;
-  Espaco?: EspacoInfo
+  Espaco?: EspacoInfo;
 };
 
 function formatarHora(dataIso: string) {
@@ -68,12 +68,11 @@ export default function RelatorioPage() {
   async function buscarRelatorio() {
     setCarregando(true);
     try {
-
-      const res = await fetch(`/api/relatorio_guarita`); 
+      const res = await fetch(`/api/relatorio_guarita`);
       const json = await res.json();
 
       if (json.success) {
-        setDados(json.reservas ?? []); 
+        setDados(json.reservas ?? []);
       } else {
         setDados([]);
       }
@@ -84,17 +83,14 @@ export default function RelatorioPage() {
       setCarregando(false);
     }
   }
- 
+
   useEffect(() => {
     buscarRelatorio();
   }, []); // O array vazio [] garante que a função seja executada apenas na montagem
 
-
   return (
     <div className="min-h-screen bg-white p-8 font-sans text-gray-700">
-      <h1 className="text-4xl font-serif font-bold mb-8 text-black uppercase">
-        Relatório Guarita
-      </h1>
+      <h1 className="text-4xl font-serif font-bold mb-8 text-black uppercase">Relatório Guarita</h1>
       <div className="mb-8">
         <div className="overflow-x-auto">
           <table className="min-w-full border-separate border-spacing-y-4 text-sm">
@@ -110,19 +106,13 @@ export default function RelatorioPage() {
             <tbody>
               {dados.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="text-center p-6 text-gray-500 bg-gray-50 rounded"
-                  >
+                  <td colSpan={5} className="text-center p-6 text-gray-500 bg-gray-50 rounded">
                     Nenhum resultado encontrado
                   </td>
                 </tr>
               ) : (
                 dados.map((item) => (
-                  <tr
-                    key={item.idReserva}
-                    className="group transition-transform hover:scale-[1.01]"
-                  >
+                  <tr key={item.idReserva} className="group transition-transform hover:scale-[1.01]">
                     <td className="bg-gray-50 p-4 rounded-l-lg border-l-[6px] border-teal-500 relative">
                       <div className="flex items-center gap-3">
                         {item.Usuario?.foto ? (
@@ -146,20 +136,14 @@ export default function RelatorioPage() {
                         )}
 
                         <div>
-                          <div className="text-gray-700 font-medium">
-                            {item.Usuario?.nome || "—"}
-                          </div>
+                          <div className="text-gray-700 font-medium">{item.Usuario?.nome || "—"}</div>
                         </div>
                       </div>
                     </td>
 
-                    <td className="bg-gray-50 p-4 text-gray-600">
-                      {item.Espaco?.Sala.nomeSala || "—"}
-                    </td>
+                    <td className="bg-gray-50 p-4 text-gray-600">{item.Espaco?.Sala.nomeSala || "—"}</td>
 
-                    <td className="bg-gray-50 p-4 text-gray-600">
-                      {item.Espaco?.codigoEspaco || "—"}
-                    </td>
+                    <td className="bg-gray-50 p-4 text-gray-600">{item.Espaco?.codigoEspaco || "—"}</td>
 
                     <td className="bg-gray-50 p-4 text-center text-gray-600 font-medium">
                       {formatarHora(item.horaInicio)} - {formatarHora(item.horaFim)}
@@ -178,5 +162,3 @@ export default function RelatorioPage() {
     </div>
   );
 }
-
-

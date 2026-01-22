@@ -36,14 +36,18 @@ export async function GET(_req: Request) {
     let query = supabase
       .from("Reserva")
       .select(`
-            idReserva,
-            motivo,
-            horaInicio,
-            horaFim,
-            situacao,
-            Usuario: idUsuarioCriador(nome,email,foto),
-            Espaco: idEspacoReservado(codigoEspaco, Sala: idSalaPertence (nomeSala))
-            `)
+    idReserva,
+    motivo,
+    horaInicio,
+    horaFim,
+    situacao,
+    Usuario: idUsuarioCriador(nome,email,foto),
+    Espaco: idEspacoReservado(
+      codigoEspaco,
+      Sala: idSalaPertence (nomeSala)
+    )
+  `)
+      .neq("situacao", "CANCELADA")
       .order("horaInicio", { ascending: true });
 
     query = query
@@ -62,7 +66,6 @@ export async function GET(_req: Request) {
       const espacoData = Array.isArray(reserva.Espaco) ? reserva.Espaco[0] : reserva.Espaco;
 
       const salaData = Array.isArray(espacoData?.Sala) ? espacoData?.Sala[0] : espacoData?.Sala;
-
       return {
         id: reserva.id,
         motivo: reserva.motivo ?? "",

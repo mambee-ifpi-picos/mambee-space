@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Auth } from "@/lib/supabase/server/Auth";
 import type { Prisma } from "@prisma/client";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
@@ -7,13 +8,13 @@ import { NextResponse } from "next/server";
 /* =========================
    GET - LISTAR RESERVAS
 ========================= */
-export async function GET(req: Request) {
+export const GET = Auth(async (req: Request) => {
   try {
     const cookieStore = await cookies();
 
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
       {
         cookies: {
           getAll() {
@@ -33,18 +34,14 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const dataParam = url.searchParams.get("data");
     const idEspacoParam = url.searchParams.get("idEspaco");
-    let idUsuarioParam =
-      url.searchParams.get("idUsuario") ??
-      url.searchParams.get("idUsuarioCriador");
+    let idUsuarioParam = url.searchParams.get("idUsuario") ?? url.searchParams.get("idUsuarioCriador");
     const pageParam = url.searchParams.get("page");
     const pageSizeParam = url.searchParams.get("pageSize");
     const searchParam = url.searchParams.get("search");
 
     const idEspaco = idEspacoParam ? Number(idEspacoParam) : undefined;
     const page = pageParam ? Math.max(1, Number(pageParam)) : 1;
-    const pageSize = pageSizeParam
-      ? Math.max(1, Math.min(100, Number(pageSizeParam)))
-      : 50;
+    const pageSize = pageSizeParam ? Math.max(1, Math.min(100, Number(pageSizeParam))) : 50;
 
     const {
       data: { session },
@@ -52,9 +49,7 @@ export async function GET(req: Request) {
 
     const emailUsuarioLogado = session?.user?.email;
 
-    let usuarioLogado:
-      | { idUsuario: number; admin: boolean; email: string }
-      | undefined;
+    let usuarioLogado: { idUsuario: number; admin: boolean; email: string } | undefined;
 
     if (emailUsuarioLogado) {
       const usuario = await prisma.usuario.findUnique({
@@ -66,13 +61,7 @@ export async function GET(req: Request) {
 
     const isAdmin = usuarioLogado?.admin === true;
 
-    if (
-      !isAdmin &&
-      !idUsuarioParam &&
-      usuarioLogado?.idUsuario &&
-      !dataParam &&
-      !idEspacoParam
-    ) {
+    if (!isAdmin && !idUsuarioParam && usuarioLogado?.idUsuario && !dataParam && !idEspacoParam) {
       idUsuarioParam = String(usuarioLogado.idUsuario);
     }
 
@@ -114,7 +103,7 @@ export async function GET(req: Request) {
 
     const reservas = await prisma.reserva.findMany({
       where,
-      orderBy: { horaInicio: "asc" },
+      orderBy: { horaInicio: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
       include: {
@@ -143,21 +132,18 @@ export async function GET(req: Request) {
       { status: 500 },
     );
   }
-}
+});
 
 /* =========================
    POST - CRIAR RESERVA
 ========================= */
-export async function POST(req: Request) {
+export const POST = Auth(async (req: Request) => {
   try {
     const body = await req.json();
     const { idEspaco, data, inicio, fim, motivo, idUsuario, idCriador } = body;
 
     if (!idEspaco || !data || !inicio || !fim || !motivo) {
-      return NextResponse.json(
-        { success: false, error: "Dados obrigatórios faltando." },
-        { status: 400 },
-      );
+      return NextResponse.json({ success: false, error: "Dados obrigatórios faltando." }, { status: 400 });
     }
 
     const horaInicio = new Date(`${data}T${inicio}:00`);
@@ -215,12 +201,12 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-}
+});
 
 /* =========================
    DELETE - EXCLUIR RESERVA
 ========================= */
-export async function DELETE(req: Request) {
+export const DELETE = Auth(async (req: Request) => {
   try {
     const url = new URL(req.url);
     const idReserva = Number(url.searchParams.get("idReserva"));
@@ -242,10 +228,7 @@ export async function DELETE(req: Request) {
     });
 
     if (!reserva) {
-      return NextResponse.json(
-        { success: false, error: "Reserva não encontrada." },
-        { status: 404 },
-      );
+      return NextResponse.json({ success: false, error: "Reserva não encontrada." }, { status: 404 });
     }
 
     const solicitante = await prisma.usuario.findUnique({
@@ -292,4 +275,4 @@ export async function DELETE(req: Request) {
       { status: 500 },
     );
   }
-}
+});
