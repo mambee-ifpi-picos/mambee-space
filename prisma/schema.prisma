@@ -11,38 +11,44 @@ datasource db {
 }
 
 model Usuario {
-  idUsuario Int    @id @default(autoincrement())
+  idUsuario Int     @id @default(autoincrement())
   idAuth    String? @unique
   foto      String?
-  email     String @unique
+  email     String  @unique
   nome      String
   admin     Boolean @default(false)
 
   salasCriadas    Sala[]
   espacosCriados  Espaco[]
   reservasCriadas Reserva[]
+
+  projetosCriados        Projeto[]   @relation("AdminCriadorProjeto")
+  
+  participacoesUsuario   Participa[] @relation("UsuarioParticipante")
+  
+  participacoesAvaliadas Participa[] @relation("AdminAvaliador")
 }
 
 model Sala {
-  idSala             Int      @id @default(autoincrement())
+  idSala             Int     @id @default(autoincrement())
   nomeSala           String
   mapa               String
   limiteHorasReserva Int
-  ativa              Boolean  @default(true)
+  ativa              Boolean @default(true)
   idUsuarioCriador   Int
 
-  criador Usuario @relation(fields: [idUsuarioCriador], references: [idUsuario])
+  criador Usuario  @relation(fields: [idUsuarioCriador], references: [idUsuario])
   espacos Espaco[]
 }
 
 model Espaco {
-  idEspaco         Int      @id @default(autoincrement())
+  idEspaco         Int    @id @default(autoincrement())
   codigoEspaco     String
   idUsuarioCriador Int
   idSalaPertence   Int
 
-  criador Usuario @relation(fields: [idUsuarioCriador], references: [idUsuario])
-  sala    Sala    @relation(fields: [idSalaPertence], references: [idSala])
+  criador  Usuario   @relation(fields: [idUsuarioCriador], references: [idUsuario])
+  sala     Sala      @relation(fields: [idSalaPertence], references: [idSala])
   reservas Reserva[]
 }
 
@@ -59,3 +65,33 @@ model Reserva {
   espaco  Espaco  @relation(fields: [idEspacoReservado], references: [idEspaco])
 }
 
+
+model Projeto {
+  idProjeto        Int       @id @default(autoincrement())
+  nome             String
+  resumo           String
+  dataInicio       DateTime
+  dataFim          DateTime?
+  situacao         String  
+  anexos           String?
+
+  idUsuarioCriador Int
+  criador          Usuario   @relation("AdminCriadorProjeto", fields: [idUsuarioCriador], references: [idUsuario])
+
+  participacoes Participa[]
+}
+
+model Participa {
+  idParticipa    Int     @id @default(autoincrement())
+  motivo         String  
+  situacao       String 
+  motivoSituacao String?
+
+  idProjeto Int
+  idUsuario Int  
+  idAdmin   Int? 
+
+  projeto Projeto  @relation(fields: [idProjeto], references: [idProjeto])
+  usuario Usuario  @relation("UsuarioParticipante", fields: [idUsuario], references: [idUsuario])
+  admin   Usuario? @relation("AdminAvaliador", fields: [idAdmin], references: [idUsuario])
+}
