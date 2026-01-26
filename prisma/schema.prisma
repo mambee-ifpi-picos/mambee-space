@@ -73,7 +73,7 @@ model Projeto {
   dataInicio       DateTime
   dataFim          DateTime?
   situacao         String  
-  anexos           String?
+  anexos           String[] @default([])
 
   idUsuarioCriador Int
   criador          Usuario   @relation("AdminCriadorProjeto", fields: [idUsuarioCriador], references: [idUsuario])
