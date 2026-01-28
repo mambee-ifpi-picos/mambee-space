@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 const publicRoutes = ["/", "/login", "/relatorio", "/relatorioguarita"];
-const protectedRoutes = ["/reservas", "/perfil", "/reservar"];
-const adminRoutes = ["/sala_espaco", "/salas"];
+const protectedRoutes = ["/reservas", "/perfil", "/reservar", "/projetos"];
+const adminRoutes = ["/sala_espaco", "/salas", "/cadastro_projetos"];
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
           response.cookies.set(name, "", options);
         },
       },
-    }
+    },
   );
 
   const {
