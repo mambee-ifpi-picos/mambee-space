@@ -15,7 +15,11 @@ type Projeto = {
   dataInicio: string;
   dataFim: string | null;
   situacao: string;
-  criador: { nome: string };
+  criador: {
+    nome: string;
+    foto?: string; // ← ADICIONAR AQUI
+    email?: string;
+  };
   anexos: string[];
 };
 
@@ -80,7 +84,6 @@ export default function DetalhesProjeto() {
     setToast({ visible: true, message: msg, type });
     setTimeout(() => setToast({ visible: false, message: "", type: "success" }), 3500);
   }, []);
-
   // 1. Carregar dados
   useEffect(() => {
     const carregarDados = async () => {
@@ -542,17 +545,25 @@ export default function DetalhesProjeto() {
               {/* CARD DO PROJETO */}
               <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 mb-8">
                 {/* INFORMAÇÕES DO PROJETO */}
-                <div className="flex flex-wrap items-center gap-4 mb-8 pb-6 border-b border-gray-100">
+                {/* <div className="flex flex-wrap items-center gap-4 mb-8 pb-6 border-b border-gray-100">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
-                      <span className="text-2xl text-teal-600">👤</span>
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center overflow-hidden">
+                      {projeto.criador.foto ? (
+                        <img
+                          src={projeto.criador.foto}
+                          alt={projeto.criador.nome}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-2xl text-blue-600">👤</span>
+                      )}
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Criado por</p>
                       <p className="font-bold text-gray-900 text-lg">{projeto.criador?.nome}</p>
                     </div>
                   </div>
-                </div>
+                </div> */}
 
                 {/* SE FOR ADMIN - MOSTRA TODAS AS INFORMAÇÕES */}
                 {usuario?.admin ? (
@@ -607,21 +618,55 @@ export default function DetalhesProjeto() {
                           </div>
                           Anexos
                         </h3>
-                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-6 border border-gray-200 shadow-sm">
-                          <ul className="space-y-3">
-                            {projeto.anexos.map((anexo, index) => (
-                              <li
-                                key={index}
-                                className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200 hover:border-teal-300 transition-colors"
-                              >
-                                <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
-                                  <span className="text-teal-600 text-lg">📄</span>
-                                </div>
-                                <span className="text-gray-800 font-medium">{anexo}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
+                        {projeto.anexos && projeto.anexos.length > 0 && (
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-4">📎 Anexos</h3>
+                            <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                              <ul className="space-y-3">
+                                {projeto.anexos.map((anexo, index) => {
+                                  // Se os anexos forem paths do Supabase Storage
+                                  const isSupabasePath = anexo.includes("supabase.co/storage/v1/object");
+
+                                  // Extrair nome do arquivo
+                                  const fileName = anexo.split("/").pop() || `anexo-${index + 1}`;
+
+                                  // Gerar URL de download do Supabase
+                                  const downloadUrl = isSupabasePath ? `${anexo}?download=${fileName}` : anexo;
+
+                                  return (
+                                    <li
+                                      key={index}
+                                      className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-200 hover:border-teal-300 hover:shadow-sm transition-all group"
+                                    >
+                                      <div className="flex items-center gap-4 flex-1">
+                                        <div className="w-12 h-12 bg-gradient-to-br from-teal-100 to-teal-50 rounded-lg flex items-center justify-center group-hover:from-teal-200 group-hover:to-teal-100 transition-colors">
+                                          <span className="text-2xl text-teal-600">📄</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-gray-800 font-medium truncate">{fileName}</p>
+                                          <p className="text-sm text-gray-500">Anexo do projeto</p>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex gap-2">
+                                        <a
+                                          href={downloadUrl}
+                                          download={fileName}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-4 py-2 bg-teal-500 text-white hover:bg-teal-600 font-medium rounded-lg text-sm transition-colors flex items-center gap-2"
+                                        >
+                                          <span>⬇️</span>
+                                          <span>Baixar</span>
+                                        </a>
+                                      </div>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -657,9 +702,16 @@ export default function DetalhesProjeto() {
                             >
                               <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-4">
-                                  <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center">
-                                    <span className="text-2xl text-blue-600">👤</span>
-                                    {/* <span className="text-2xl text-blue-600">{solicitacao.usuario.foto}</span> */}
+                                  <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center overflow-hidden">
+                                    {solicitacao.usuario.foto ? (
+                                      <img
+                                        src={solicitacao.usuario.foto}
+                                        alt={solicitacao.usuario.nome}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <span className="text-2xl text-blue-600">👤</span>
+                                    )}
                                   </div>
                                   <div>
                                     <h4 className="font-bold text-gray-900 text-lg">{solicitacao.usuario.nome}</h4>
@@ -858,8 +910,16 @@ export default function DetalhesProjeto() {
                     </div>
                   </li>
                   <li className="flex items-center gap-4 p-3 bg-white rounded-xl border border-gray-100">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg flex items-center justify-center">
-                      <span className="text-xl text-blue-600">👤</span>
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center overflow-hidden">
+                      {projeto.criador.foto ? (
+                        <img
+                          src={projeto.criador.foto}
+                          alt={projeto.criador.nome}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-2xl text-blue-600">👤</span>
+                      )}
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Criador</p>

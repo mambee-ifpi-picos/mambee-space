@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server/supabaseServer
 
 const prisma = new PrismaClient();
 
-export async function GET(request: Request, { params }: { params: { idProjeto: string } }) {
+export async function GET(_request: Request, { params }: { params: { idProjeto: string } }) {
   try {
     const idProjeto = parseInt(params.idProjeto);
 

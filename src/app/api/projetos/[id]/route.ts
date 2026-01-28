@@ -15,7 +15,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       where: { idProjeto },
       include: {
         criador: {
-          select: { nome: true },
+          select: { nome: true, foto: true },
         },
       },
     });
