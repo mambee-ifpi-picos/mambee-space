@@ -31,8 +31,8 @@ export default function GerenciarProjetos() {
   const [situacao, setSituacao] = useState("Ativo");
   const [arquivosParaEnviar, setArquivosParaEnviar] = useState<File[]>([]);
   const [idUsuarioAuth, setIdUsuarioAuth] = useState<string | null>(null);
-  const [emailUsuario, setEmailUsuario] = useState<string>("");
-  const [authLoading, setAuthLoading] = useState(true);
+  const [_emailUsuario, setEmailUsuario] = useState<string>("");
+  const [_authLoading, setAuthLoading] = useState(true);
 
   const [toast, setToast] = useState({
     visible: false,
@@ -99,7 +99,7 @@ export default function GerenciarProjetos() {
     setArquivosParaEnviar((prev) => [...prev, ...Array.from(files)]);
   };
 
-  const removerArquivo = (index: number) => {
+  const _removerArquivo = (index: number) => {
     setArquivosParaEnviar((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -279,9 +279,9 @@ export default function GerenciarProjetos() {
                 </div>
                 {arquivosParaEnviar.length > 0 && (
                   <div className="space-y-2 mt-2 max-h-40 overflow-y-auto pr-1">
-                    {arquivosParaEnviar.map((arq, index) => (
+                    {arquivosParaEnviar.map((arq, _index) => (
                       <div
-                        key={index}
+                        key={`${arq.name}-${arq.lastModified}`}
                         className="flex items-center justify-between bg-white p-2 rounded border border-gray-200 text-sm"
                       >
                         <span className="text-gray-700 truncate w-3/4">
@@ -289,7 +289,17 @@ export default function GerenciarProjetos() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => removerArquivo(index)}
+                          onClick={() =>
+                            setArquivosParaEnviar((prev) =>
+                              prev.filter(
+                                (f) =>
+                                  !(
+                                    f.name === arq.name &&
+                                    f.lastModified === arq.lastModified
+                                  ),
+                              ),
+                            )
+                          }
                           className="text-red-500 font-bold px-2"
                         >
                           X
