@@ -72,9 +72,11 @@ export default function ListaProjetos() {
 
             // Busca participações do usuário
             const resPart = await fetch("/api/solicitar_participacao");
-            const dadosPart = await resPart.json();
-            if (Array.isArray(dadosPart)) {
-              setParticipacoes(dadosPart);
+            if (resPart.ok) {
+              const dadosPart = await resPart.json();
+              if (Array.isArray(dadosPart)) {
+                setParticipacoes(dadosPart);
+              }
             }
           }
         }
@@ -112,8 +114,12 @@ export default function ListaProjetos() {
       setLoading(true);
       try {
         const resProj = await fetch("/api/projetos");
-        const dadosProj = await resProj.json();
-        if (Array.isArray(dadosProj)) setProjetos(dadosProj);
+        if (resProj.ok) {
+          const dadosProj = await resProj.json();
+          if (Array.isArray(dadosProj)) setProjetos(dadosProj);
+        } else {
+          console.error("Erro ao buscar projetos:", resProj.status, resProj.statusText);
+        }
       } catch (error) {
         console.error("Erro ao carregar projetos:", error);
         showToast("Erro ao carregar projetos", "error");
@@ -251,7 +257,7 @@ export default function ListaProjetos() {
                 {/* RODAPÉ COM BOTÃO - AGORA USANDO LINK */}
                 <div className="p-6 pt-0">
                   <Link
-                    href={`/solicitar_participacao/${proj.idProjeto}`}
+                    href={`/projetos/${proj.idProjeto}`}
                     className="block w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 hover:shadow-md flex items-center justify-center gap-2 group/link"
                   >
                     <span>Ver Detalhes</span>

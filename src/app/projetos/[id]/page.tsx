@@ -8,6 +8,24 @@ import Link from "next/link";
 
 const inriaSerif700 = Inria_Serif({ subsets: ["latin"], weight: ["700"] });
 
+type ParticipacaoDetalhada = {
+  idParticipa: number;
+  motivo: string;
+  situacao: string;
+  motivoSituacao?: string;
+  usuario: {
+    idUsuario: number;
+    nome: string;
+    email: string;
+    foto?: string;
+  };
+  admin?: {
+    idUsuario: number;
+    nome: string;
+    email: string;
+  };
+};
+
 type Projeto = {
   idProjeto: number;
   nome: string;
@@ -16,16 +34,19 @@ type Projeto = {
   dataFim: string | null;
   situacao: string;
   criador: {
+    idUsuario: number;
     nome: string;
-    foto?: string; // ← ADICIONAR AQUI
+    foto?: string;
     email?: string;
   };
   anexos: string[];
+  participacoes?: ParticipacaoDetalhada[];
 };
 
 type Participacao = {
   idProjeto: number;
   situacao: string;
+  motivoSituacao?: string;
 };
 
 type Usuario = {
@@ -42,6 +63,7 @@ type SolicitacaoProjeto = {
   motivo: string;
   motivoSituacao?: string;
   usuario: {
+    idUsuario: number;
     nome: string;
     email: string;
     foto?: string;
@@ -63,7 +85,7 @@ export default function DetalhesProjeto() {
   const [loading, setLoading] = useState(true);
   const [modalSolicitacao, setModalSolicitacao] = useState(false);
   const [motivoSolicitacao, setMotivoSolicitacao] = useState("");
-  const [debugInfo, setDebugInfo] = useState<string>("");
+  const [debugInfo, setDebugInfo] = useState("");
 
   // ESTADOS PARA ADMIN - SOLICITAÇÕES DESTE PROJETO
   const [solicitacoesProjeto, setSolicitacoesProjeto] = useState<SolicitacaoProjeto[]>([]);
@@ -84,6 +106,29 @@ export default function DetalhesProjeto() {
     setToast({ visible: true, message: msg, type });
     setTimeout(() => setToast({ visible: false, message: "", type: "success" }), 3500);
   }, []);
+
+  // Função para verificar se usuário é membro autorizado
+  const isMembroAutorizado = useCallback(() => {
+    if (!usuario || !projeto) return false;
+    
+    // Admin sempre tem acesso
+    if (usuario.admin) return true;
+    
+    // Criador do projeto tem acesso
+    if (projeto.criador?.idUsuario === usuario.idUsuario) return true;
+    
+    // Verificar se está na lista de participações autorizadas
+    if (projeto.participacoes && projeto.participacoes.length > 0) {
+      return projeto.participacoes.some(
+        p => p.usuario.idUsuario === usuario.idUsuario && p.situacao === "Autorizado"
+      );
+    }
+    
+    // Verificar na lista de participações do usuário
+    const participacao = participacoes.find(p => p.idProjeto === projeto.idProjeto);
+    return participacao?.situacao === "Autorizado";
+  }, [usuario, projeto, participacoes]);
+
   // 1. Carregar dados
   useEffect(() => {
     const carregarDados = async () => {
@@ -91,12 +136,12 @@ export default function DetalhesProjeto() {
       try {
         console.log("Carregando projeto ID:", idProjeto);
 
-        // Carregar projeto
-        const resProj = await fetch(`/api/projetos/${idProjeto}`);
+        // Carregar projeto com participações
+        const resProj = await fetch(`/api/projetos/${idProjeto}?include=participacoes`);
         if (resProj.ok) {
           const dadosProj = await resProj.json();
           setProjeto(dadosProj);
-          console.log("Projeto carregado:", dadosProj.nome);
+          console.log("Projeto carregado:", dadosProj.nome, "Participações:", dadosProj.participacoes?.length);
         } else {
           console.error("Erro ao carregar projeto");
           router.push("/projetos");
@@ -149,7 +194,6 @@ export default function DetalhesProjeto() {
   }, [idProjeto, router, showToast]);
 
   // 2. Carregar solicitações deste projeto específico (apenas admin)
-  // 2. Carregar solicitações deste projeto específico (apenas admin)
   const carregarSolicitacoesProjeto = async () => {
     if (!usuario?.admin || !projeto) {
       console.log("Não é admin ou projeto não carregado");
@@ -159,10 +203,8 @@ export default function DetalhesProjeto() {
     setLoadingSolicitacoes(true);
     try {
       console.log("Carregando solicitações do projeto:", idProjeto);
-
-      // URL CORRETA: /api/solicitacoes/projeto/[idProjeto]
       const res = await fetch(`/api/solicitacoes/projeto/${idProjeto}`, {
-        cache: "no-store", // Para evitar cache
+        cache: "no-store",
       });
 
       console.log("Resposta da API:", res.status, res.statusText);
@@ -240,7 +282,7 @@ export default function DetalhesProjeto() {
         body: JSON.stringify({
           idParticipa: solicitacaoSelecionada.idParticipa,
           novaSituacao: decisao,
-          motivoSituacao: decisao === "Negado" ? motivoDecisao : null,
+          motivoSituacao: motivoDecisao || null,
         }),
       });
 
@@ -249,9 +291,37 @@ export default function DetalhesProjeto() {
       if (res.ok) {
         showToast(`Solicitação ${decisao === "Autorizado" ? "aprovada" : "negada"}!`, "success");
         setModalAprovarNegar(false);
+        setMotivoDecisao("");
 
-        // Atualiza lista local
+        // Atualiza lista de solicitações
         setSolicitacoesProjeto((prev) => prev.filter((s) => s.idParticipa !== solicitacaoSelecionada.idParticipa));
+        
+        // Atualizar projeto com nova participação
+        if (projeto && projeto.participacoes) {
+          const novaParticipacao: ParticipacaoDetalhada = {
+            idParticipa: solicitacaoSelecionada.idParticipa,
+            motivo: solicitacaoSelecionada.motivo,
+            situacao: decisao,
+            motivoSituacao: decisao === "Negado" ? motivoDecisao : undefined,
+            usuario: solicitacaoSelecionada.usuario,
+            admin: usuario ? {
+              idUsuario: usuario.idUsuario,
+              nome: usuario.nome,
+              email: usuario.email,
+            } : undefined,
+          };
+
+          setProjeto(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              participacoes: [
+                ...(prev.participacoes || []),
+                novaParticipacao
+              ]
+            };
+          });
+        }
       } else {
         showToast(data.error || "Erro ao processar solicitação", "error");
       }
@@ -269,7 +339,7 @@ export default function DetalhesProjeto() {
   const getStatusParticipacao = () => {
     if (!usuario || !projeto) return null;
     const participacao = participacoes.find((p) => p.idProjeto === projeto.idProjeto);
-    return participacao ? participacao.situacao : null;
+    return participacao;
   };
 
   // 7. Fazer login
@@ -285,6 +355,17 @@ export default function DetalhesProjeto() {
       showToast("Erro ao fazer login", "error");
     }
   };
+
+  // Função para obter participantes por status
+  const getParticipantesPorStatus = (status: string) => {
+    if (!projeto || !projeto.participacoes) return [];
+    return projeto.participacoes.filter(p => p.situacao === status);
+  };
+
+  // Contadores
+  const participantesAutorizados = getParticipantesPorStatus("Autorizado");
+  const participantesSolicitados = getParticipantesPorStatus("Solicitado");
+  const participantesNegados = getParticipantesPorStatus("Negado");
 
   if (loading) {
     return (
@@ -317,6 +398,7 @@ export default function DetalhesProjeto() {
 
   const statusParticipacao = getStatusParticipacao();
   const solicitacoesPendentes = solicitacoesProjeto.filter((s) => s.situacao === "Solicitado").length;
+  const membroAutorizado = isMembroAutorizado();
 
   return (
     <>
@@ -419,15 +501,20 @@ export default function DetalhesProjeto() {
                 </button>
               </div>
 
-              {decisao === "Negado" && (
+              {(decisao === "Negado" || decisao === "Autorizado") && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Motivo da recusa (Opcional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {decisao === "Negado" ? "Motivo da recusa" : "Comentário (opcional)"}
+                  </label>
                   <textarea
                     value={motivoDecisao}
                     onChange={(e) => setMotivoDecisao(e.target.value)}
                     rows={3}
                     className="w-full border border-gray-300 rounded-lg p-3 text-gray-800 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none resize-none"
-                    placeholder="Explique brevemente o motivo da recusa..."
+                    placeholder={decisao === "Negado" 
+                      ? "Explique o motivo da recusa..." 
+                      : "Adicione um comentário sobre a aprovação..."
+                    }
                   />
                 </div>
               )}
@@ -435,7 +522,10 @@ export default function DetalhesProjeto() {
 
             <div className="flex gap-3 justify-end">
               <button
-                onClick={() => setModalAprovarNegar(false)}
+                onClick={() => {
+                  setModalAprovarNegar(false);
+                  setMotivoDecisao("");
+                }}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
               >
                 Cancelar
@@ -515,6 +605,11 @@ export default function DetalhesProjeto() {
                         )}
                       </div>
                     )}
+                    {membroAutorizado && !usuario.admin && (
+                      <span className="inline-block px-3 py-1 text-sm font-bold bg-green-500 text-white rounded-lg mt-1">
+                        MEMBRO AUTORIZADO
+                      </span>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -544,29 +639,8 @@ export default function DetalhesProjeto() {
             <div className="lg:col-span-2">
               {/* CARD DO PROJETO */}
               <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 mb-8">
-                {/* INFORMAÇÕES DO PROJETO */}
-                {/* <div className="flex flex-wrap items-center gap-4 mb-8 pb-6 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center overflow-hidden">
-                      {projeto.criador.foto ? (
-                        <img
-                          src={projeto.criador.foto}
-                          alt={projeto.criador.nome}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-2xl text-blue-600">👤</span>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Criado por</p>
-                      <p className="font-bold text-gray-900 text-lg">{projeto.criador?.nome}</p>
-                    </div>
-                  </div>
-                </div> */}
-
-                {/* SE FOR ADMIN - MOSTRA TODAS AS INFORMAÇÕES */}
-                {usuario?.admin ? (
+                {/* SE FOR ADMIN OU MEMBRO AUTORIZADO - MOSTRA TODAS AS INFORMAÇÕES */}
+                {(usuario?.admin || membroAutorizado) ? (
                   <div className="space-y-8">
                     {/* DATAS */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -609,91 +683,270 @@ export default function DetalhesProjeto() {
                       </div>
                     </div>
 
-                    {/* ANEXOS (se houver) */}
-                    {projeto.anexos && projeto.anexos.length > 0 && (
+                    {/* TODOS OS PARTICIPANTES DO PROJETO */}
+                    {projeto.participacoes && projeto.participacoes.length > 0 && (
                       <div>
                         <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                           <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                            <span className="text-xl text-purple-600">📎</span>
+                            <span className="text-xl text-purple-600">👥</span>
                           </div>
-                          Anexos
+                          Participantes do Projeto
                         </h3>
-                        {projeto.anexos && projeto.anexos.length > 0 && (
-                          <div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-4">📎 Anexos</h3>
-                            <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-6 border border-gray-200 shadow-sm">
-                              <ul className="space-y-3">
-                                {projeto.anexos.map((anexo, index) => {
-                                  // Se os anexos forem paths do Supabase Storage
-                                  const isSupabasePath = anexo.includes("supabase.co/storage/v1/object");
 
-                                  // Extrair nome do arquivo
-                                  const fileName = anexo.split("/").pop() || `anexo-${index + 1}`;
-
-                                  // Gerar URL de download do Supabase
-                                  const downloadUrl = isSupabasePath ? `${anexo}?download=${fileName}` : anexo;
-
-                                  return (
-                                    <li
-                                      key={index}
-                                      className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-200 hover:border-teal-300 hover:shadow-sm transition-all group"
-                                    >
-                                      <div className="flex items-center gap-4 flex-1">
-                                        <div className="w-12 h-12 bg-gradient-to-br from-teal-100 to-teal-50 rounded-lg flex items-center justify-center group-hover:from-teal-200 group-hover:to-teal-100 transition-colors">
-                                          <span className="text-2xl text-teal-600">📄</span>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-gray-800 font-medium truncate">{fileName}</p>
-                                          <p className="text-sm text-gray-500">Anexo do projeto</p>
-                                        </div>
+                        {/* PARTICIPANTES AUTORIZADOS */}
+                        {participantesAutorizados.length > 0 && (
+                          <div className="mb-8">
+                            <div className="flex items-center justify-between mb-4">
+                              <h4 className="text-lg font-bold text-green-700 flex items-center gap-2">
+                                <span className="text-xl">✅</span>
+                                Autorizados
+                                <span className="text-sm font-normal bg-green-100 text-green-800 px-2 py-1 rounded-md">
+                                  {participantesAutorizados.length}
+                                </span>
+                              </h4>
+                            </div>
+                            <div className="space-y-4">
+                              {participantesAutorizados.map((participacao) => (
+                                <div
+                                  key={participacao.idParticipa}
+                                  className="bg-gradient-to-br from-green-50 to-white rounded-xl border border-green-200 p-6 hover:shadow-sm transition-shadow"
+                                >
+                                  <div className="flex justify-between items-start mb-4">
+                                    <div className="flex items-center gap-4">
+                                      <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-50 rounded-xl flex items-center justify-center overflow-hidden">
+                                        {participacao.usuario.foto ? (
+                                          <img
+                                            src={participacao.usuario.foto}
+                                            alt={participacao.usuario.nome}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          <span className="text-2xl text-green-600">👤</span>
+                                        )}
                                       </div>
-
-                                      <div className="flex gap-2">
-                                        <a
-                                          href={downloadUrl}
-                                          download={fileName}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="px-4 py-2 bg-teal-500 text-white hover:bg-teal-600 font-medium rounded-lg text-sm transition-colors flex items-center gap-2"
-                                        >
-                                          <span>⬇️</span>
-                                          <span>Baixar</span>
-                                        </a>
+                                      <div>
+                                        <h4 className="font-bold text-gray-900 text-lg">{participacao.usuario.nome}</h4>
+                                        <p className="text-sm text-gray-600">{participacao.usuario.email}</p>
                                       </div>
-                                    </li>
-                                  );
-                                })}
-                              </ul>
+                                    </div>
+                                    <span className="px-3 py-1.5 text-sm font-bold bg-green-100 text-green-800 rounded-lg border border-green-200">
+                                      ✅ Autorizado
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* PARTICIPANTES NEGADOS */}
+                        {participantesNegados.length > 0 && (
+                          <div className="mb-8">
+                            <div className="flex items-center justify-between mb-4">
+                              <h4 className="text-lg font-bold text-red-700 flex items-center gap-2">
+                                <span className="text-xl">❌</span>
+                                Recusados
+                                <span className="text-sm font-normal bg-red-100 text-red-800 px-2 py-1 rounded-md">
+                                  {participantesNegados.length}
+                                </span>
+                              </h4>
+                            </div>
+                            <div className="space-y-4">
+                              {participantesNegados.map((participacao) => (
+                                <div
+                                  key={participacao.idParticipa}
+                                  className="bg-gradient-to-br from-red-50 to-white rounded-xl border border-red-200 p-6 hover:shadow-sm transition-shadow"
+                                >
+                                  <div className="flex justify-between items-start mb-4">
+                                    <div className="flex items-center gap-4">
+                                      <div className="w-12 h-12 bg-gradient-to-br from-red-100 to-red-50 rounded-xl flex items-center justify-center overflow-hidden">
+                                        {participacao.usuario.foto ? (
+                                          <img
+                                            src={participacao.usuario.foto}
+                                            alt={participacao.usuario.nome}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          <span className="text-2xl text-red-600">👤</span>
+                                        )}
+                                      </div>
+                                      <div>
+                                        <h4 className="font-bold text-gray-900 text-lg">{participacao.usuario.nome}</h4>
+                                        <p className="text-sm text-gray-600">{participacao.usuario.email}</p>
+                                      </div>
+                                    </div>
+                                    <span className="px-3 py-1.5 text-sm font-bold bg-red-100 text-red-800 rounded-lg border border-red-200">
+                                      ❌ Recusado
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="bg-white rounded-lg p-4 border border-red-100">
+                                    <h5 className="text-sm font-medium text-gray-700 mb-2">📝 Motivo da solicitação:</h5>
+                                    <p className="text-gray-800">{participacao.motivo}</p>
+                                    
+                                    <div className="mt-3 pt-3 border-t border-red-100">
+                                      <h5 className="text-sm font-medium text-red-700 mb-1">❌ Motivo da recusa:</h5>
+                                      <p className="text-red-800 font-medium">{participacao.motivoSituacao || "Sem motivo especificado"}</p>
+                                    </div>
+                                    
+                                    {participacao.admin && (
+                                      <div className="mt-3 pt-3 border-t border-red-100">
+                                        <h5 className="text-sm font-medium text-gray-700 mb-1">👤 Recusado por:</h5>
+                                        <p className="text-gray-800">{participacao.admin.nome}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* PARTICIPANTES PENDENTES (APENAS ADMIN) */}
+                        {usuario?.admin && participantesSolicitados.length > 0 && (
+                          <div className="mb-8">
+                            <div className="flex items-center justify-between mb-4">
+                              <h4 className="text-lg font-bold text-yellow-700 flex items-center gap-2">
+                                <span className="text-xl">⏳</span>
+                                Pendentes
+                                <span className="text-sm font-normal bg-yellow-100 text-yellow-800 px-2 py-1 rounded-md">
+                                  {participantesSolicitados.length}
+                                </span>
+                              </h4>
+                            </div>
+                            <div className="space-y-4">
+                              {participantesSolicitados.map((participacao) => (
+                                <div
+                                  key={participacao.idParticipa}
+                                  className="bg-gradient-to-br from-yellow-50 to-white rounded-xl border border-yellow-200 p-6 hover:shadow-sm transition-shadow"
+                                >
+                                  <div className="flex justify-between items-start mb-4">
+                                    <div className="flex items-center gap-4">
+                                      <div className="w-12 h-12 bg-gradient-to-br from-yellow-100 to-yellow-50 rounded-xl flex items-center justify-center overflow-hidden">
+                                        {participacao.usuario.foto ? (
+                                          <img
+                                            src={participacao.usuario.foto}
+                                            alt={participacao.usuario.nome}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          <span className="text-2xl text-yellow-600">👤</span>
+                                        )}
+                                      </div>
+                                      <div>
+                                        <h4 className="font-bold text-gray-900 text-lg">{participacao.usuario.nome}</h4>
+                                        <p className="text-sm text-gray-600">{participacao.usuario.email}</p>
+                                      </div>
+                                    </div>
+                                    <span className="px-3 py-1.5 text-sm font-bold bg-yellow-100 text-yellow-800 rounded-lg border border-yellow-200">
+                                      ⏳ Pendente
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="bg-white rounded-lg p-4 border border-yellow-100">
+                                    <h5 className="text-sm font-medium text-gray-700 mb-2">📝 Motivo da solicitação:</h5>
+                                    <p className="text-gray-800">{participacao.motivo}</p>
+                                    
+                                    <div className="mt-4 flex justify-end">
+                                      <button
+                                        onClick={() => {
+                                          setSolicitacaoSelecionada({
+                                            ...participacao,
+                                            projeto: { nome: projeto.nome }
+                                          });
+                                          setModalAprovarNegar(true);
+                                        }}
+                                        className="px-4 py-2 bg-teal-500 text-white font-medium rounded-lg hover:bg-teal-600 transition-colors"
+                                      >
+                                        Decidir Solicitação
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         )}
                       </div>
                     )}
 
-                    {/* SOLICITAÇÕES DESTE PROJETO (APENAS ADMIN) */}
-                    <div>
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                          <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                            <span className="text-xl text-amber-600">📋</span>
+                    {/* ANEXOS (APENAS PARA MEMBROS AUTORIZADOS/ADMIN) */}
+                    {projeto.anexos && projeto.anexos.length > 0 && (usuario?.admin || membroAutorizado) && (
+                      <div>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                          <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                            <span className="text-xl text-purple-600">📎</span>
                           </div>
-                          Solicitações de Participação
-                          {solicitacoesPendentes > 0 && (
-                            <span className="ml-3 bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full">
-                              {solicitacoesPendentes} pendente(s)
-                            </span>
-                          )}
+                          Anexos do Projeto
+                          <span className="ml-2 text-sm font-normal text-teal-600">
+                            (Acesso exclusivo para membros autorizados)
+                          </span>
                         </h3>
-                        <button
-                          onClick={carregarSolicitacoesProjeto}
-                          disabled={loadingSolicitacoes}
-                          className="px-4 py-2 bg-teal-100 text-teal-700 font-medium rounded-lg hover:bg-teal-200 transition-colors disabled:opacity-50"
-                        >
-                          {loadingSolicitacoes ? "Atualizando..." : "🔄 Atualizar"}
-                        </button>
-                      </div>
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                          <ul className="space-y-3">
+                            {projeto.anexos.map((anexo, index) => {
+                              const isSupabasePath = anexo.includes("supabase.co/storage/v1/object");
+                              const fileName = anexo.split("/").pop() || `anexo-${index + 1}`;
+                              const downloadUrl = isSupabasePath ? `${anexo}?download=${fileName}` : anexo;
 
-                      {solicitacoesProjeto.length > 0 ? (
+                              return (
+                                <li
+                                  key={index}
+                                  className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-200 hover:border-teal-300 hover:shadow-sm transition-all group"
+                                >
+                                  <div className="flex items-center gap-4 flex-1">
+                                    <div className="w-12 h-12 bg-gradient-to-br from-teal-100 to-teal-50 rounded-lg flex items-center justify-center group-hover:from-teal-200 group-hover:to-teal-100 transition-colors">
+                                      <span className="text-2xl text-teal-600">📄</span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-gray-800 font-medium truncate">{fileName}</p>
+                                      <p className="text-sm text-gray-500">Anexo do projeto</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <a
+                                      href={downloadUrl}
+                                      download={fileName}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-4 py-2 bg-teal-500 text-white hover:bg-teal-600 font-medium rounded-lg text-sm transition-colors flex items-center gap-2"
+                                    >
+                                      <span>⬇️</span>
+                                      <span>Baixar</span>
+                                    </a>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SOLICITAÇÕES DESTE PROJETO (APENAS ADMIN) */}
+                    {usuario?.admin && solicitacoesProjeto.length > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                              <span className="text-xl text-amber-600">📋</span>
+                            </div>
+                            Solicitações de Participação
+                            {solicitacoesPendentes > 0 && (
+                              <span className="ml-3 bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full">
+                                {solicitacoesPendentes} pendente(s)
+                              </span>
+                            )}
+                          </h3>
+                          <button
+                            onClick={carregarSolicitacoesProjeto}
+                            disabled={loadingSolicitacoes}
+                            className="px-4 py-2 bg-teal-100 text-teal-700 font-medium rounded-lg hover:bg-teal-200 transition-colors disabled:opacity-50"
+                          >
+                            {loadingSolicitacoes ? "Atualizando..." : "🔄 Atualizar"}
+                          </button>
+                        </div>
+
                         <div className="space-y-4">
                           {solicitacoesProjeto.map((solicitacao) => (
                             <div
@@ -751,34 +1004,28 @@ export default function DetalhesProjeto() {
                             </div>
                           ))}
                         </div>
-                      ) : (
-                        <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-white rounded-2xl border-2 border-dashed border-gray-300">
-                          <div className="text-5xl mb-4">🎉</div>
-                          <p className="text-gray-500 text-lg">Não há solicitações de participação neste projeto</p>
-                          <p className="text-gray-400 text-sm mt-2">
-                            As solicitações aparecerão aqui quando usuários solicitarem participação
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {/* BOTÕES DO ADMIN */}
-                    <div className="flex gap-4 pt-8 border-t border-gray-200">
-                      <button
-                        onClick={() => router.push(`/projetos/editar/${projeto.idProjeto}`)}
-                        className="px-6 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold rounded-xl hover:shadow-lg transition-all flex items-center gap-3"
-                      >
-                        <span className="text-xl">✏️</span>
-                        <span>Editar Projeto</span>
-                      </button>
-                      <Link
-                        href="/projetos"
-                        className="px-6 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl transition-colors flex items-center gap-3"
-                      >
-                        <span>←</span>
-                        <span>Voltar para Projetos</span>
-                      </Link>
-                    </div>
+                    {usuario?.admin && (
+                      <div className="flex gap-4 pt-8 border-t border-gray-200">
+                        <button
+                          onClick={() => router.push(`/projetos/editar/${projeto.idProjeto}`)}
+                          className="px-6 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold rounded-xl hover:shadow-lg transition-all flex items-center gap-3"
+                        >
+                          <span className="text-xl">✏️</span>
+                          <span>Editar Projeto</span>
+                        </button>
+                        <Link
+                          href="/projetos"
+                          className="px-6 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl transition-colors flex items-center gap-3"
+                        >
+                          <span>←</span>
+                          <span>Voltar para Projetos</span>
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   /* SE FOR USUÁRIO COMUM - APENAS RESUMO */
@@ -820,7 +1067,9 @@ export default function DetalhesProjeto() {
                   ) : (
                     <div>
                       {(() => {
-                        if (statusParticipacao === "Solicitado") {
+                        const minhaParticipacao = statusParticipacao;
+                        
+                        if (minhaParticipacao?.situacao === "Solicitado") {
                           return (
                             <div className="bg-gradient-to-br from-yellow-50 to-white rounded-xl p-6 text-center border-2 border-yellow-200">
                               <div className="text-4xl mb-4">⏳</div>
@@ -830,7 +1079,7 @@ export default function DetalhesProjeto() {
                           );
                         }
 
-                        if (statusParticipacao === "Autorizado") {
+                        if (minhaParticipacao?.situacao === "Autorizado") {
                           return (
                             <div className="bg-gradient-to-br from-green-50 to-white rounded-xl p-6 text-center border-2 border-green-200">
                               <div className="text-4xl mb-4">✅</div>
@@ -840,12 +1089,17 @@ export default function DetalhesProjeto() {
                           );
                         }
 
-                        if (statusParticipacao === "Negado") {
+                        if (minhaParticipacao?.situacao === "Negado") {
                           return (
                             <div className="bg-gradient-to-br from-red-50 to-white rounded-xl p-6 text-center border-2 border-red-200">
                               <div className="text-4xl mb-4">❌</div>
                               <div className="text-red-600 font-bold text-xl mb-3">PARTICIPAÇÃO NEGADA</div>
-                              <p className="text-red-700">Sua solicitação não foi aprovada</p>
+                              <p className="text-red-700">
+                                {minhaParticipacao.motivoSituacao 
+                                  ? `Motivo: ${minhaParticipacao.motivoSituacao}`
+                                  : "Sua solicitação não foi aprovada"
+                                }
+                              </p>
                             </div>
                           );
                         }
@@ -935,6 +1189,51 @@ export default function DetalhesProjeto() {
                       <p className="font-bold text-gray-900 text-lg">{formatarData(projeto.dataInicio)}</p>
                     </div>
                   </li>
+
+                  {/* ESTATÍSTICAS DE PARTICIPANTES */}
+                  {projeto.participacoes && projeto.participacoes.length > 0 && (
+                    <li className="mt-6 pt-6 border-t border-gray-200">
+                      <div className="mb-4">
+                        <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                          <span className="text-xl">📈</span>
+                          <span>Estatísticas</span>
+                        </h4>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-100">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                              <span className="text-green-600">✅</span>
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">Autorizados</span>
+                          </div>
+                          <span className="font-bold text-green-700">{participantesAutorizados.length}</span>
+                        </div>
+                        
+                        {usuario?.admin && (
+                          <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                <span className="text-yellow-600">⏳</span>
+                              </div>
+                              <span className="text-sm font-medium text-gray-700">Pendentes</span>
+                            </div>
+                            <span className="font-bold text-yellow-700">{participantesSolicitados.length}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                              <span className="text-red-600">❌</span>
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">Recusados</span>
+                          </div>
+                          <span className="font-bold text-red-700">{participantesNegados.length}</span>
+                        </div>
+                      </div>
+                    </li>
+                  )}
                 </ul>
               </div>
             </div>

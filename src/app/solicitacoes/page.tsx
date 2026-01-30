@@ -62,7 +62,7 @@ export default function GerenciarSolicitacoes() {
       }
       setIsAdmin(true);
 
-      const res = await fetch("/api/admin/solicitacoes");
+      const res = await fetch("/api/solicitacoes");
       if (res.ok) {
         const data = await res.json();
         setSolicitacoes(data);
@@ -78,13 +78,14 @@ export default function GerenciarSolicitacoes() {
 
   useEffect(() => {
     fetchSolicitacoes();
-  }, [fetchSolicitacoes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 2. AÇÃO: APROVAR
   const handleAprovar = async (id: number) => {
     setProcessandoId(id);
     try {
-      const res = await fetch("/api/admin/solicitacoes", {
+      const res = await fetch("/api/solicitacoes", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -120,7 +121,7 @@ export default function GerenciarSolicitacoes() {
     setProcessandoId(idParaNegar);
 
     try {
-      const res = await fetch("/api/admin/solicitacoes", {
+      const res = await fetch("/api/solicitacoes", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
