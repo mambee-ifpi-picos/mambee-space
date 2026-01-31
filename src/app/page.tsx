@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Sobre from "@/components/sobre";
 import Relatorios from "@/components/relatorios";
+import Footer from "@/components/Footer"; 
 import { useRouter } from "next/navigation";
 
 export default function Home() {
@@ -80,6 +81,8 @@ export default function Home() {
       <section id="relatorios">
         <Relatorios />
       </section>
+
+      <Footer />
     </>
   );
 }

@@ -1,53 +1,51 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FaMapPin } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 
 export default function RelatoriosPage() {
   const router = useRouter();
 
   const relatorios = [
-    { nome: "Relatorio Geral", cor: "text-blue-500", url: "/relatorio" },
-    {
-      nome: "Relatorio Guarita",
-      cor: "text-red-500",
-      url: "/relatorioguarita",
-    },
+    { nome: "Agendamentos", url: "/relatorio" },
+    { nome: "Relatório", url: "/relatorioguarita" },
   ];
 
   return (
-    <section className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-white to-gray-100 py-20 px-8 text-center">
-      <motion.h1
-        initial={{ opacity: 0, y: -40 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        viewport={{ once: true, amount: 0.3 }}
-        className="text-4xl sm:text-5xl font-extrabold text-gray-800 mb-12"
-      >
-        Relatórios
-      </motion.h1>
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        whileInView={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
-        viewport={{ once: true }}
-        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-10 md:gap-x-32"
-      >
-        {relatorios.map((r, idx) => (
-          <div
-            key={idx}
-            onClick={() => router.push(r.url)}
-            className="flex items-center justify-center md:justify-start space-x-4 hover:scale-105 transition-transform duration-300 cursor-pointer"
-          >
-            <FaMapPin className={`${r.cor} text-4xl`} />
-            <span className="text-lg sm:text-xl font-medium text-gray-800 hover:underline">
+    <section className="min-h-screen flex items-center justify-center bg-white p-6 md:p-8">
+      
+      
+      <div className="flex flex-col-reverse md:flex-row items-center justify-center gap-12 md:gap-40 w-full max-w-6xl">
+        
+        
+        <div className="flex flex-col gap-5 w-full max-w-[280px]">
+          {relatorios.map((r, idx) => (
+            <motion.button
+              key={idx}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => router.push(r.url)}
+              className="bg-white border border-pink-100 text-gray-800 text-lg md:text-xl font-light py-5 md:py-6 px-4 rounded-2xl shadow-[0_8px_20px_-5px_rgba(255,192,203,1)] hover:shadow-[0_12px_25px_-5px_rgba(255,192,203,1)] transition-all duration-300 w-full"
+            >
               {r.nome}
-            </span>
-          </div>
-        ))}
-      </motion.div>
+            </motion.button>
+          ))}
+        </div>
+
+      
+        <div className="w-full max-w-xl flex flex-col items-center md:items-start">
+          <h1 className="text-4xl md:text-5xl font-bold text-black mb-6 md:mb-10 drop-shadow-md text-center md:text-left">
+            Relatórios
+          </h1>
+
+          <p className="text-black text-base md:text-lg leading-relaxed text-justify">
+            Gerencie o fluxo de acesso com precisão. Visualize a lista completa 
+            de pessoas agendadas para o dia de hoje ou consulte o histórico de 
+            visitas buscando por uma data específica.
+          </p>
+        </div>
+
+      </div>
     </section>
   );
 }
