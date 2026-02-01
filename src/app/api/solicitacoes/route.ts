@@ -1,87 +1,45 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { createSupabaseServerClient } from "@/lib/supabase/server/supabaseServer";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
-
-// Função auxiliar de verificação de Admin
-async function verificarAdmin() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  const usuarioBanco = await prisma.usuario.findUnique({
-    where: { idAuth: user.id },
-  });
-
-  if (usuarioBanco?.admin) return usuarioBanco;
-  return null;
-}
-
-// GET: Listar TODAS as solicitações pendentes
-export async function GET() {
+export async function PUT(request: Request) {
   try {
-    const admin = await verificarAdmin();
-    if (!admin) {
-      return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
-    }
+    const body = await request.json();
+    const { idParticipa, novaSituacao, motivoSituacao } = body;
 
-    const solicitacoes = await prisma.participa.findMany({
-      where: { situacao: "Solicitado" },
-      include: {
-        usuario: {
-          select: { nome: true, email: true, foto: true },
-        },
-        projeto: {
-          select: { nome: true },
-        },
-      },
-      orderBy: { idParticipa: "desc" },
-    });
-
-    return NextResponse.json(solicitacoes);
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Erro ao buscar solicitações." },
-      { status: 500 },
-    );
-  }
-}
-
-// PUT: Aprovar ou Negar
-export async function PUT(req: Request) {
-  try {
-    const admin = await verificarAdmin();
-    if (!admin) {
-      return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
-    }
-
-    const body = await req.json();
-    const { idParticipa, novaSituacao, motivoSituacao } = body; // novaSituacao = "Autorizado" ou "Negado"
-
-    if (!["Autorizado", "Negado"].includes(novaSituacao)) {
+    // Validação de segurança básica
+    if (!idParticipa || !novaSituacao) {
       return NextResponse.json(
-        { error: "Situação inválida." },
+        { error: "ID da participação ou nova situação não informados." },
         { status: 400 },
       );
     }
 
-    const atualizado = await prisma.participa.update({
-      where: { idParticipa: Number(idParticipa) },
+    // 1. Atualiza o status da participação no banco de dados
+    // Lembre-se: use 'prisma.participa' ou o nome exato da sua tabela no schema.prisma
+    const participacaoAtualizada = await prisma.participa.update({
+      where: {
+        idParticipa: Number(idParticipa),
+      },
       data: {
         situacao: novaSituacao,
-        motivoSituacao: motivoSituacao || null, // Motivo da recusa (opcional se for aprovar)
-        idAdmin: admin.idUsuario, // Grava QUEM aprovou/negou
+        motivoSituacao: motivoSituacao || null,
       },
     });
 
-    return NextResponse.json({ success: true, data: atualizado });
-  } catch (error) {
+    return NextResponse.json(participacaoAtualizada, { status: 200 });
+  } catch (error: any) {
+    console.error("Erro ao atualizar solicitação:", error);
+
+    // Caso o ID não exista no banco
+    if (error.code === "P2025") {
+      return NextResponse.json(
+        { error: "Solicitação não encontrada no banco." },
+        { status: 404 },
+      );
+    }
+
     return NextResponse.json(
-      { error: "Erro ao processar solicitação." },
+      { error: "Erro interno ao salvar decisão." },
       { status: 500 },
     );
   }
