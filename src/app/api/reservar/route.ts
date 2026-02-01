@@ -36,7 +36,6 @@ export const GET = Auth(
         return NextResponse.json(salaUnica);
       }
 
-      // 2. Espaços
       if (tipo === "espacos" && idSala) {
         const espacos = await prisma.espaco.findMany({
           where: { idSalaPertence: Number(idSala) },
@@ -46,7 +45,6 @@ export const GET = Auth(
         return NextResponse.json(espacos);
       }
 
-      // 3. Cronograma
       if (idEspaco && data) {
         const inicioDia = new Date(`${data}T00:00:00.000Z`);
         const fimDia = new Date(`${data}T23:59:59.999Z`);

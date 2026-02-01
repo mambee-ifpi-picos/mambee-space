@@ -3,7 +3,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 const publicRoutes = ["/", "/login", "/relatorio", "/relatorioguarita"];
 const protectedRoutes = ["/reservas", "/perfil", "/reservar"];
-const adminRoutes = ["/sala_espaco", "/salas"];
+const adminRoutes = ["/salas", "/sala_espaco"];
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
           response.cookies.set(name, "", options);
         },
       },
-    }
+    },
   );
 
   const {
@@ -32,12 +32,10 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // ROTAS PÚBLICAS
   if (publicRoutes.includes(pathname)) {
     return response;
   }
 
-  // ROTAS QUE EXIGEM LOGIN
   if (protectedRoutes.some((route) => pathname.startsWith(route))) {
     if (!user) {
       return NextResponse.redirect(new URL("/login", request.url));
@@ -45,7 +43,6 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // ROTAS ADMIN
   if (adminRoutes.some((route) => pathname.startsWith(route))) {
     if (!user) {
       return NextResponse.redirect(new URL("/login", request.url));
