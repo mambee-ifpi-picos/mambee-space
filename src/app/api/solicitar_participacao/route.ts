@@ -1,49 +1,76 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function POST(request: Request) {
+// --- CRIAR SOLICITAÇÃO (OU ENTRADA DIRETA ADMIN) ---
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
-    const { idProjeto, idUsuario, motivo } = body;
+    const { idProjeto, idUsuario, motivo, situacaoManual } = await req.json();
 
-    // Validação básica
-    if (!idProjeto || !idUsuario || !motivo) {
-      return NextResponse.json(
-        { error: "Dados insuficientes" },
-        { status: 400 },
-      );
-    }
-
-    // 1. Verifica se o cabra já solicitou participação pra não duplicar
-    const existente = await prisma.participa.findFirst({
-      where: {
-        idProjeto: Number(idProjeto),
-        idUsuario: Number(idUsuario),
-      },
-    });
-
-    if (existente) {
-      return NextResponse.json(
-        { error: "Você já enviou uma solicitação para este projeto." },
-        { status: 400 },
-      );
-    }
-
-    // 2. Cria a nova participação com status 'Solicitado'
-    const novaSolicitacao = await prisma.participa.create({
+    const participacao = await prisma.participa.create({
       data: {
         idProjeto: Number(idProjeto),
         idUsuario: Number(idUsuario),
-        motivo: motivo,
-        situacao: "Solicitado",
+        motivo,
+        situacao: situacaoManual || "Solicitado",
       },
     });
 
-    return NextResponse.json(novaSolicitacao, { status: 201 });
+    return NextResponse.json(participacao);
   } catch (error) {
-    console.error("Erro na API de solicitação:", error);
     return NextResponse.json(
-      { error: "Erro interno no servidor" },
+      { error: "Erro ao criar participação" },
+      { status: 500 },
+    );
+  }
+}
+
+// --- ATUALIZAR STATUS (APROVAR OU NEGAR) ---
+// Yuri, esse é o método que faltava pra o botão de aceitar funcionar!
+export async function PUT(req: Request) {
+  try {
+    const { idParticipa, situacao, motivoSituacao } = await req.json();
+
+    const atualizado = await prisma.participa.update({
+      where: { idParticipa: Number(idParticipa) },
+      data: {
+        situacao,
+        motivoSituacao: motivoSituacao || null,
+      },
+    });
+
+    return NextResponse.json(atualizado);
+  } catch (error) {
+    console.error("ERRO NO PUT:", error);
+    return NextResponse.json(
+      { error: "Erro ao processar decisão" },
+      { status: 500 },
+    );
+  }
+}
+
+// --- REMOVER PARTICIPAÇÃO (ADMIN SAINDO OU REMOVENDO ALGUÉM) ---
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const idProjeto = Number(searchParams.get("idProjeto"));
+    const idUsuario = Number(searchParams.get("idUsuario"));
+
+    if (!idProjeto || !idUsuario) {
+      return NextResponse.json({ error: "IDs faltando" }, { status: 400 });
+    }
+
+    await prisma.participa.deleteMany({
+      where: {
+        idProjeto,
+        idUsuario,
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Erro ao deletar:", error);
+    return NextResponse.json(
+      { error: "Erro ao sair do projeto" },
       { status: 500 },
     );
   }

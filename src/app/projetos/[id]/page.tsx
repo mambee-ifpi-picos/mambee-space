@@ -8,7 +8,6 @@ import Link from "next/link";
 
 const inriaSerif700 = Inria_Serif({ subsets: ["latin"], weight: ["700"] });
 
-// --- TIPAGENS ---
 type ParticipacaoDetalhada = {
   idParticipa: number;
   motivo: string;
@@ -48,33 +47,28 @@ export default function DetalhesProjeto() {
     [],
   );
   const [loading, setLoading] = useState(true);
+
+  // Estados dos Modais
   const [modalSolicitacao, setModalSolicitacao] = useState(false);
   const [motivoSolicitacao, setMotivoSolicitacao] = useState("");
-  const [modalAprovarNegar, setModalAprovarNegar] = useState(false);
-  const [solicitacaoSelecionada, setSolicitacaoSelecionada] =
+  const [modalDecisao, setModalDecisao] = useState(false);
+  const [solicitacaoAlvo, setSolicitacaoAlvo] =
     useState<ParticipacaoDetalhada | null>(null);
-  const [motivoDecisao, setMotivoDecisao] = useState("");
-  const [decisao, setDecisao] = useState<"Autorizado" | "Negado">("Autorizado");
+  const [motivoNegativa, setMotivoNegativa] = useState("");
+
   const [toast, setToast] = useState({
     visible: false,
     message: "",
-    type: "success" as "success" | "error",
+    type: "success",
   });
 
-  const showToast = useCallback(
-    (msg: string, type: "success" | "error" = "success") => {
-      setToast({ visible: true, message: msg, type });
-      setTimeout(() => setToast((prev) => ({ ...prev, visible: false })), 3500);
-    },
-    [],
-  );
-
-  // Função para formatar data BR (ex: 31/01/2026)
-  const formatarData = (dataStr: string | null) => {
-    if (!dataStr) return null;
-    const data = new Date(dataStr);
-    return data.toLocaleDateString("pt-BR");
-  };
+  const showToast = useCallback((msg: string, type = "success") => {
+    setToast({ visible: true, message: msg, type });
+    setTimeout(
+      () => setToast({ visible: false, message: "", type: "success" }),
+      3500,
+    );
+  }, []);
 
   const carregarDados = useCallback(async () => {
     try {
@@ -107,65 +101,93 @@ export default function DetalhesProjeto() {
     if (idProjeto) carregarDados();
   }, [idProjeto, carregarDados]);
 
-  const enviarSolicitacao = async () => {
-    if (!usuario) return showToast("Faça login para solicitar", "error");
-    if (!motivoSolicitacao.trim())
-      return showToast("Diga o motivo da solicitação", "error");
+  const processarAcaoAdmin = async (
+    acao: "entrar" | "sair" | "remover",
+    idUsuarioRemover?: number,
+  ) => {
+    try {
+      if (acao === "entrar") {
+        await fetch("/api/solicitar_participacao", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            idProjeto,
+            idUsuario: usuario?.idUsuario,
+            motivo: "Acesso direto Admin",
+            situacaoManual: "Autorizado",
+          }),
+        });
+      } else {
+        const idAlvo =
+          acao === "remover" ? idUsuarioRemover : usuario?.idUsuario;
+        await fetch(
+          `/api/solicitar_participacao?idProjeto=${idProjeto}&idUsuario=${idAlvo}`,
+          { method: "DELETE" },
+        );
+      }
+      showToast("Sucesso!");
+      carregarDados();
+    } catch (e) {
+      showToast("Erro na ação", "error");
+    }
+  };
 
+  const responderSolicitacao = async (status: "Autorizado" | "Negado") => {
+    if (!solicitacaoAlvo) return;
     try {
       const res = await fetch("/api/solicitar_participacao", {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          idProjeto,
-          idUsuario: usuario.idUsuario,
-          motivo: motivoSolicitacao,
+          idParticipa: solicitacaoAlvo.idParticipa,
+          situacao: status,
+          motivoSituacao: motivoNegativa,
         }),
       });
 
       if (res.ok) {
-        showToast("Solicitação enviada!");
-        setModalSolicitacao(false);
-        setMotivoSolicitacao("");
+        showToast(
+          `Candidato ${status === "Autorizado" ? "Aprovado" : "Recusado"}!`,
+        );
+        setModalDecisao(false);
+        setSolicitacaoAlvo(null);
+        setMotivoNegativa("");
         carregarDados();
       } else {
-        const err = await res.json();
-        showToast(err.error || "Erro ao solicitar", "error");
+        showToast("Erro ao processar decisão.", "error");
       }
     } catch (e) {
       showToast("Erro de conexão", "error");
     }
   };
 
-  const processarSolicitacao = async () => {
-    if (!solicitacaoSelecionada) return;
+  const enviarSolicitacao = async () => {
+    if (!motivoSolicitacao.trim()) return showToast("Diga o motivo!", "error");
     try {
-      const res = await fetch("/api/solicitacoes", {
-        method: "PUT",
+      const res = await fetch("/api/solicitar_participacao", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          idParticipa: solicitacaoSelecionada.idParticipa,
-          novaSituacao: decisao,
-          motivoSituacao: motivoDecisao || null,
+          idProjeto,
+          idUsuario: usuario?.idUsuario,
+          motivo: motivoSolicitacao,
         }),
       });
       if (res.ok) {
-        showToast(
-          `Solicitação ${decisao === "Autorizado" ? "aprovada" : "negada"}!`,
-        );
-        setModalAprovarNegar(false);
-        setMotivoDecisao("");
+        showToast("Solicitação enviada!");
+        setModalSolicitacao(false);
+        setMotivoSolicitacao("");
         carregarDados();
       }
     } catch (e) {
-      showToast("Erro ao processar", "error");
+      showToast("Erro ao enviar", "error");
     }
   };
 
   if (loading)
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center font-bold uppercase tracking-widest">
+        Carregando...
       </div>
     );
   if (!projeto) return null;
@@ -173,14 +195,17 @@ export default function DetalhesProjeto() {
   const minhaPart = participacoes.find(
     (p) => p.usuario?.idUsuario === usuario?.idUsuario,
   );
+
+  // REGRA DE OURO: Admin ou Membro Autorizado
   const isMembroAutorizado =
-    usuario?.admin ||
-    projeto.criador?.idUsuario === usuario?.idUsuario ||
-    minhaPart?.situacao === "Autorizado";
+    usuario?.admin || minhaPart?.situacao === "Autorizado";
+
+  const solicitacoesPendentes = participacoes.filter(
+    (p) => p.situacao === "Solicitado",
+  );
 
   return (
     <>
-      {/* TOAST */}
       {toast.visible && (
         <div
           className={`fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-md shadow-lg z-[100] text-white font-bold ${toast.type === "success" ? "bg-teal-500" : "bg-red-500"}`}
@@ -189,311 +214,349 @@ export default function DetalhesProjeto() {
         </div>
       )}
 
-      {/* ... (MODAIS permanecem iguais) ... */}
+      {/* MODAL SOLICITAÇÃO (USUÁRIO) */}
       {modalSolicitacao && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-gray-900">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
-            <h3 className={`${inriaSerif700.className} text-xl mb-4`}>
-              Solicitar Participação
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl border border-gray-200">
+            <h3
+              className={`${inriaSerif700.className} text-2xl mb-4 uppercase tracking-tighter`}
+            >
+              Solicitar Vaga
             </h3>
             <textarea
               value={motivoSolicitacao}
               onChange={(e) => setMotivoSolicitacao(e.target.value)}
-              rows={4}
-              className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-teal-500"
-              placeholder="Explique por que quer entrar..."
+              rows={5}
+              className="w-full border border-gray-300 p-4 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 resize-none text-gray-800"
+              placeholder="Por que você quer entrar?"
             />
-            <div className="flex gap-3 justify-end mt-4">
+            <div className="flex gap-3 justify-end mt-6">
               <button
                 onClick={() => setModalSolicitacao(false)}
-                className="px-4 py-2 bg-gray-100 rounded-lg"
+                className="px-6 py-3 bg-gray-100 rounded-xl font-bold text-xs uppercase text-gray-500"
               >
                 Cancelar
               </button>
               <button
                 onClick={enviarSolicitacao}
-                className="px-4 py-2 bg-teal-600 text-white rounded-lg font-bold"
+                className="px-6 py-3 bg-teal-600 text-white rounded-xl font-bold text-xs uppercase shadow-md"
               >
-                Enviar
+                Enviar Pedido
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {modalAprovarNegar && solicitacaoSelecionada && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm text-gray-900">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className={`${inriaSerif700.className} text-xl mb-4`}>
+      {/* MODAL DECISÃO (ADMIN) */}
+      {modalDecisao && solicitacaoAlvo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-xl w-full max-w-md p-6 text-gray-900 border shadow-2xl">
+            <h3 className="font-bold text-lg mb-2 underline tracking-tighter uppercase text-teal-700">
               Avaliar Candidato
             </h3>
-            <p className="mb-4 text-sm text-gray-600 italic">
-              "{solicitacaoSelecionada.motivo}"
+            <div className="flex items-center gap-3 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+              <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 border">
+                {solicitacaoAlvo.usuario.foto ? (
+                  <img
+                    src={solicitacaoAlvo.usuario.foto}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="flex items-center justify-center h-full text-xl font-bold">
+                    👤
+                  </span>
+                )}
+              </div>
+              <span className="font-bold text-gray-800">
+                {solicitacaoAlvo.usuario.nome}
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 mb-4 italic">
+              "{solicitacaoAlvo.motivo}"
             </p>
-            <div className="flex gap-3 mb-4">
+            <textarea
+              value={motivoNegativa}
+              onChange={(e) => setMotivoNegativa(e.target.value)}
+              placeholder="Motivo da negativa (opcional)..."
+              className="w-full border p-2 rounded-lg text-sm mb-4 outline-none focus:ring-2 focus:ring-teal-500"
+            />
+            <div className="flex gap-2">
               <button
-                onClick={() => setDecisao("Autorizado")}
-                className={`flex-1 py-3 rounded-lg font-bold ${decisao === "Autorizado" ? "bg-green-100 border-2 border-green-500 text-green-700" : "bg-gray-100 text-gray-400"}`}
+                onClick={() => setModalDecisao(false)}
+                className="flex-1 py-3 bg-gray-100 rounded-xl font-bold uppercase text-[10px]"
               >
-                Aprovar
+                Voltar
               </button>
               <button
-                onClick={() => setDecisao("Negado")}
-                className={`flex-1 py-3 rounded-lg font-bold ${decisao === "Negado" ? "bg-red-100 border-2 border-red-500 text-red-700" : "bg-gray-100 text-gray-400"}`}
+                onClick={() => responderSolicitacao("Negado")}
+                className="flex-1 py-3 bg-red-100 text-red-600 rounded-xl font-bold uppercase text-[10px]"
               >
                 Negar
               </button>
-            </div>
-            <textarea
-              value={motivoDecisao}
-              onChange={(e) => setMotivoDecisao(e.target.value)}
-              rows={2}
-              className="w-full border border-gray-300 p-3 rounded-lg outline-none focus:ring-2 focus:ring-teal-500 text-gray-800"
-              placeholder="Motivo/Feedback..."
-            />
-            <div className="flex gap-3 justify-end mt-6">
               <button
-                onClick={() => setModalAprovarNegar(false)}
-                className="px-4 py-2 bg-gray-100 rounded-lg"
+                onClick={() => responderSolicitacao("Autorizado")}
+                className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold uppercase text-[10px]"
               >
-                Sair
-              </button>
-              <button
-                onClick={processarSolicitacao}
-                className={`px-4 py-2 rounded-lg text-white font-bold ${decisao === "Autorizado" ? "bg-green-600" : "bg-red-600"}`}
-              >
-                Confirmar
+                Aprovar
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="min-h-screen bg-gray-50 pb-20">
-        <div className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-            <Link href="/projetos" className="text-teal-600 font-medium">
+      <div className="min-h-screen bg-gray-50 pb-20 text-gray-900">
+        <div className="bg-white border-b py-6 px-4 shadow-sm border-gray-200">
+          <div className="max-w-7xl mx-auto flex justify-between items-center">
+            <Link
+              href="/projetos"
+              className="text-teal-600 font-bold uppercase text-xs tracking-widest hover:underline"
+            >
               ← Voltar
             </Link>
-            <h1 className={`${inriaSerif700.className} text-2xl text-gray-900`}>
+            <h1
+              className={`${inriaSerif700.className} text-2xl uppercase tracking-tighter text-gray-800`}
+            >
               {projeto.nome}
             </h1>
-            <div className="w-10 h-10 invisible md:block"></div>
+            <div className="w-12"></div>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-lg border p-8">
-              <h3 className="text-2xl font-bold mb-4 text-gray-900">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-white rounded-2xl shadow-sm border p-8 border-gray-300">
+              <h3 className="text-2xl font-bold mb-4 uppercase tracking-tighter text-teal-800">
                 Sobre o Projeto
               </h3>
-              <p className="text-gray-700 whitespace-pre-line text-lg mb-8">
+              <p className="text-gray-700 whitespace-pre-line leading-relaxed mb-8 text-lg">
                 {projeto.resumo}
               </p>
 
-              {isMembroAutorizado && (
-                <div className="space-y-8 border-t pt-8">
-                  {/* ANEXOS */}
-                  {projeto.anexos && projeto.anexos.length > 0 && (
-                    <div>
-                      <h3 className="text-xl font-bold mb-4 text-gray-900">
-                        Arquivos do Projeto
-                      </h3>
+              <div className="mt-8 pt-8 border-t space-y-8 border-gray-200">
+                {/* EQUIPE (PÚBLICO) */}
+                <div>
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-6">
+                    Equipe do Projeto
+                  </h4>
+                  <div className="flex flex-wrap gap-6">
+                    {participacoes
+                      .filter((p) => p.situacao === "Autorizado")
+                      .map((p) => (
+                        <div
+                          key={p.idParticipa}
+                          className="flex items-center gap-3 bg-white border px-4 py-2 rounded-full shadow-sm border-gray-200 relative"
+                        >
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 border border-gray-200">
+                            {p.usuario.foto ? (
+                              <img
+                                src={p.usuario.foto}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="flex items-center justify-center h-full text-xs font-bold text-gray-400">
+                                👤
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-sm font-bold text-gray-700">
+                            {p.usuario.nome}
+                          </span>
+                          {usuario?.admin && (
+                            <button
+                              onClick={() =>
+                                processarAcaoAdmin(
+                                  "remover",
+                                  p.usuario.idUsuario,
+                                )
+                              }
+                              className="ml-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] hover:bg-red-700 font-bold transition-all shadow-md"
+                            >
+                              X
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                {/* ANEXOS (TRAVADO: SÓ ADMIN OU MEMBRO DO TIME) */}
+                {isMembroAutorizado &&
+                  projeto.anexos &&
+                  projeto.anexos.length > 0 && (
+                    <div className="border-t pt-8 border-gray-100">
+                      <h4 className="text-[10px] font-bold text-teal-600 uppercase tracking-widest mb-4">
+                        📎 Documentação Restrita
+                      </h4>
                       <div className="grid grid-cols-1 gap-2">
                         {projeto.anexos.map((url, i) => (
                           <a
                             key={i}
                             href={url}
                             target="_blank"
-                            download
-                            className="flex items-center justify-between p-4 bg-teal-50 border border-teal-100 rounded-xl hover:bg-teal-100 transition-all group"
+                            className="flex items-center justify-between p-5 bg-teal-50 border border-teal-100 rounded-2xl hover:bg-teal-100 transition-all group"
                           >
-                            <span className="text-sm font-medium text-teal-900">
-                              📎 Baixar Anexo {i + 1}
+                            <span className="text-sm font-bold text-teal-900 uppercase">
+                              Documento de Apoio {i + 1}
                             </span>
-                            <span className="text-teal-600 text-xs font-bold uppercase">
-                              Download
+                            <span className="text-teal-600 text-[10px] font-bold uppercase underline tracking-tighter group-hover:scale-110 transition-transform">
+                              Baixar Arquivo
                             </span>
                           </a>
                         ))}
                       </div>
                     </div>
                   )}
-
-                  {/* TIME */}
-                  <div>
-                    <h3 className="text-xl font-bold mb-4 text-gray-900">
-                      Membros do Time
-                    </h3>
-                    <div className="flex flex-wrap gap-4">
-                      {participacoes
-                        .filter((p) => p.situacao === "Autorizado")
-                        .map((p) => (
-                          <div
-                            key={p.idParticipa}
-                            className="flex items-center gap-2 p-2 bg-white border rounded-full pr-4 shadow-sm"
-                          >
-                            <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100">
-                              {p.usuario.foto ? (
-                                <img
-                                  src={p.usuario.foto}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <span className="flex items-center justify-center h-full text-xs">
-                                  👤
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-sm font-bold text-gray-800">
-                              {p.usuario.nome}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           </div>
 
           <div className="space-y-6">
-            {/* CARD DE STATUS */}
-            {!usuario?.admin && projeto.situacao === "Ativo" && (
-              <div className="bg-white rounded-2xl shadow-lg border p-6">
-                <h4 className="text-xs font-bold text-gray-400 uppercase mb-4 border-b pb-2">
-                  Participação
+            {/* PAINEL ADMIN */}
+            {usuario?.admin && (
+              <div className="bg-white rounded-3xl shadow-xl border-2 border-teal-500 p-6 space-y-6">
+                <div>
+                  <h4 className="text-[10px] font-bold text-teal-600 uppercase tracking-widest mb-4 border-b pb-2 text-center font-black">
+                    Painel de Gestão
+                  </h4>
+                  <button
+                    onClick={() =>
+                      router.push(`/projetos/editar/${projeto.idProjeto}`)
+                    }
+                    className="w-full bg-amber-500 text-white py-4 rounded-2xl font-bold uppercase text-xs shadow-md mb-2 hover:bg-amber-600 transition-all"
+                  >
+                    ✏️ Editar Projeto
+                  </button>
+                  {minhaPart?.situacao === "Autorizado" ? (
+                    <button
+                      onClick={() => processarAcaoAdmin("sair")}
+                      className="w-full bg-red-50 text-red-600 border border-red-200 py-4 rounded-2xl font-bold uppercase text-xs hover:bg-red-100 transition-all"
+                    >
+                      Sair da Equipe
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => processarAcaoAdmin("entrar")}
+                      className="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold uppercase text-xs hover:bg-teal-700 shadow-lg transition-all"
+                    >
+                      Entrar na Equipe
+                    </button>
+                  )}
+                </div>
+
+                {/* FILA DE SOLICITAÇÕES */}
+                {solicitacoesPendentes.length > 0 && (
+                  <div className="pt-4 border-t border-teal-100">
+                    <h5 className="text-[10px] font-black text-gray-500 uppercase mb-4 text-center tracking-widest">
+                      Pendentes de Avaliação ({solicitacoesPendentes.length})
+                    </h5>
+                    <div className="space-y-3">
+                      {solicitacoesPendentes.map((s) => (
+                        <div
+                          key={s.idParticipa}
+                          className="p-4 bg-gray-50 rounded-2xl border flex flex-col gap-3 border-gray-200 shadow-sm"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 border">
+                              {s.usuario.foto ? (
+                                <img
+                                  src={s.usuario.foto}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="flex items-center justify-center h-full text-[10px] font-bold">
+                                  👤
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs font-bold text-gray-700">
+                              {s.usuario.nome}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setSolicitacaoAlvo(s);
+                              setModalDecisao(true);
+                            }}
+                            className="text-[10px] bg-white border-teal-500 border text-teal-600 py-2.5 rounded-xl font-bold uppercase hover:bg-teal-500 hover:text-white transition-all shadow-sm"
+                          >
+                            Analisar Candidato
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* STATUS DO USUÁRIO COMUM */}
+            {!usuario?.admin && (
+              <div className="bg-white rounded-3xl shadow-lg border p-6 border-gray-300">
+                <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-4 border-b pb-2 tracking-widest">
+                  Status da Participação
                 </h4>
                 {minhaPart?.situacao === "Solicitado" ? (
-                  <div className="p-4 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-center font-bold uppercase text-sm tracking-tight">
-                    ⏳ Aguardando Resposta
+                  <div className="p-5 bg-amber-50 text-amber-700 border border-amber-200 rounded-2xl text-center font-bold text-xs uppercase italic animate-pulse">
+                    ⏳ Aguardando Aprovação
                   </div>
                 ) : minhaPart?.situacao === "Autorizado" ? (
-                  <div className="p-4 bg-green-50 text-green-700 border border-green-200 rounded-xl text-center font-bold uppercase text-sm tracking-tight">
-                    ✅ Participação Aceita
+                  <div className="p-5 bg-green-50 text-green-700 border border-green-200 rounded-2xl text-center font-bold text-xs uppercase">
+                    ✅ Você é Integrante
                   </div>
                 ) : minhaPart?.situacao === "Negado" ? (
-                  <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-xl text-center">
-                    <p className="font-bold uppercase text-sm tracking-tight">
+                  <div className="p-5 bg-red-50 text-red-700 border border-red-200 rounded-2xl text-center">
+                    <p className="font-bold text-xs uppercase">
                       ❌ Participação Recusada
                     </p>
                     {minhaPart.motivoSituacao && (
-                      <p className="text-xs mt-2 italic text-red-600 font-medium">
-                        Motivo: "{minhaPart.motivoSituacao}"
+                      <p className="text-[10px] mt-2 italic opacity-80 leading-tight">
+                        "{minhaPart.motivoSituacao}"
                       </p>
                     )}
+                    <button
+                      onClick={() => setModalSolicitacao(true)}
+                      className="mt-4 text-[9px] underline font-black uppercase text-red-800"
+                    >
+                      Tentar Novamente
+                    </button>
                   </div>
                 ) : (
                   <button
                     onClick={() => setModalSolicitacao(true)}
-                    className="w-full bg-teal-600 text-white font-bold py-4 rounded-xl hover:bg-teal-700 transition-all"
+                    className="w-full bg-teal-600 text-white font-bold py-5 rounded-2xl hover:bg-teal-700 shadow-md uppercase text-sm tracking-tighter transition-all"
                   >
-                    PEDIR PARA PARTICIPAR
+                    Quero Fazer Parte
                   </button>
                 )}
               </div>
             )}
 
-            {/* PAINEL ADMIN */}
-            {usuario?.admin && (
-              <div className="space-y-4">
-                <button
-                  onClick={() =>
-                    router.push(`/projetos/editar/${projeto.idProjeto}`)
-                  }
-                  className="w-full bg-amber-500 text-white py-4 rounded-xl font-bold shadow-md hover:bg-amber-600"
-                >
-                  ✏️ Editar Projeto
-                </button>
-                <h4 className="font-bold text-gray-400 text-xs uppercase px-2">
-                  Pedidos de entrada
-                </h4>
-                {participacoes.filter((p) => p.situacao === "Solicitado")
-                  .length === 0 && (
-                  <p className="text-xs text-gray-400 px-2 italic">
-                    Nenhum pedido.
-                  </p>
-                )}
-                {participacoes
-                  .filter((p) => p.situacao === "Solicitado")
-                  .map((p) => (
-                    <div
-                      key={p.idParticipa}
-                      className="p-4 bg-white border-2 border-teal-100 rounded-2xl shadow-sm"
-                    >
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100">
-                          {p.usuario.foto && (
-                            <img
-                              src={p.usuario.foto}
-                              className="w-full h-full object-cover"
-                            />
-                          )}
-                        </div>
-                        <p className="font-bold text-sm text-gray-800">
-                          {p.usuario.nome}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setSolicitacaoSelecionada(p);
-                          setModalAprovarNegar(true);
-                        }}
-                        className="w-full py-2 bg-teal-500 text-white text-xs font-bold rounded-lg hover:bg-teal-600"
-                      >
-                        Analisar Pedido
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            )}
-
-            {/* CARD DE DETALHES - COM DATAS */}
-            <div className="bg-white rounded-2xl shadow-lg border p-6">
-              <h4 className="text-xs font-bold text-gray-400 uppercase mb-4 border-b pb-2 tracking-widest">
-                Informações
+            <div className="bg-white rounded-3xl shadow-sm border p-6 text-sm border-gray-300">
+              <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-4 border-b pb-2 tracking-widest">
+                Informações Técnicas
               </h4>
               <div className="space-y-4">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase font-bold text-gray-400">
-                    Status
-                  </span>
-                  <span
-                    className={`text-sm font-bold ${projeto.situacao === "Ativo" ? "text-green-600" : "text-amber-600"}`}
-                  >
+                <div className="flex justify-between uppercase text-[10px] font-medium">
+                  <span className="text-gray-400">Status</span>
+                  <span className="font-bold text-teal-600 tracking-widest">
                     {projeto.situacao}
                   </span>
                 </div>
-
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase font-bold text-gray-400">
-                    📅 Data de Início
-                  </span>
-                  <span className="text-sm font-bold text-gray-900">
-                    {formatarData(projeto.dataInicio)}
+                <div className="flex justify-between uppercase text-[10px] font-medium">
+                  <span className="text-gray-400">Início</span>
+                  <span className="font-bold text-gray-800">
+                    {new Date(projeto.dataInicio).toLocaleDateString()}
                   </span>
                 </div>
-
                 {projeto.dataFim && (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] uppercase font-bold text-gray-400">
-                      🏁 Término Previsto
-                    </span>
-                    <span className="text-sm font-bold text-gray-900">
-                      {formatarData(projeto.dataFim)}
+                  <div className="flex justify-between uppercase text-[10px] font-medium">
+                    <span className="text-gray-400">Término</span>
+                    <span className="font-bold text-gray-800">
+                      {new Date(projeto.dataFim).toLocaleDateString()}
                     </span>
                   </div>
                 )}
-
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase font-bold text-gray-400">
-                    Responsável
-                  </span>
-                  <span className="text-sm font-bold text-gray-900">
-                    {projeto.criador.nome}
-                  </span>
-                </div>
               </div>
             </div>
           </div>

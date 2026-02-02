@@ -34,16 +34,15 @@ export function Menu({ isOpen, isAdmin, onClose, mobileClose }: MenuProps) {
       label: "Dashboard",
       icon: <LayoutDashboard size={18} />,
     },
-    // NOVO CAMPO: Projetos (Para todos)
-    {
-      href: "/projetos",
-      label: "Projetos",
-      icon: <FolderKanban size={18} />,
-    },
     {
       href: "/reservas",
       label: "Minhas Reservas",
       icon: <CalendarCheck size={18} />,
+    },
+    {
+      href: "/projetos",
+      label: "Projetos",
+      icon: <FolderKanban size={18} />,
     },
     {
       href: "/agendamentos",

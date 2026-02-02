@@ -20,7 +20,7 @@ export default function EditarProjeto() {
   const [nome, setNome] = useState("");
   const [resumo, setResumo] = useState("");
   const [dataInicio, setDataInicio] = useState("");
-  const [dataFim, setDataFim] = useState(""); // <-- Novo estado aqui
+  const [dataFim, setDataFim] = useState("");
   const [situacao, setSituacao] = useState("Ativo");
   const [anexosExistentes, setAnexosExistentes] = useState<string[]>([]);
   const [arquivosNovos, setArquivosNovos] = useState<File[]>([]);
@@ -39,6 +39,7 @@ export default function EditarProjeto() {
     );
   }, []);
 
+  // CARREGAR DADOS ATUAIS
   useEffect(() => {
     async function carregarProjeto() {
       try {
@@ -50,8 +51,9 @@ export default function EditarProjeto() {
           setNome(p.nome);
           setResumo(p.resumo);
           setSituacao(p.situacao);
-          setDataInicio(p.dataInicio.split("T")[0]);
-          setDataFim(p.dataFim ? p.dataFim.split("T")[0] : ""); // Trata data fim se existir
+          // O split("T")[0] é essencial pro input tipo date entender o valor
+          setDataInicio(p.dataInicio ? p.dataInicio.split("T")[0] : "");
+          setDataFim(p.dataFim ? p.dataFim.split("T")[0] : "");
           setAnexosExistentes(p.anexos || []);
         }
       } catch (error) {
@@ -106,12 +108,12 @@ export default function EditarProjeto() {
         nome,
         resumo,
         dataInicio,
-        dataFim: dataFim || null, // Manda null se estiver vazio
+        dataFim: dataFim || null, // Se tiver vazio, vai nulo pro banco
         situacao,
         anexos: todosAnexos,
       };
 
-      setLoadingText("Atualizando banco...");
+      setLoadingText("Sincronizando...");
       const res = await fetch("/api/cadastro_projetos", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -120,10 +122,14 @@ export default function EditarProjeto() {
 
       if (res.ok) {
         showToast("Projeto atualizado!", "success");
-        router.push(`/projetos/${idProjeto}`);
+
+        // O PULO DO GATO: Forçamos o refresh e o redirecionamento
+        setTimeout(() => {
+          router.push(`/projetos/${idProjeto}`);
+          router.refresh(); // Garante que o Next busque os dados novos
+        }, 500);
       } else {
-        const data = await res.json();
-        showToast(data.error || "Erro ao salvar", "error");
+        showToast("Erro ao salvar alterações", "error");
       }
     } catch (err) {
       showToast("Erro na conexão", "error");
@@ -153,7 +159,7 @@ export default function EditarProjeto() {
         <div className="max-w-3xl mx-auto px-4 py-6 flex justify-between items-center">
           <Link
             href={`/projetos/${idProjeto}`}
-            className="text-teal-600 font-bold uppercase text-sm"
+            className="text-teal-600 font-bold uppercase text-xs"
           >
             ← Cancelar
           </Link>
@@ -170,7 +176,7 @@ export default function EditarProjeto() {
           className="bg-white rounded-2xl shadow-lg border border-gray-300 p-8 space-y-6"
         >
           <div>
-            <p className="mb-1 text-gray-700 font-bold uppercase text-xs">
+            <p className="mb-1 text-gray-700 font-bold uppercase text-[10px] tracking-widest">
               Nome do Projeto:
             </p>
             <input
@@ -184,7 +190,7 @@ export default function EditarProjeto() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="mb-1 text-gray-700 font-bold uppercase text-xs">
+              <p className="mb-1 text-gray-700 font-bold uppercase text-[10px] tracking-widest">
                 Situação:
               </p>
               <select
@@ -198,7 +204,7 @@ export default function EditarProjeto() {
               </select>
             </div>
             <div>
-              <p className="mb-1 text-gray-700 font-bold uppercase text-xs">
+              <p className="mb-1 text-gray-700 font-bold uppercase text-[10px] tracking-widest">
                 Data de Início:
               </p>
               <input
@@ -212,7 +218,7 @@ export default function EditarProjeto() {
           </div>
 
           <div>
-            <p className="mb-1 text-gray-700 font-bold uppercase text-xs">
+            <p className="mb-1 text-gray-700 font-bold uppercase text-[10px] tracking-widest">
               Data de Término (Previsto):
             </p>
             <input
@@ -223,33 +229,29 @@ export default function EditarProjeto() {
             />
           </div>
 
-          {/* GERENCIAR ANEXOS */}
+          {/* ANEXOS */}
           <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-4">
-            <p className="font-bold text-gray-700 border-b pb-2 text-md uppercase">
-              Gerenciar Anexos
+            <p className="font-bold text-gray-700 border-b pb-2 text-xs uppercase tracking-widest">
+              📁 Gerenciar Anexos
             </p>
 
-            {anexosExistentes.length > 0 && (
-              <div className="space-y-2">
-                {anexosExistentes.map((url, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200 text-sm shadow-sm"
-                  >
-                    <span className="truncate w-4/5 text-teal-700 font-medium">
-                      📄 {url.split("/").pop()}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removerAnexoExistente(index)}
-                      className="text-red-500 font-bold px-2 hover:scale-110 transition-transform"
-                    >
-                      X
-                    </button>
-                  </div>
-                ))}
+            {anexosExistentes.map((url, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200 text-sm"
+              >
+                <span className="truncate w-4/5 text-teal-700 font-medium">
+                  📄 {url.split("/").pop()}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removerAnexoExistente(index)}
+                  className="text-red-500 font-bold px-2 hover:scale-110 transition-transform"
+                >
+                  X
+                </button>
               </div>
-            )}
+            ))}
 
             <div className="relative mt-4">
               <input
@@ -260,42 +262,16 @@ export default function EditarProjeto() {
                 onChange={(e) => adicionarArquivos(e.target.files)}
               />
               <div className="w-full h-12 bg-white border border-dashed border-teal-400 rounded-lg flex items-center justify-center gap-2 text-teal-600 hover:bg-teal-50 transition-colors">
-                <span className="font-bold text-sm">
-                  + ANEXAR NOVO DOCUMENTO
+                <span className="font-bold text-[10px] uppercase">
+                  + Anexar novo documento
                 </span>
               </div>
             </div>
-
-            {arquivosNovos.length > 0 && (
-              <div className="space-y-2 mt-2">
-                {arquivosNovos.map((arq, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between bg-teal-50 p-2 rounded border border-teal-100 text-xs"
-                  >
-                    <span className="italic text-teal-800">
-                      {arq.name} (Pronto para subir)
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setArquivosNovos((prev) =>
-                          prev.filter((_, i) => i !== index),
-                        )
-                      }
-                      className="text-red-500 font-bold px-2"
-                    >
-                      X
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           <div>
-            <p className="mb-1 text-gray-700 font-bold uppercase text-xs">
-              Resumo do Projeto:
+            <p className="mb-1 text-gray-700 font-bold uppercase text-[10px] tracking-widest">
+              Resumo:
             </p>
             <textarea
               required
@@ -309,7 +285,7 @@ export default function EditarProjeto() {
           <button
             type="submit"
             disabled={salvando}
-            className="w-full h-14 bg-teal-600 text-white rounded-xl hover:bg-teal-700 disabled:opacity-50 font-bold shadow-lg transition-all text-lg uppercase tracking-wider"
+            className="w-full h-14 bg-teal-600 text-white rounded-xl hover:bg-teal-700 disabled:opacity-50 font-bold shadow-lg transition-all text-lg uppercase tracking-widest"
           >
             {salvando ? loadingText : "Salvar Alterações"}
           </button>
