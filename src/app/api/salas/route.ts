@@ -114,10 +114,6 @@ export async function POST(req: Request) {
     const { idSala, nomeSala, mapa, limiteHorasReserva, ativa, espacos } =
       await req.json();
 
-    console.log("=== DADOS RECEBIDOS ===");
-    console.log("ID Sala:", idSala);
-    console.log("Nova lista de espaços recebida:", espacos);
-    console.log("Quantidade de espaços:", espacos?.length || 0);
 
     if (!nomeSala || !mapa || !limiteHorasReserva)
       return NextResponse.json(

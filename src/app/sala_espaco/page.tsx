@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase/browser/supabaseClient";
 
 interface MapaPreview {
   preview: string;
@@ -25,6 +26,7 @@ export default function SalaEspacoPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const idSala = searchParams.get("idSala");
+
   const [nomeSala, setNomeSala] = useState("");
   const [mapa, setMapa] = useState<MapaPreview | null>(null);
   const [arrastando, setArrastando] = useState(false);
@@ -34,16 +36,19 @@ export default function SalaEspacoPage() {
   const [espacos, setEspacos] = useState<string[]>([]);
   const [mostrarEspacos, setMostrarEspacos] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [dadosCarregados, setDadosCarregados] = useState(false);
+  const [editandoIndex, setEditandoIndex] = useState<number | null>(null);
+  const [codigoSala, setCodigoSala] = useState("");
+
   const [toast, setToast] = useState<Toast>({
     visible: false,
     message: "",
     type: "success",
   });
-  const [dadosCarregados, setDadosCarregados] = useState(false);
-  const [editandoIndex, setEditandoIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!idSala || dadosCarregados) return;
+
     setLoading(true);
 
     fetch(`/api/salas?id=${idSala}`)
@@ -51,11 +56,30 @@ export default function SalaEspacoPage() {
       .then((res) => {
         if (res.success && res.salas.length > 0) {
           const s = res.salas[0];
+
           setNomeSala(s.nomeSala);
-          setMapa(s.mapa ? { preview: s.mapa } : null);
           setSituacao(s.ativa ? "Ativa" : "Inativa");
           setTempoReserva(s.limiteHorasReserva?.toString() || "");
           setEspacos(s.Espaco?.map((e: Espaco) => e.codigoEspaco) || []);
+
+          setCodigoSala(s.codigoSala || idSala);
+
+          if (s.mapa) {
+            let previewUrl = s.mapa;
+
+            if (
+              !s.mapa.startsWith("http") &&
+              !s.mapa.startsWith("data:") &&
+              !s.mapa.startsWith("blob:")
+            ) {
+              previewUrl = `https://lkrpzqpcmdlnjmloaryj.supabase.co/storage/v1/object/public/mapas_salas/${s.mapa}`;
+            }
+
+            setMapa({ preview: previewUrl });
+          } else {
+            setMapa(null);
+          }
+
           setDadosCarregados(true);
         } else {
           setToast({
@@ -89,14 +113,14 @@ export default function SalaEspacoPage() {
   const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     setArrastando(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    if (e.dataTransfer.files?.[0]) {
       const file = e.dataTransfer.files[0];
       setMapa({ file, preview: URL.createObjectURL(file) });
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    if (e.target.files?.[0]) {
       const file = e.target.files[0];
       setMapa({ file, preview: URL.createObjectURL(file) });
     }
@@ -105,6 +129,7 @@ export default function SalaEspacoPage() {
   const removerImagem = () => setMapa(null);
   const toggleSituacao = () =>
     setSituacao(situacao === "Ativa" ? "Inativa" : "Ativa");
+
   const adicionarEspaco = () => {
     if (!espaco.trim()) return;
 
@@ -135,16 +160,11 @@ export default function SalaEspacoPage() {
     }
   };
 
-  const limparCampos = () => {
-    setNomeSala("");
-    setMapa(null);
-    setSituacao("Ativa");
-    setTempoReserva("");
-    setEspaco("");
-    setEspacos([]);
-    setMostrarEspacos(false);
-    setDadosCarregados(false);
-    setEditandoIndex(null);
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      adicionarEspaco();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -163,7 +183,7 @@ export default function SalaEspacoPage() {
       }
 
       const limiteHoras = Number(tempoReserva);
-      if (isNaN(limiteHoras) || limiteHoras <= 0) {
+      if (Number.isNaN(limiteHoras) || limiteHoras <= 0) {
         setToast({
           visible: true,
           message: "Limite de horas deve ser um número positivo",
@@ -173,6 +193,28 @@ export default function SalaEspacoPage() {
         return;
       }
 
+      let mapaUrl = mapa.preview;
+
+      if (mapa.preview.startsWith("blob:") && mapa.file) {
+        const ext = mapa.file.name.split(".").pop();
+        const fileName = `${crypto.randomUUID()}.${ext}`;
+
+        const { error } = await supabase.storage
+          .from("mapas_salas")
+          .upload(fileName, mapa.file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (error) throw error;
+
+        const { data } = supabase.storage
+          .from("mapas_salas")
+          .getPublicUrl(fileName);
+
+        mapaUrl = data.publicUrl;
+      }
+
       const body: {
         nomeSala: string;
         mapa: string;
@@ -180,17 +222,24 @@ export default function SalaEspacoPage() {
         ativa: boolean;
         espacos: string[];
         idSala?: number;
+        idUsuarioCriador?: number;
       } = {
         nomeSala: nomeSala.trim(),
-        mapa: mapa.preview,
+        mapa: mapaUrl,
         limiteHorasReserva: limiteHoras,
         ativa: situacao === "Ativa",
         espacos: espacos.filter((esp) => esp.trim() !== ""),
       };
 
-      if (idSala) body.idSala = Number(idSala);
-
-      console.log("Enviando para API:", body);
+      if (idSala) {
+        body.idSala = Number(idSala);
+      } else {
+        const userData = localStorage.getItem("user");
+        if (userData) {
+          const user = JSON.parse(userData);
+          body.idUsuarioCriador = user.id;
+        }
+      }
 
       const res = await fetch("/api/salas", {
         method: "POST",
@@ -231,17 +280,10 @@ export default function SalaEspacoPage() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      adicionarEspaco();
-    }
-  };
-
   return (
     <>
       {loading && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[9999]">
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-9999">
           <div className="w-14 h-14 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
@@ -270,8 +312,17 @@ export default function SalaEspacoPage() {
         </div>
       )}
 
-      <div className="min-h-screen flex justify-center items-start mt-[20px]">
+      <div className="min-h-screen flex justify-center items-start mt-5">
         <div className="bg-white shadow-md rounded-xl p-8 w-[910px] border border-gray-300">
+          {codigoSala && (
+            <div className="mb-4 p-2 bg-gray-100 border border-gray-300 rounded-md inline-block">
+              <span className="text-gray-700 font-medium">
+                Código da sala:{" "}
+              </span>
+              <span className="text-teal-600 font-bold">{codigoSala}</span>
+            </div>
+          )}
+
           <h1 className="text-3xl mb-3 text-gray-900">
             {idSala ? "EDITAR SALA E ESPAÇOS" : "CRIAR SALA E ESPAÇOS"}
           </h1>
@@ -455,10 +506,10 @@ export default function SalaEspacoPage() {
                       key={item}
                       className="flex justify-between items-center"
                     >
-                      <span className="text-gray-800 border-gray-300 border-x border-y text-center w-[494px] h-[40px] flex items-center justify-center">
+                      <span className="text-gray-800 border-gray-300 border-x border-y text-center w-[494px] h-10 flex items-center justify-center">
                         {item} {i === editandoIndex && "(Editando)"}
                       </span>
-                      <div className="flex gap-5 h-[40px]">
+                      <div className="flex gap-5 h-10">
                         <button
                           type="button"
                           onClick={() => editarEspaco(i)}
@@ -475,7 +526,7 @@ export default function SalaEspacoPage() {
                         <button
                           type="button"
                           onClick={() => apagarEspaco(i)}
-                          className="mr-[20px] border-gray-300 border-x border-y p-3 h-[40px] cursor-pointer"
+                          className="mr-5 border-gray-300 border-x border-y p-3 h-10 cursor-pointer"
                         >
                           <Image
                             src="/lixeira.png"
