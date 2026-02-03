@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server/supabaseServer
 export async function GET() {
   try {
     const projetos = await prisma.projeto.findMany({
-      orderBy: { dataInicio: "desc" },
+      orderBy: { idProjeto: "desc" },
       include: {
         criador: { select: { nome: true } },
       },

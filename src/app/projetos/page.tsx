@@ -24,6 +24,7 @@ export default function ListaProjetos() {
   const [loading, setLoading] = useState(true);
   const [usuarioLogado, setUsuarioLogado] = useState(false);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [termoBusca, setTermoBusca] = useState("");
 
   // TOAST
   const [toast, setToast] = useState({
@@ -126,7 +127,20 @@ export default function ListaProjetos() {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="relative group min-w-[300px]">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-teal-500 transition-colors">
+                  🔍
+                </span>
+                <input
+                  type="text"
+                  placeholder="Buscar projetos..."
+                  value={termoBusca}
+                  onChange={(e) => setTermoBusca(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm"
+                />
+              </div>
+
               {!loadingAuth && !usuarioLogado && (
                 <button
                   type="button"
@@ -151,16 +165,40 @@ export default function ListaProjetos() {
               ></div>
             ))}
           </div>
-        ) : projetos.length === 0 ? (
-          <div className="text-center py-20 bg-gradient-to-b from-gray-50 to-white rounded-2xl border-2 border-dashed border-gray-200">
-            <div className="text-6xl mb-4">📋</div>
-            <p className="text-gray-500 text-xl">
-              Nenhum projeto cadastrado no momento
-            </p>
-          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {projetos.map((proj) => (
+          (() => {
+            const projetosFiltrados = projetos.filter(
+              (p) =>
+                p.nome.toLowerCase().includes(termoBusca.toLowerCase()) ||
+                p.resumo.toLowerCase().includes(termoBusca.toLowerCase())
+            );
+
+            if (projetosFiltrados.length === 0) {
+              return (
+                <div className="text-center py-20 bg-gradient-to-b from-gray-50 to-white rounded-2xl border-2 border-dashed border-gray-200">
+                  <div className="text-6xl mb-4">
+                    {termoBusca ? "🔍" : "📋"}
+                  </div>
+                  <p className="text-gray-500 text-xl font-medium">
+                    {termoBusca
+                      ? `Nenhum projeto encontrado para "${termoBusca}"`
+                      : "Nenhum projeto cadastrado no momento"}
+                  </p>
+                  {termoBusca && (
+                    <button
+                      onClick={() => setTermoBusca("")}
+                      className="mt-4 text-teal-600 font-bold hover:underline"
+                    >
+                      Limpar busca
+                    </button>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {projetosFiltrados.map((proj) => (
               <div
                 key={proj.idProjeto}
                 className="group bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full hover:-translate-y-2"
@@ -202,8 +240,10 @@ export default function ListaProjetos() {
                   </Link>
                 </div>
               </div>
-            ))}
-          </div>
+                ))}
+              </div>
+            );
+          })()
         )}
       </div>
     </>
