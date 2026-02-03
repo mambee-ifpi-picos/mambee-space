@@ -11,6 +11,8 @@ import {
   CalendarCheck,
   CalendarDays,
   PanelTopBottomDashed,
+  FolderKanban, // Ícone para Projetos
+  ClipboardPlus, // Ícone para Cadastrar Projeto
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -36,6 +38,11 @@ export function Menu({ isOpen, isAdmin, onClose, mobileClose }: MenuProps) {
       href: "/reservas",
       label: "Minhas Reservas",
       icon: <CalendarCheck size={18} />,
+    },
+    {
+      href: "/projetos",
+      label: "Projetos",
+      icon: <FolderKanban size={18} />,
     },
     {
       href: "/agendamentos",
@@ -105,19 +112,36 @@ export function Menu({ isOpen, isAdmin, onClose, mobileClose }: MenuProps) {
           ))}
 
           {isAdmin && (
-            <Link
-              href="/sala_espaco"
-              onClick={mobileClose}
-              className={`flex items-center gap-2 px-3 py-2 rounded transition
-                ${
-                  pathname === "/sala_espaco"
-                    ? "bg-gray-300 font-semibold"
-                    : "hover:bg-gray-200"
-                }`}
-            >
-              <PanelTopBottomDashed size={18} />
-              <span>Criar Sala e Espaço</span>
-            </Link>
+            <>
+              {/* NOVO CAMPO: Cadastrar Projeto (Só Admin) */}
+              <Link
+                href="/cadastro_projetos"
+                onClick={mobileClose}
+                className={`flex items-center gap-2 px-3 py-2 rounded transition
+                  ${
+                    pathname === "/cadastro_projetos"
+                      ? "bg-gray-300 font-semibold"
+                      : "hover:bg-gray-200"
+                  }`}
+              >
+                <ClipboardPlus size={18} />
+                <span>Cadastrar Projeto</span>
+              </Link>
+
+              <Link
+                href="/sala_espaco"
+                onClick={mobileClose}
+                className={`flex items-center gap-2 px-3 py-2 rounded transition
+                  ${
+                    pathname === "/sala_espaco"
+                      ? "bg-gray-300 font-semibold"
+                      : "hover:bg-gray-200"
+                  }`}
+              >
+                <PanelTopBottomDashed size={18} />
+                <span>Criar Sala e Espaço</span>
+              </Link>
+            </>
           )}
 
           <Link
