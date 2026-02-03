@@ -32,12 +32,10 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // ROTAS PÚBLICAS
   if (publicRoutes.includes(pathname)) {
     return response;
   }
 
-  // ROTAS QUE EXIGEM LOGIN
   if (protectedRoutes.some((route) => pathname.startsWith(route))) {
     if (!user) {
       return NextResponse.redirect(new URL("/login", request.url));
@@ -45,7 +43,6 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // ROTAS ADMIN
   if (adminRoutes.some((route) => pathname.startsWith(route))) {
     if (!user) {
       return NextResponse.redirect(new URL("/login", request.url));

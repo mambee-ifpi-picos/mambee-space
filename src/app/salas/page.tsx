@@ -8,7 +8,22 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+
+type Espaco = {
+  idEspaco: number;
+  codigoEspaco: string;
+  idSalaPertence: number;
+};
+
+type Sala = {
+  idSala: number;
+  nomeSala: string;
+  mapa?: string;
+  ativa?: boolean;
+  limiteHorasReserva?: number;
+  Espaco?: Espaco[];
+};
 
 export default function Page() {
   return (
@@ -19,63 +34,26 @@ export default function Page() {
 }
 
 function ListaSalasPage() {
-  console.log("🔥 ESTA É A PÁGINA CERTA /SALAS");
-
-  type Espaco = {
-    idEspaco: number;
-    codigoEspaco: string;
-    idSalaPertence: number;
-  };
-
-  type Sala = {
-    idSala: number;
-    nomeSala: string;
-    mapa?: string;
-    ativa?: boolean | null;
-    limiteHorasReserva?: number | null;
-    espacos?: Espaco[];
-  };
-
-  type ApiResponse = {
-    success: boolean;
-    salas?: Sala[];
-    error?: string;
-  };
-
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [salas, setSalas] = useState<Sala[]>([]);
   const [busca, setBusca] = useState("");
   const [termoAtivo, setTermoAtivo] = useState("");
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
-
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    if (searchParams.get("created") === "1") {
-      setShowSuccess(true);
-    }
-  }, [searchParams]);
-
   const carregarSalas = useCallback(async (searchTerm?: string) => {
     setLoading(true);
     setErro(null);
-
     try {
       let url = "/api/salas";
-
-      const termo = searchTerm?.trim();
-      if (termo && termo.length > 0) {
-        url += `?search=${encodeURIComponent(termo)}`;
-      }
-
+      if (searchTerm?.trim())
+        url += `?search=${encodeURIComponent(searchTerm)}`;
       const res = await fetch(url, { cache: "no-store" });
-      const json: ApiResponse = await res.json();
+      const json = await res.json();
 
-      if (!res.ok || !json.success) {
+      if (!res.ok || !json.success)
         throw new Error(json.error || "Erro ao carregar salas.");
-      }
-
       setSalas(json.salas || []);
     } catch (e: any) {
       setErro(e.message ?? "Erro ao carregar salas.");
@@ -86,28 +64,37 @@ function ListaSalasPage() {
 
   useEffect(() => {
     carregarSalas();
+
+    const listener = (e: StorageEvent) => {
+      if (e.key === "salas_atualizadas") {
+        carregarSalas();
+      }
+    };
+    window.addEventListener("storage", listener);
+
+    return () => window.removeEventListener("storage", listener);
   }, [carregarSalas]);
+
+  useEffect(() => {
+    if (searchParams.get("created") === "1") setShowSuccess(true);
+  }, [searchParams]);
 
   const salasFiltradas = useMemo(() => {
     if (!termoAtivo.trim()) return salas;
-
     const termo = termoAtivo.toLowerCase();
-
-    return salas.filter((sala) => {
-      const nomeSalaMatch = sala.nomeSala?.toLowerCase().includes(termo);
-
-      const espacosMatch = (sala.espacos ?? []).some((e) =>
-        e.codigoEspaco?.toLowerCase().includes(termo),
-      );
-
-      return nomeSalaMatch || espacosMatch;
-    });
+    return salas.filter(
+      (sala) =>
+        sala.nomeSala?.toLowerCase().includes(termo) ||
+        (sala.Espaco || []).some((e) =>
+          e.codigoEspaco?.toLowerCase().includes(termo),
+        ),
+    );
   }, [termoAtivo, salas]);
 
-  function handleBuscar() {
+  const handleBuscar = () => {
     setTermoAtivo(busca);
     carregarSalas(busca);
-  }
+  };
 
   return (
     <main className="max-w-6xl mx-auto px-8 py-10 space-y-8">
@@ -122,7 +109,6 @@ function ListaSalasPage() {
             className="flex-1 px-2 py-2 text-sm outline-none"
           />
         </div>
-
         <button
           type="button"
           onClick={handleBuscar}
@@ -131,24 +117,21 @@ function ListaSalasPage() {
         >
           {loading ? "Buscando..." : "Buscar"}
         </button>
-
         <a
           href="/sala_espaco"
           className="px-5 py-2 text-sm font-medium rounded-md bg-teal-500 text-white shadow-sm text-center"
         >
-          Nova Reserva
+          Nova Sala
         </a>
       </section>
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold tracking-wide">SALAS CRIADAS</h2>
-
         {erro && (
           <div className="border border-red-200 text-red-700 bg-red-50 rounded-md px-4 py-2 text-sm mb-2">
             {erro}
           </div>
         )}
-
         <div className="border border-gray-200 rounded-md overflow-hidden bg-white">
           <table className="w-full border-collapse text-sm table-fixed">
             <thead className="bg-gray-100 text-xs font-semibold text-gray-500">
@@ -160,7 +143,6 @@ function ListaSalasPage() {
                 <th className="px-4 py-3 text-center w-[90px]">Ações</th>
               </tr>
             </thead>
-
             <tbody>
               {loading && salasFiltradas.length === 0 ? (
                 <tr>
@@ -181,43 +163,44 @@ function ListaSalasPage() {
                   </td>
                 </tr>
               ) : (
-                salasFiltradas.map((sala, index) => {
-                  const situacao = sala.ativa === false ? "Inativa" : "Ativa";
-
-                  return (
-                    <tr
-                      key={sala.idSala}
-                      className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}
-                    >
-                      <td className="px-4 py-3 align-middle">{sala.idSala}</td>
-
-                      <td className="px-4 py-3 align-middle truncate">
-                        {sala.nomeSala}
-                      </td>
-
-                      <td className="px-4 py-3 align-middle max-w-[180px] truncate overflow-hidden whitespace-nowrap text-xs text-gray-600">
-                        {sala.mapa || "-"}
-                      </td>
-
-                      <td className="px-4 py-3 align-middle">
-                        <span className="text-xs font-medium text-teal-500">
-                          {situacao}
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-3 align-middle">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            className="p-1 rounded hover:bg-gray-200"
-                          >
-                            ✏️
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                salasFiltradas.map((sala, index) => (
+                  <tr
+                    key={sala.idSala}
+                    className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}
+                  >
+                    <td className="px-4 py-3 align-middle">{sala.idSala}</td>
+                    <td className="px-4 py-3 align-middle truncate">
+                      {sala.nomeSala}
+                    </td>
+                    <td className="px-4 py-3 align-middle max-w-[180px] truncate overflow-hidden whitespace-nowrap text-xs text-gray-600">
+                      {sala.mapa || "-"}
+                    </td>
+                    <td className="px-4 py-3 align-middle">
+                      <span
+                        className={`text-xs font-medium ${
+                          sala.ativa === false
+                            ? "text-red-500"
+                            : "text-teal-500"
+                        }`}
+                      >
+                        {sala.ativa === false ? "Inativa" : "Ativa"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 align-middle">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          className="p-1 rounded hover:bg-gray-200"
+                          onClick={() =>
+                            router.push(`/sala_espaco?idSala=${sala.idSala}`)
+                          }
+                        >
+                          ✏️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -233,7 +216,6 @@ function ListaSalasPage() {
               </span>
               <span>Sala criada com sucesso.</span>
             </div>
-
             <button
               type="button"
               onClick={() => setShowSuccess(false)}

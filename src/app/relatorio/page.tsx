@@ -14,7 +14,6 @@ type RelatorioItem = {
   foto?: string | null;
 };
 
-// Formata data ISO para hora (HH:mm)
 function formatarHora(dataIso: string) {
   if (!dataIso) return "--:--";
   try {
@@ -30,7 +29,6 @@ function formatarHora(dataIso: string) {
   }
 }
 
-// Formata data ISO para data (DD/MM/AAAA)
 function formatarData(dataIso: string) {
   if (!dataIso) return "--/--/----";
   try {
@@ -55,15 +53,12 @@ export default function RelatorioPage() {
 
   const [dados, setDados] = useState<RelatorioItem[]>([]);
   const [carregando, setCarregando] = useState(false);
-
-  // Estado para o erro
   const [erro, setErro] = useState("");
 
   async function buscarRelatorio() {
-    // Validação simples e direta
     if (!dataInicio || !dataFim) {
       setErro("Preencha as datas para buscar o relatório.");
-      setTimeout(() => setErro(""), 3000); // Some depois de 3s
+      setTimeout(() => setErro(""), 3000); 
       return;
     }
 
@@ -102,17 +97,14 @@ export default function RelatorioPage() {
         Relatório
       </h1>
 
-      {/* ALERT VERMELHO SIMPLES */}
       {erro && (
         <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
           {erro}
         </div>
       )}
 
-      {/* ÁREA DE FILTROS */}
       <div className="mb-8 bg-gray-50 p-6 rounded-lg border border-gray-100">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-          {/* Campo Usuário */}
           <div className="flex flex-col">
             <label
               htmlFor="filtro-usuario"
@@ -125,12 +117,10 @@ export default function RelatorioPage() {
               value={usuario}
               onChange={(e) => setUsuario(e.target.value)}
               type="text"
-              // SEM PLACEHOLDER
               className="bg-white border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
 
-          {/* Campo Sala */}
           <div className="flex flex-col">
             <label
               htmlFor="filtro-sala"
@@ -143,12 +133,10 @@ export default function RelatorioPage() {
               value={sala}
               onChange={(e) => setSala(e.target.value)}
               type="text"
-              // SEM PLACEHOLDER
               className="bg-white border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
 
-          {/* Campo Espaço */}
           <div className="flex flex-col">
             <label
               htmlFor="filtro-espaco"
@@ -161,14 +149,12 @@ export default function RelatorioPage() {
               value={espaco}
               onChange={(e) => setEspaco(e.target.value)}
               type="text"
-              // SEM PLACEHOLDER
               className="bg-white border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Data Inicial */}
           <div className="flex flex-col">
             <label
               htmlFor="data-inicio"
@@ -188,7 +174,6 @@ export default function RelatorioPage() {
             />
           </div>
 
-          {/* Data Final */}
           <div className="flex flex-col">
             <label
               htmlFor="data-fim"
@@ -221,7 +206,6 @@ export default function RelatorioPage() {
         </div>
       </div>
 
-      {/* TABELA DE RESULTADOS */}
       <div className="overflow-x-auto shadow-sm rounded-lg border border-gray-200">
         <table className="min-w-full border-separate border-spacing-0 text-sm">
           <thead className="bg-gray-100">

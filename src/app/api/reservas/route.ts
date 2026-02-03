@@ -5,9 +5,6 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-/* =========================
-   GET - LISTAR RESERVAS
-========================= */
 export const GET = Auth(async (req: Request) => {
   try {
     const cookieStore = await cookies();
@@ -134,9 +131,6 @@ export const GET = Auth(async (req: Request) => {
   }
 });
 
-/* =========================
-   POST - CRIAR RESERVA
-========================= */
 export const POST = Auth(async (req: Request) => {
   try {
     const body = await req.json();
@@ -203,9 +197,6 @@ export const POST = Auth(async (req: Request) => {
   }
 });
 
-/* =========================
-   DELETE - EXCLUIR RESERVA
-========================= */
 export const DELETE = Auth(async (req: Request) => {
   try {
     const url = new URL(req.url);
