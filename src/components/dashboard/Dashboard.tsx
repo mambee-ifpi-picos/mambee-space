@@ -82,8 +82,6 @@ export default function Dashboard() {
 
         <CardInfoCinza />
 
-        {/* <CardUsoEspacos data={espacosUtilizados} /> */}
-
         <GraficoHorarios periodo="manha" data={manhaData} />
 
         <GraficoHorarios periodo="tarde" data={tardeData} />
