@@ -18,25 +18,18 @@ type CronogramaItem = {
 };
 
 export default function ReservarEspaco() {
-  // ESTADOS DE DADOS
   const [salas, setSalas] = useState<Sala[]>([]);
   const [espacos, setEspacos] = useState<Espaco[]>([]);
   const [cronograma, setCronograma] = useState<CronogramaItem[]>([]);
-
-  // ESTADOS DE UI
   const [salaSelecionada, setSalaSelecionada] = useState<Sala | null>(null);
   const [mapaAtual, setMapaAtual] = useState<string | null>(null);
   const [carregandoMapa, setCarregandoMapa] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  // ESTADOS DO FORMULÁRIO
   const [idEspaco, setIdEspaco] = useState("");
   const [data, setData] = useState("");
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFim, setHoraFim] = useState("");
   const [motivo, setMotivo] = useState("");
-
-  // ESTADOS DE AUTH
   const [idUsuarioAuth, setIdUsuarioAuth] = useState<string | null>(null);
   const [emailUsuario, setEmailUsuario] = useState<string>("");
   const [authLoading, setAuthLoading] = useState(true);
@@ -85,7 +78,6 @@ export default function ReservarEspaco() {
     setupAuth();
   }, []);
 
-  // CARREGAMENTO DE SALAS
   useEffect(() => {
     fetch("/api/reservar?tipo=salas")
       .then((res) => res.json())
@@ -95,7 +87,6 @@ export default function ReservarEspaco() {
       .catch((e) => console.error("Erro ao buscar salas:", e));
   }, []);
 
-  // LÓGICA DE SELEÇÃO E MAPA
   const handleSalaChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = Number(e.target.value);
     const sala = salas.find((s) => s.idSala === id) || null;
@@ -117,7 +108,6 @@ export default function ReservarEspaco() {
         .then((d) => {
           console.log("O QUE VEIO DO BANCO:", d);
 
-          // CORREÇÃO 1: Optional Chain (d?.mapa)
           if (d?.mapa) {
             setMapaAtual(d.mapa);
           } else {

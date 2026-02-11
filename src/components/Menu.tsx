@@ -11,6 +11,7 @@ import {
   CalendarCheck,
   CalendarDays,
   PanelTopBottomDashed,
+  Building,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -44,11 +45,15 @@ export function Menu({ isOpen, isAdmin, onClose, mobileClose }: MenuProps) {
     },
     { href: "/relatorio", label: "Relatório", icon: <FileText size={18} /> },
     { href: "/perfil", label: "Perfil", icon: <User size={18} /> },
+    {
+      href: "/salas",
+      label: "Salas",
+      icon: <Building size={18} />,
+    },
   ];
 
   return (
     <>
-      {/* Overlay (mobile + desktop) */}
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 overlay-mobile"
@@ -65,7 +70,6 @@ export function Menu({ isOpen, isAdmin, onClose, mobileClose }: MenuProps) {
           ${isOpen ? "translate-x-0" : "-translate-x-full hidden"}
         `}
       >
-        {/* Topo */}
         <div className="flex items-center justify-between px-2 py-2 mb-4">
           <Image
             src="/logo-mambee.png"
@@ -76,7 +80,6 @@ export function Menu({ isOpen, isAdmin, onClose, mobileClose }: MenuProps) {
             priority
           />
 
-          {/* X aparece em TODAS as telas */}
           <button
             type="button"
             onClick={onClose}
@@ -104,32 +107,16 @@ export function Menu({ isOpen, isAdmin, onClose, mobileClose }: MenuProps) {
             </Link>
           ))}
 
-          {isAdmin && (
+          <div className="mt-auto">
             <Link
-              href="/sala_espaco"
+              href="/reservar"
               onClick={mobileClose}
-              className={`flex items-center gap-2 px-3 py-2 rounded transition
-                ${
-                  pathname === "/sala_espaco"
-                    ? "bg-gray-300 font-semibold"
-                    : "hover:bg-gray-200"
-                }`}
+              className="flex items-center gap-2 px-3 py-2 rounded bg-teal-500 text-white hover:bg-teal-600 transition"
             >
-              <PanelTopBottomDashed size={18} />
-              <span>Criar Sala e Espaço</span>
+              <PlusCircle size={18} />
+              <span>Nova Reserva</span>
             </Link>
-          )}
-
-          <Link
-            href="/reservar"
-            onClick={mobileClose}
-            className="mt-4 flex items-center gap-2 px-3 py-2 rounded bg-teal-500 text-white hover:bg-teal-600 transition"
-          >
-            <PlusCircle size={18} />
-            <span>Nova Reserva</span>
-          </Link>
-
-          <div className="mt-5"></div>
+          </div>
         </nav>
       </aside>
     </>
