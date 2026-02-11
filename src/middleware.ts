@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 const publicRoutes = ["/", "/login", "/relatorio", "/relatorioguarita"];
-const protectedRoutes = ["/reservas", "/perfil", "/reservar"];
-const adminRoutes = ["/salas", "/sala_espaco"];
+const protectedRoutes = ["/reservas", "/perfil", "/reservar", "/projetos"];
+const adminRoutes = ["/sala_espaco", "/salas", "/cadastro_projetos"];
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
@@ -48,11 +48,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    const { data: usuario } = await supabase
-      .from("Usuario")
-      .select("admin")
-      .eq("email", user.email)
-      .maybeSingle();
+    const { data: usuario } = await supabase.from("Usuario").select("admin").eq("email", user.email).maybeSingle();
 
     if (!usuario?.admin) {
       return NextResponse.redirect(new URL("/403", request.url));
@@ -70,6 +66,7 @@ export const config = {
     "/perfil/:path*",
     "/sala_espaco/:path*",
     "/salas/:path*",
+    "/projetos/:path*",
     "/",
     "/login",
     "/relatorio",

@@ -12,6 +12,7 @@ import {
   CalendarDays,
   PanelTopBottomDashed,
   Building,
+  FolderKanban,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -37,6 +38,11 @@ export function Menu({ isOpen, isAdmin, onClose, mobileClose }: MenuProps) {
       href: "/reservas",
       label: "Minhas Reservas",
       icon: <CalendarCheck size={18} />,
+    },
+    {
+      href: "/projetos",
+      label: "Projetos",
+      icon: <FolderKanban size={18} />,
     },
     {
       href: "/agendamentos",
