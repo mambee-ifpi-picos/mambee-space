@@ -120,6 +120,22 @@ export const POST = Auth(async (request: NextRequest, _user: User | null) => {
 
     if (!usuarioReal) return NextResponse.json({ error: "Erro: Usuário não encontrado." }, { status: 404 });
 
+    // Verificar se o usuário participa de algum projeto aprovado
+    const participacao = await prisma.participa.findFirst({
+      where: {
+        idUsuario: usuarioReal.idUsuario,
+        situacao: "Autorizado",
+      },
+    });
+
+    if (!participacao) {
+      return NextResponse.json(
+        { error: "Você precisa estar participando de um projeto aprovado para fazer reservas." },
+        { status: 403 }
+      );
+    }
+
+
     const espacoInfo = await prisma.espaco.findUnique({
       where: { idEspaco: Number(idEspaco) },
       include: { sala: true },
