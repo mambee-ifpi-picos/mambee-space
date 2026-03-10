@@ -1,4 +1,3 @@
-
 import { prisma } from "@/lib/prisma";
 import { Auth } from "@/lib/supabase/server/Auth";
 import type { User } from "@supabase/supabase-js";
@@ -39,14 +38,12 @@ export const GET = Auth(
       const firstDay = new Date(Date.UTC(year, month - 1, 1));
       const lastDay = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
 
-      
       try {
         await prisma.$queryRaw`SELECT 1`;
       } catch {
         return NextResponse.json({ error: "Servidor de banco de dados indisponível" }, { status: 503 });
       }
 
-      
       const usuario = await prisma.usuario.findFirst({
         where: {
           OR: [{ email: user.email }, { idAuth: user.id }],
@@ -62,7 +59,6 @@ export const GET = Auth(
         return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
       }
 
-      
       const [totalReservasUsuario, reservasMesUsuario, reservasSemanaUsuario] = await Promise.all([
         prisma.reserva.count({
           where: { idUsuarioCriador: usuario.idUsuario },
@@ -85,7 +81,6 @@ export const GET = Auth(
         }),
       ]);
 
-      
       let totalReservasGeral = 0;
       let reservasPorEspaco: CountGroup[] = [];
       let reservasMes: CountUser[] = [];
@@ -122,7 +117,6 @@ export const GET = Auth(
         }),
       ]);
 
-      
       let espacoMaisUtilizado = "Nenhum";
       if (reservasPorEspaco.length > 0) {
         const maisUsado = reservasPorEspaco.sort((a, b) => b._count.idReserva - a._count.idReserva)[0];
@@ -134,11 +128,9 @@ export const GET = Auth(
         espacoMaisUtilizado = espacoInfo?.nome ?? "Desconhecido";
       }
 
-      
       const topMes = await processarTopUsuarios(reservasMes);
       const topSemana = await processarTopUsuarios(reservasSemana);
 
-      
       const [totalEspacos, espacosComReservasMes, espacosComReservasSemana, espacosComReservasHoje] = await Promise.all(
         [
           prisma.espaco.count(),
@@ -163,7 +155,6 @@ export const GET = Auth(
         ],
       );
 
-      
       const frequenciaDiasMap: Record<string, number> = {};
       const dias = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -176,13 +167,11 @@ export const GET = Auth(
         GROUP BY EXTRACT(DOW FROM "horaInicio")
       `;
 
-     frequenciaDias.forEach((d: { dia_semana: any; total: any; }) => {
-      const diaIndex = Number(d.dia_semana);
-      frequenciaDiasMap[dias[diaIndex]] = Number(d.total);
-});
+      frequenciaDias.forEach((d: { dia_semana: any; total: any }) => {
+        const diaIndex = Number(d.dia_semana);
+        frequenciaDiasMap[dias[diaIndex]] = Number(d.total);
+      });
 
-
-      
       const horariosManha = Array(6).fill(0);
       const horariosTarde = Array(11).fill(0);
 
@@ -197,7 +186,7 @@ export const GET = Auth(
         GROUP BY EXTRACT(HOUR FROM "horaInicio")
       `;
 
-      horariosAgrupados.forEach((h: { hora: any; total: any; }) => {
+      horariosAgrupados.forEach((h: { hora: any; total: any }) => {
         const hora = Number(h.hora);
         const total = Number(h.total);
 
@@ -205,7 +194,6 @@ export const GET = Auth(
         if (hora >= 13 && hora < 24) horariosTarde[hora - 13] = total;
       });
 
-      
       const [totalUsuarios, usuariosComReserva] = await Promise.all([
         prisma.usuario.count(),
         prisma.reserva.findMany({
@@ -216,7 +204,6 @@ export const GET = Auth(
 
       const totalInatividade = Math.max(totalUsuarios - usuariosComReserva.length, 0);
 
-      
       const espacosUtilizados = {
         mensal: totalEspacos ? Math.round((espacosComReservasMes.length / totalEspacos) * 100) : 0,
         semanal: totalEspacos ? Math.round((espacosComReservasSemana.length / totalEspacos) * 100) : 0,
@@ -244,6 +231,7 @@ export const GET = Auth(
 
         frequenciaDias: frequenciaDiasMap,
         totalInatividade,
+        totalAtividade: usuariosComReserva.length,
         topMes: topMes.slice(0, 3),
         topSemana: topSemana.slice(0, 3),
       });
@@ -267,7 +255,7 @@ async function processarTopUsuarios(topRaw: CountUser[]): Promise<Array<{ nome: 
   });
 
   return topOrdenado.map((r) => ({
-    nome: usuarios.find((u: { idUsuario: number; }) => u.idUsuario === r.idUsuarioCriador)?.nome ?? "Desconhecido",
+    nome: usuarios.find((u: { idUsuario: number }) => u.idUsuario === r.idUsuarioCriador)?.nome ?? "Desconhecido",
     total: r._count.idReserva,
   }));
 }

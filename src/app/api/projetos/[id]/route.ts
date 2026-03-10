@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const idProjeto = parseInt(id);
     const url = new URL(request.url);
-    const includeParticipacoes =
-      url.searchParams.get("include") === "participacoes";
+    const includeParticipacoes = url.searchParams.get("include") === "participacoes";
 
     if (isNaN(idProjeto)) {
       return NextResponse.json({ error: "ID inválido" }, { status: 400 });
@@ -27,19 +23,14 @@ export async function GET(
                   select: { idUsuario: true, nome: true, foto: true },
                 },
               },
-              orderBy: { idParticipa: "desc" }, 
+              orderBy: { idParticipa: "desc" },
             }
           : false,
       },
     });
 
-    if (!projeto)
-      return NextResponse.json(
-        { error: "Projeto não encontrado" },
-        { status: 404 },
-      );
+    if (!projeto) return NextResponse.json({ error: "Projeto não encontrado" }, { status: 404 });
 
-    
     const projetoFormatado = {
       ...projeto,
       dataInicio: projeto.dataInicio.toISOString(),
@@ -53,15 +44,13 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const _body = await request.json();
-    const { nome, resumo, situacao, dataInicio, dataFim, anexos } =
-      await request.json();
+    const body = await request.json();
+    const { nome, resumo, situacao, dataInicio, dataFim, anexos } = body;
+    const startUTC = new Date(`${dataInicio}T12:00:00.000Z`);
+    const endUTC = dataFim ? new Date(`${dataFim}T12:00:00.000Z`) : null;
 
     const projetoAtualizado = await prisma.projeto.update({
       where: { idProjeto: Number(id) },
@@ -69,17 +58,14 @@ export async function PATCH(
         nome,
         resumo,
         situacao,
-        dataInicio: new Date(dataInicio),
-        dataFim: dataFim ? new Date(dataFim) : null,
-        anexos, 
+        dataInicio: startUTC,
+        dataFim: endUTC,
+        anexos,
       },
     });
     return NextResponse.json(projetoAtualizado);
   } catch (error) {
     console.error("Erro ao atualizar projeto:", error);
-    return NextResponse.json(
-      { error: "Erro ao salvar alterações" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Erro ao salvar alterações" }, { status: 500 });
   }
 }

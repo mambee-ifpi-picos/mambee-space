@@ -33,13 +33,9 @@ export default function EditarProjeto() {
 
   const showToast = useCallback((msg: string, type = "success") => {
     setToast({ visible: true, message: msg, type });
-    setTimeout(
-      () => setToast({ visible: false, message: "", type: "success" }),
-      3500,
-    );
+    setTimeout(() => setToast({ visible: false, message: "", type: "success" }), 3500);
   }, []);
 
-  
   useEffect(() => {
     async function carregarProjeto() {
       try {
@@ -51,7 +47,7 @@ export default function EditarProjeto() {
           setNome(p.nome);
           setResumo(p.resumo);
           setSituacao(p.situacao);
-          
+
           setDataInicio(p.dataInicio ? p.dataInicio.split("T")[0] : "");
           setDataFim(p.dataFim ? p.dataFim.split("T")[0] : "");
           setAnexosExistentes(p.anexos || []);
@@ -77,9 +73,7 @@ export default function EditarProjeto() {
   const uploadArquivoSupabase = async (file: File) => {
     const nomeLimpo = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
     const fileName = `${Date.now()}_${nomeLimpo}`;
-    const { error: uploadError } = await supabase.storage
-      .from("documentos-projetos")
-      .upload(fileName, file);
+    const { error: uploadError } = await supabase.storage.from("documentos-projetos").upload(fileName, file);
 
     if (uploadError) throw uploadError;
 
@@ -108,7 +102,7 @@ export default function EditarProjeto() {
         nome,
         resumo,
         dataInicio,
-        dataFim: dataFim || null, 
+        dataFim: dataFim || null,
         situacao,
         anexos: todosAnexos,
       };
@@ -123,10 +117,9 @@ export default function EditarProjeto() {
       if (res.ok) {
         showToast("Projeto atualizado!", "success");
 
-        
         setTimeout(() => {
           router.push(`/projetos/${idProjeto}`);
-          router.refresh(); 
+          router.refresh();
         }, 500);
       } else {
         showToast("Erro ao salvar alterações", "error");
@@ -138,12 +131,7 @@ export default function EditarProjeto() {
     }
   };
 
-  if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center font-bold">
-        CARREGANDO...
-      </div>
-    );
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold">CARREGANDO...</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 text-gray-900">
@@ -157,28 +145,18 @@ export default function EditarProjeto() {
 
       <div className="bg-white border-b border-gray-200 mb-8 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-6 flex justify-between items-center">
-          <Link
-            href={`/projetos/${idProjeto}`}
-            className="text-teal-600 font-bold uppercase text-xs"
-          >
+          <Link href={`/projetos/${idProjeto}`} className="text-teal-600 font-bold uppercase text-xs">
             ← Cancelar
           </Link>
-          <h1 className={`${inriaSerif700.className} text-2xl uppercase`}>
-            Editar Projeto
-          </h1>
+          <h1 className={`${inriaSerif700.className} text-2xl uppercase`}>Editar Projeto</h1>
           <div className="w-10"></div>
         </div>
       </div>
 
       <div className="max-w-3xl mx-auto px-4">
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-2xl shadow-lg border border-gray-300 p-8 space-y-6"
-        >
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-lg border border-gray-300 p-8 space-y-6">
           <div>
-            <p className="mb-1 text-gray-700 font-bold uppercase text-[10px] tracking-widest">
-              Nome do Projeto:
-            </p>
+            <p className="mb-1 text-gray-700 font-bold uppercase text-[10px] tracking-widest">Nome do Projeto:</p>
             <input
               required
               type="text"
@@ -190,9 +168,7 @@ export default function EditarProjeto() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="mb-1 text-gray-700 font-bold uppercase text-[10px] tracking-widest">
-                Situação:
-              </p>
+              <p className="mb-1 text-gray-700 font-bold uppercase text-[10px] tracking-widest">Situação:</p>
               <select
                 className="w-full h-12 border border-gray-300 rounded-lg p-2 bg-white outline-none focus:ring-2 focus:ring-teal-500"
                 value={situacao}
@@ -204,9 +180,7 @@ export default function EditarProjeto() {
               </select>
             </div>
             <div>
-              <p className="mb-1 text-gray-700 font-bold uppercase text-[10px] tracking-widest">
-                Data de Início:
-              </p>
+              <p className="mb-1 text-gray-700 font-bold uppercase text-[10px] tracking-widest">Data de Início:</p>
               <input
                 required
                 type="date"
@@ -240,9 +214,7 @@ export default function EditarProjeto() {
                 key={index}
                 className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200 text-sm"
               >
-                <span className="truncate w-4/5 text-teal-700 font-medium">
-                  📄 {url.split("/").pop()}
-                </span>
+                <span className="truncate w-4/5 text-teal-700 font-medium">📄 {url.split("/").pop()}</span>
                 <button
                   type="button"
                   onClick={() => removerAnexoExistente(index)}
@@ -262,17 +234,13 @@ export default function EditarProjeto() {
                 onChange={(e) => adicionarArquivos(e.target.files)}
               />
               <div className="w-full h-12 bg-white border border-dashed border-teal-400 rounded-lg flex items-center justify-center gap-2 text-teal-600 hover:bg-teal-50 transition-colors">
-                <span className="font-bold text-[10px] uppercase">
-                  + Anexar novo documento
-                </span>
+                <span className="font-bold text-[10px] uppercase">+ Anexar novo documento</span>
               </div>
             </div>
           </div>
 
           <div>
-            <p className="mb-1 text-gray-700 font-bold uppercase text-[10px] tracking-widest">
-              Resumo:
-            </p>
+            <p className="mb-1 text-gray-700 font-bold uppercase text-[10px] tracking-widest">Resumo:</p>
             <textarea
               required
               rows={6}

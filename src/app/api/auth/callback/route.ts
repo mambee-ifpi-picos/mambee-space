@@ -30,8 +30,7 @@ export async function GET(req: Request) {
     },
   );
 
-  const { error: sessionError } =
-    await supabase.auth.exchangeCodeForSession(code);
+  const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
 
   if (sessionError) {
     console.error(sessionError.message);
@@ -46,10 +45,8 @@ export async function GET(req: Request) {
   }
 
   const email = user.email!;
-  const nomeGoogle =
-    user.user_metadata?.full_name || user.user_metadata?.name || null;
-  const fotoGoogle =
-    user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+  const nomeGoogle = user.user_metadata?.full_name || user.user_metadata?.name || null;
+  const fotoGoogle = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
 
   const { data: existingUser } = await supabase
     .from("Usuario")

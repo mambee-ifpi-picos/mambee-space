@@ -20,7 +20,6 @@ export async function GET(req: NextRequest) {
     const dtInicio = new Date(`${dataInicio}T00:00:00`);
     const dtFim = new Date(`${dataFim}T23:59:59`);
 
-    
     const { data: reservas } = await supabase.from("Reserva").select("*").order("horaInicio", { ascending: false });
 
     const { data: espacos } = await supabase.from("Espaco").select("idEspaco, codigoEspaco, idSalaPertence");

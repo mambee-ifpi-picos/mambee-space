@@ -1,4 +1,3 @@
-
 "use client";
 
 import { TopUsuario } from "@/utils/tipos";
@@ -8,7 +7,6 @@ import { CardTotalReservas } from "./CardTotalReservas";
 import { CardInfoCinza } from "./CardInfoCinza";
 
 import { GraficoHorarios } from "./GraficoHorarios";
-
 
 import { TopFrequentadores } from "./TopFrequentadores";
 

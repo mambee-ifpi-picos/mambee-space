@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-
 export async function POST(req: Request) {
   try {
     const { idProjeto, idUsuario, motivo, situacaoManual } = await req.json();
@@ -17,14 +16,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(participacao);
   } catch (error) {
-    return NextResponse.json(
-      { error: "Erro ao criar participação" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Erro ao criar participação" }, { status: 500 });
   }
 }
-
-
 
 export async function PUT(req: Request) {
   try {
@@ -41,13 +35,9 @@ export async function PUT(req: Request) {
     return NextResponse.json(atualizado);
   } catch (error) {
     console.error("ERRO NO PUT:", error);
-    return NextResponse.json(
-      { error: "Erro ao processar decisão" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Erro ao processar decisão" }, { status: 500 });
   }
 }
-
 
 export async function DELETE(req: Request) {
   try {
@@ -69,9 +59,6 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Erro ao deletar:", error);
-    return NextResponse.json(
-      { error: "Erro ao sair do projeto" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Erro ao sair do projeto" }, { status: 500 });
   }
 }

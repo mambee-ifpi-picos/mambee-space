@@ -32,6 +32,7 @@ type ApiResponse = {
   success?: boolean;
   reservas?: Reserva[];
   total?: number;
+  totalUsuarioLogado?: number;
   error?: string;
   usuarios?: Usuario[];
   salas?: unknown[];
@@ -91,6 +92,7 @@ export default function ReservasPage() {
   const [buscaAtiva, setBuscaAtiva] = useState("");
   const [pagina, setPagina] = useState(1);
   const [totalReservas, setTotalReservas] = useState(0);
+  const [totalUsuarioLogado, setTotalUsuarioLogado] = useState(0);
   const [loading, setLoading] = useState(false);
   const [defaultEspacoId, setDefaultEspacoId] = useState<number | null>(null);
   const [usuarioLogado, setUsuarioLogado] = useState<{
@@ -223,6 +225,7 @@ export default function ReservasPage() {
         const reservasTipadas: Reserva[] = data.reservas ?? [];
         setReservas(reservasTipadas);
         setTotalReservas(data.total ?? reservasTipadas.length ?? 0);
+        setTotalUsuarioLogado(data.totalUsuarioLogado ?? 0);
         setPagina(pageToRequest);
 
         const emailsParaBuscar: string[] = [];
@@ -325,20 +328,20 @@ export default function ReservasPage() {
   const podeCancelarReserva = (reserva: Reserva) => {
     if (!usuarioLogado) return false;
 
-    
     if (reserva.situacao === "CANCELADA") return false;
 
-    const agora = new Date();
-    const fim = new Date(reserva.horaFim);
+    // Adjusting agora to match UTC stored times or correct browser TZ
+    // Usually using 'getTime' is safe if both are parsed locally identically.
+    const agora = new Date().getTime();
+    const fim = new Date(reserva.horaFim).getTime();
 
-    
+    // Admin can cancel anything that hasn't finished yet
     if (usuarioLogado.admin && fim > agora) return true;
 
-    
+    // Normal user logic - can cancel BEFORE or DURING the event
     if (fim < agora) return false;
 
     const reservaCriadorId = reserva.idUsuarioCriador ?? reserva.criador?.idUsuario ?? reserva.idCriador;
-
     return reservaCriadorId === usuarioLogado.idUsuario;
   };
 
@@ -359,14 +362,14 @@ export default function ReservasPage() {
     <main className="max-w-6xl mx-auto px-8 py-8 space-y-6">
       <section className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <label htmlFor="search" className="sr-only">
-          Buscar pelo motivo
+          Buscar pelo usuário
         </label>
         <div className="flex-1 flex items-center border rounded-md overflow-hidden bg-white">
           <div className="px-3 text-gray-400 text-sm">🔍</div>
           <input
             id="search"
             type="text"
-            placeholder="Buscar pelo motivo..."
+            placeholder="Buscar por usuário..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             className="flex-1 px-2 py-2 text-sm outline-none"
@@ -392,6 +395,13 @@ export default function ReservasPage() {
           <div className="text-sm text-gray-600">
             Buscando por: "{buscaAtiva}" • {totalReservas} resultado
             {totalReservas !== 1 ? "s" : ""}
+          </div>
+        )}
+        {!loading && usuarioLogado && (
+          <div className="bg-teal-50 border border-teal-100 px-4 py-2 rounded-lg shadow-sm">
+            <span className="text-sm font-medium text-teal-700">
+              Seu total de reservas: <span className="text-lg font-bold">{totalUsuarioLogado}</span>
+            </span>
           </div>
         )}
       </div>
@@ -491,7 +501,13 @@ export default function ReservasPage() {
                 <p className="text-xs text-gray-600 mb-3">{formatarReservaHora(reserva.horaInicio, reserva.horaFim)}</p>
 
                 {podeCancelar && (
-                  <div className="absolute bottom-2 right-2">
+                  <div className="absolute bottom-2 right-2 flex gap-2">
+                    {new Date(reserva.horaInicio).getTime() <= new Date().getTime() &&
+                      new Date(reserva.horaFim).getTime() > new Date().getTime() && (
+                        <span className="px-2 py-1 text-xs text-white bg-blue-500 rounded font-medium shadow-sm animate-pulse flex items-center">
+                          Em Andamento
+                        </span>
+                      )}
                     <button
                       type="button"
                       onClick={() => cancelarReserva(reserva.idReserva)}
@@ -531,7 +547,7 @@ export default function ReservasPage() {
                               d="M6 18L18 6M6 6l12 12"
                             />
                           </svg>
-                          Cancelar
+                          Cancelar Horário
                         </>
                       )}
                     </button>

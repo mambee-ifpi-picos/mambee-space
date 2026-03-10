@@ -22,23 +22,18 @@ export default function SobrePage() {
           </h1>
 
           <p className="text-lg md:text-xl leading-relaxed text-white/90 font-light mb-6">
-            A plataforma reúne todas as funcionalidades essenciais em um só
-            lugar: visualização de espaços disponíveis, realização e
-            cancelamento de reservas, e geração de relatórios para controle e
-            acompanhamento.
+            A plataforma reúne todas as funcionalidades essenciais em um só lugar: visualização de espaços disponíveis,
+            realização e cancelamento de reservas, e geração de relatórios para controle e acompanhamento.
           </p>
 
           <p className="text-lg md:text-xl leading-relaxed text-white/90 font-light mb-6">
-            O processo é rápido e seguro: o usuário acessa o sistema, escolhe a
-            data e o horário desejados, verifica a disponibilidade e confirma
-            sua reserva com apenas alguns cliques. Reforçando o propósito do
-            Mambee Space em promover a tecnologia como aliada da gestão e da
-            educação.
+            O processo é rápido e seguro: o usuário acessa o sistema, escolhe a data e o horário desejados, verifica a
+            disponibilidade e confirma sua reserva com apenas alguns cliques. Reforçando o propósito do Mambee Space em
+            promover a tecnologia como aliada da gestão e da educação.
           </p>
 
           <p className="text-lg md:text-xl leading-relaxed text-white/90 font-light mb-10">
-            Ao confirmar a reserva, o usuário assegura seu espaço e conta com
-            uma experiência{" "}
+            Ao confirmar a reserva, o usuário assegura seu espaço e conta com uma experiência{" "}
             <strong>organizada, transparente e colaborativa.</strong>
           </p>
 

@@ -14,10 +14,7 @@ export async function GET(req: Request) {
         .filter((n) => !Number.isNaN(n));
 
       if (ids.length === 0) {
-        return NextResponse.json(
-          { success: false, error: "Parâmetro ids inválido." },
-          { status: 400 }
-        );
+        return NextResponse.json({ success: false, error: "Parâmetro ids inválido." }, { status: 400 });
       }
 
       usuarios = await prisma.usuario.findMany({

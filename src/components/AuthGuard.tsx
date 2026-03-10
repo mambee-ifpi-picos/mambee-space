@@ -9,31 +9,38 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
 
-  const handleAuth = useCallback((session: any) => {
-    const user = session?.user ?? null;
-    const publicRoutes = ["/", "/login", "/agendamentos"];
-    const isPublicRoute = publicRoutes.includes(pathname);
+  const handleAuth = useCallback(
+    (session: any) => {
+      const user = session?.user ?? null;
+      const publicRoutes = ["/", "/login", "/agendamentos"];
+      const isPublicRoute = publicRoutes.includes(pathname);
 
-    if (!user && !isPublicRoute) {
-      router.replace("/login");
-    } else if (user && pathname === "/login") {
-      router.replace("/reservar");
-    }
+      if (!user && !isPublicRoute) {
+        router.replace("/login");
+      } else if (user && pathname === "/login") {
+        router.replace("/reservar");
+      }
 
-    setLoading(false);
-  }, [pathname, router]);
+      setLoading(false);
+    },
+    [pathname, router],
+  );
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('session works')
-      handleAuth(session);
-    }).catch((err) => {
-      console.error("Session fetch error:", err);
-      setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        console.log("session works");
+        handleAuth(session);
+      })
+      .catch((err) => {
+        console.error("Session fetch error:", err);
+        setLoading(false);
+      });
 
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       handleAuth(session);
     });
 

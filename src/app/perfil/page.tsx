@@ -151,7 +151,6 @@ export default function ProfilePage() {
         finalAvatarUrl = publicUrl;
       }
 
-      
       const { error: updateAuth } = await supabase.auth.updateUser({
         data: {
           full_name: nome,
@@ -161,7 +160,6 @@ export default function ProfilePage() {
 
       if (updateAuth) throw updateAuth;
 
-      
       await supabase
         .from("Usuario")
         .update({

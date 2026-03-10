@@ -29,12 +29,12 @@ export default function SalaEspacoPage() {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [verificandoPermissao, setVerificandoPermissao] = useState(true);
-  const [mostrarModalAcessoNegado, setMostrarModalAcessoNegado] =
-    useState(false);
+  const [mostrarModalAcessoNegado, setMostrarModalAcessoNegado] = useState(false);
   const [nomeSala, setNomeSala] = useState("");
   const [mapa, setMapa] = useState<MapaPreview | null>(null);
   const [arrastando, setArrastando] = useState(false);
   const [situacao, setSituacao] = useState<"Ativa" | "Inativa">("Ativa");
+  const [exigeProjeto, setExigeProjeto] = useState(true);
   const [tempoReserva, setTempoReserva] = useState("");
   const [espaco, setEspaco] = useState("");
   const [espacos, setEspacos] = useState<string[]>([]);
@@ -53,10 +53,17 @@ export default function SalaEspacoPage() {
   useEffect(() => {
     const verificarAdmin = async () => {
       try {
-        const userData = localStorage.getItem("user");
-        if (userData) {
-          const user = JSON.parse(userData);
-          const isUserAdmin = user.admin === true;
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: usuario } = await supabase
+            .from("Usuario")
+            .select("admin")
+            .eq("idAuth", session.user.id)
+            .single();
+
+          const isUserAdmin = usuario?.admin ?? false;
           setIsAdmin(isUserAdmin);
 
           if (!isUserAdmin) {
@@ -101,9 +108,7 @@ export default function SalaEspacoPage() {
                   />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900">
-                Acesso Restrito
-              </h3>
+              <h3 className="text-xl font-semibold text-gray-900">Acesso Restrito</h3>
             </div>
             <button
               type="button"
@@ -118,12 +123,7 @@ export default function SalaEspacoPage() {
                 aria-hidden="true"
               >
                 <title>Fechar modal</title>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
@@ -131,12 +131,10 @@ export default function SalaEspacoPage() {
           <div className="p-6">
             <div className="mb-6">
               <p className="text-gray-700 mb-3">
-                Esta funcionalidade está disponível apenas para administradores
-                do sistema.
+                Esta funcionalidade está disponível apenas para administradores do sistema.
               </p>
               <p className="text-gray-600 text-sm">
-                Para criar ou editar salas, entre em contato com um
-                administrador.
+                Para criar ou editar salas, entre em contato com um administrador.
               </p>
             </div>
 
@@ -179,6 +177,7 @@ export default function SalaEspacoPage() {
 
           setNomeSala(s.nomeSala);
           setSituacao(s.ativa ? "Ativa" : "Inativa");
+          setExigeProjeto(s.exigeProjeto ?? true);
           setTempoReserva(s.limiteHorasReserva?.toString() || "");
           setEspacos(s.Espaco?.map((e: Espaco) => e.codigoEspaco) || []);
 
@@ -187,11 +186,7 @@ export default function SalaEspacoPage() {
           if (s.mapa) {
             let previewUrl = s.mapa;
 
-            if (
-              !s.mapa.startsWith("http") &&
-              !s.mapa.startsWith("data:") &&
-              !s.mapa.startsWith("blob:")
-            ) {
+            if (!s.mapa.startsWith("http") && !s.mapa.startsWith("data:") && !s.mapa.startsWith("blob:")) {
               previewUrl = `https://lkrpzqpcmdlnjmloaryj.supabase.co/storage/v1/object/public/mapas_salas/${s.mapa}`;
             }
 
@@ -247,8 +242,8 @@ export default function SalaEspacoPage() {
   };
 
   const removerImagem = () => setMapa(null);
-  const toggleSituacao = () =>
-    setSituacao(situacao === "Ativa" ? "Inativa" : "Ativa");
+  const toggleSituacao = () => setSituacao(situacao === "Ativa" ? "Inativa" : "Ativa");
+  const toggleExigeProjeto = () => setExigeProjeto(!exigeProjeto);
 
   const adicionarEspaco = () => {
     if (!espaco.trim()) return;
@@ -329,18 +324,14 @@ export default function SalaEspacoPage() {
         const ext = mapa.file.name.split(".").pop();
         const fileName = `${crypto.randomUUID()}.${ext}`;
 
-        const { error } = await supabase.storage
-          .from("mapas_salas")
-          .upload(fileName, mapa.file, {
-            cacheControl: "3600",
-            upsert: false,
-          });
+        const { error } = await supabase.storage.from("mapas_salas").upload(fileName, mapa.file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
 
         if (error) throw error;
 
-        const { data } = supabase.storage
-          .from("mapas_salas")
-          .getPublicUrl(fileName);
+        const { data } = supabase.storage.from("mapas_salas").getPublicUrl(fileName);
 
         mapaUrl = data.publicUrl;
       }
@@ -350,6 +341,7 @@ export default function SalaEspacoPage() {
         mapa: string;
         limiteHorasReserva: number;
         ativa: boolean;
+        exigeProjeto: boolean;
         espacos: string[];
         idSala?: number;
         idUsuarioCriador?: number;
@@ -358,6 +350,7 @@ export default function SalaEspacoPage() {
         mapa: mapaUrl,
         limiteHorasReserva: limiteHoras,
         ativa: situacao === "Ativa",
+        exigeProjeto,
         espacos: espacos.filter((esp) => esp.trim() !== ""),
       };
 
@@ -382,9 +375,7 @@ export default function SalaEspacoPage() {
       if (data.success) {
         setToast({
           visible: true,
-          message: idSala
-            ? "Sala atualizada com sucesso!"
-            : "Sala criada com sucesso!",
+          message: idSala ? "Sala atualizada com sucesso!" : "Sala criada com sucesso!",
           type: "success",
         });
         setDadosCarregados(false);
@@ -430,468 +421,252 @@ export default function SalaEspacoPage() {
   return (
     <>
       <ModalAcessoNegado />
-
-      {loading && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="w-14 h-14 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
-
-      {toast.visible && (
-        <div
-          className={`fixed top-4 left-1/2 transform -translate-x-1/2 px-4 py-3 sm:px-6 sm:py-4 rounded-md shadow-lg flex items-center justify-between w-[90%] max-w-md sm:max-w-lg border animate-slideDown z-50 ${
-            toast.type === "success"
-              ? "bg-teal-500 border-teal-300"
-              : "bg-red-500 border-red-500"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 sm:w-6 sm:h-6 relative">
-              {toast.type === "success" ? (
-                <svg
-                  className="w-full h-full text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <title>Ícone de sucesso</title>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="w-full h-full text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <title>Ícone de erro</title>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              )}
-            </div>
-            <span className="text-sm sm:text-base text-white">
-              {toast.message}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() =>
-              setToast({ visible: false, message: "", type: "success" })
-            }
-            className="text-white hover:text-white/80 ml-4"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <title>Fechar notificação</title>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      <div className="min-h-screen bg-gray-50 p-4 sm:p-6 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6 md:mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                  {idSala ? "EDITAR SALA E ESPAÇOS" : "CRIAR SALA E ESPAÇOS"}
-                </h1>
-                <p className="text-gray-600 text-sm md:text-base">
-                  {idSala
-                    ? "Atualize os dados da sala e seus espaços"
-                    : "Preencha os dados para criar uma nova sala"}
-                </p>
-              </div>
-
-              {codigoSala && (
-                <div className="p-3 bg-gray-100 border border-gray-300 rounded-lg inline-block">
-                  <span className="text-gray-700 font-medium text-sm md:text-base">
-                    Código da sala:{" "}
-                  </span>
-                  <span className="text-teal-600 font-bold text-sm md:text-base">
-                    {codigoSala}
-                  </span>
+      {isAdmin && (
+        <div className="min-h-screen bg-gray-50 p-4 sm:p-6 md:p-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-6 md:mb-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                    {idSala ? "EDITAR SALA E ESPAÇOS" : "CRIAR SALA E ESPAÇOS"}
+                  </h1>
+                  <p className="text-gray-600 text-sm md:text-base">
+                    {idSala ? "Atualize os dados da sala e seus espaços" : "Preencha os dados para criar uma nova sala"}
+                  </p>
                 </div>
-              )}
-            </div>
-          </div>
 
-          <div className="bg-white shadow-lg rounded-xl p-4 sm:p-6 md:p-8 border border-gray-300">
-            <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
-              <div>
-                <label
-                  htmlFor="mapa"
-                  className="block text-gray-700 font-medium mb-2 text-sm md:text-base"
-                >
-                  Mapa da sala:<span className="text-red-500 ml-1">*</span>
-                </label>
-                {!mapa ? (
-                  <label
-                    htmlFor="mapa"
-                    tabIndex={-1}
-                    className={`flex flex-col items-center justify-center w-full border-2 border-dashed p-4 sm:p-6 cursor-pointer transition-colors ${
-                      arrastando
-                        ? "bg-teal-50 border-teal-400"
-                        : "bg-gray-50 border-gray-300 hover:bg-gray-100"
-                    } rounded-lg`}
-                    onDragLeave={handleDragLeave}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                  >
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 relative mb-3">
-                      <svg
-                        className="w-full h-full text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <title>Ícone de upload</title>
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                        />
-                      </svg>
-                    </div>
-                    <p className="text-gray-700 mb-2 text-sm sm:text-base text-center">
-                      Arraste e solte a imagem aqui
-                    </p>
-                    <p className="text-gray-500 text-xs sm:text-sm mb-3 text-center">
-                      ou
-                    </p>
-                    <div className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition">
-                      Fazer upload do computador
-                    </div>
-                    <input
-                      type="file"
-                      id="mapa"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                    />
-                    <p className="text-gray-500 text-xs mt-3 text-center">
-                      Formatos suportados: JPG, PNG, GIF
-                    </p>
-                  </label>
-                ) : (
-                  <div className="relative w-full p-4 bg-gray-50 border border-gray-300 rounded-lg flex flex-col items-center">
-                    <button
-                      type="button"
-                      onClick={removerImagem}
-                      className="absolute top-3 right-3 p-2 rounded-full bg-white shadow-md hover:bg-gray-100 transition z-10"
-                      aria-label="Remover imagem"
-                    >
-                      <svg
-                        className="w-5 h-5 text-gray-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <title>Remover imagem</title>
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                    <div className="w-full max-w-2xl">
-                      <Image
-                        src={mapa.preview}
-                        alt="Preview do mapa da sala"
-                        width={800}
-                        height={400}
-                        className="w-full h-auto max-h-[400px] object-contain rounded-lg"
-                        unoptimized
-                        priority
-                      />
-                    </div>
-                    <p className="text-gray-500 text-xs mt-3 text-center">
-                      Imagem carregada. Clique no ícone X para remover.
-                    </p>
+                {codigoSala && (
+                  <div className="p-3 bg-gray-100 border border-gray-300 rounded-lg inline-block">
+                    <span className="text-gray-700 font-medium text-sm md:text-base">Código da sala: </span>
+                    <span className="text-teal-600 font-bold text-sm md:text-base">{codigoSala}</span>
                   </div>
                 )}
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+            <div className="bg-white shadow-lg rounded-xl p-4 sm:p-6 md:p-8 border border-gray-300">
+              <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
                 <div>
-                  <label
-                    htmlFor="nomeSala"
-                    className="block text-gray-700 font-medium mb-2 text-sm md:text-base"
-                  >
-                    Nome da Sala:<span className="text-red-500 ml-1">*</span>
+                  <label htmlFor="mapa" className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
+                    Mapa da sala:<span className="text-red-500 ml-1">*</span>
                   </label>
-                  <input
-                    type="text"
-                    id="nomeSala"
-                    className="w-full border border-gray-300 rounded-lg p-3 text-sm md:text-base focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition"
-                    value={nomeSala}
-                    onChange={(e) => setNomeSala(e.target.value)}
-                    required
-                    placeholder="Ex: Sala de Reuniões A"
-                  />
+                  {!mapa ? (
+                    <label
+                      htmlFor="mapa"
+                      tabIndex={-1}
+                      className={`flex flex-col items-center justify-center w-full border-2 border-dashed p-4 sm:p-6 cursor-pointer transition-colors ${
+                        arrastando ? "bg-teal-50 border-teal-400" : "bg-gray-50 border-gray-300 hover:bg-gray-100"
+                      } rounded-lg`}
+                      onDragLeave={handleDragLeave}
+                      onDragOver={handleDragOver}
+                      onDrop={handleDrop}
+                    >
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 relative mb-3">
+                        <svg
+                          className="w-full h-full text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <title>Ícone de upload</title>
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                          />
+                        </svg>
+                      </div>
+                      <p className="text-gray-700 mb-2 text-sm sm:text-base text-center">
+                        Arraste e solte a imagem aqui
+                      </p>
+                      <p className="text-gray-500 text-xs sm:text-sm mb-3 text-center">ou</p>
+                      <div className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition">
+                        Fazer upload do computador
+                      </div>
+                      <input type="file" id="mapa" className="hidden" accept="image/*" onChange={handleFileChange} />
+                      <p className="text-gray-500 text-xs mt-3 text-center">Formatos suportados: JPG, PNG, GIF</p>
+                    </label>
+                  ) : (
+                    <div className="relative w-full p-4 bg-gray-50 border border-gray-300 rounded-lg flex flex-col items-center">
+                      <button
+                        type="button"
+                        onClick={removerImagem}
+                        className="absolute top-3 right-3 p-2 rounded-full bg-white shadow-md hover:bg-gray-100 transition z-10"
+                        aria-label="Remover imagem"
+                      >
+                        <svg
+                          className="w-5 h-5 text-gray-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <title>Remover imagem</title>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                      <div className="w-full max-w-2xl">
+                        <Image
+                          src={mapa.preview}
+                          alt="Preview do mapa da sala"
+                          width={800}
+                          height={400}
+                          className="w-full h-auto max-h-[400px] object-contain rounded-lg"
+                          unoptimized
+                          priority
+                        />
+                      </div>
+                      <p className="text-gray-500 text-xs mt-3 text-center">
+                        Imagem carregada. Clique no ícone X para remover.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                  <div>
+                    <label htmlFor="nomeSala" className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
+                      Nome da Sala:<span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="nomeSala"
+                      className="w-full border border-gray-300 rounded-lg p-3 text-sm md:text-base focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition"
+                      value={nomeSala}
+                      onChange={(e) => setNomeSala(e.target.value)}
+                      required
+                      placeholder="Ex: Sala de Reuniões A"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="text-gray-700 font-medium mb-2 text-sm md:text-base">Situação:</div>
+                    <div className="flex items-center">
+                      <div
+                        role="switch"
+                        aria-checked={situacao === "Ativa"}
+                        tabIndex={0}
+                        onClick={toggleSituacao}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggleSituacao();
+                          }
+                        }}
+                        className={`relative w-28 h-10 cursor-pointer rounded-full transition-all duration-300 ${
+                          situacao === "Ativa" ? "bg-teal-500" : "bg-red-500"
+                        }`}
+                      >
+                        <div
+                          className={`absolute top-1 left-1 h-8 w-8 bg-white rounded-full shadow-md transition-all duration-300 ${
+                            situacao === "Ativa" ? "translate-x-20" : "translate-x-0"
+                          }`}
+                        />
+                        <span className="absolute inset-0 flex items-center justify-center text-white font-semibold text-sm">
+                          {situacao === "Ativa" ? "Ativa" : "Inativa"}
+                        </span>
+                      </div>
+                      <span className="ml-3 text-gray-600 text-sm">
+                        {situacao === "Ativa" ? "Sala disponível para reservas" : "Sala temporariamente indisponível"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="max-w-md">
+                  <label htmlFor="tempoReserva" className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
+                    Limite de tempo das reservas (horas):
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <div className="flex items-center">
+                    <input
+                      type="number"
+                      id="tempoReserva"
+                      min="1"
+                      className="w-full max-w-xs border border-gray-300 rounded-lg p-3 text-sm md:text-base focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition"
+                      value={tempoReserva}
+                      onChange={(e) => setTempoReserva(e.target.value)}
+                      required
+                      placeholder="Ex: 4"
+                    />
+                    <span className="ml-3 text-gray-600 text-sm">horas por reserva</span>
+                  </div>
+                  <p className="text-gray-500 text-xs mt-2">
+                    Defina o tempo máximo que uma reserva pode ocupar esta sala
+                  </p>
                 </div>
 
                 <div>
                   <div className="text-gray-700 font-medium mb-2 text-sm md:text-base">
-                    Situação:
+                    Exigir Participação em Projeto:
                   </div>
                   <div className="flex items-center">
                     <div
                       role="switch"
-                      aria-checked={situacao === "Ativa"}
+                      aria-checked={exigeProjeto}
                       tabIndex={0}
-                      onClick={toggleSituacao}
+                      onClick={toggleExigeProjeto}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          toggleSituacao();
+                          toggleExigeProjeto();
                         }
                       }}
                       className={`relative w-28 h-10 cursor-pointer rounded-full transition-all duration-300 ${
-                        situacao === "Ativa" ? "bg-teal-500" : "bg-red-500"
+                        exigeProjeto ? "bg-teal-500" : "bg-red-500"
                       }`}
                     >
                       <div
                         className={`absolute top-1 left-1 h-8 w-8 bg-white rounded-full shadow-md transition-all duration-300 ${
-                          situacao === "Ativa"
-                            ? "translate-x-20"
-                            : "translate-x-0"
+                          exigeProjeto ? "translate-x-16" : "translate-x-0"
                         }`}
                       />
                       <span className="absolute inset-0 flex items-center justify-center text-white font-semibold text-sm">
-                        {situacao === "Ativa" ? "Ativa" : "Inativa"}
+                        {exigeProjeto ? "Sim" : "Não"}
                       </span>
                     </div>
                     <span className="ml-3 text-gray-600 text-sm">
-                      {situacao === "Ativa"
-                        ? "Sala disponível para reservas"
-                        : "Sala temporariamente indisponível"}
+                      {exigeProjeto ? "Obrigatório ter projeto ativo" : "Livre para todos reservarem"}
                     </span>
                   </div>
-                </div>
-              </div>
-
-              <div className="max-w-md">
-                <label
-                  htmlFor="tempoReserva"
-                  className="block text-gray-700 font-medium mb-2 text-sm md:text-base"
-                >
-                  Limite de tempo das reservas (horas):
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <div className="flex items-center">
-                  <input
-                    type="number"
-                    id="tempoReserva"
-                    min="1"
-                    className="w-full max-w-xs border border-gray-300 rounded-lg p-3 text-sm md:text-base focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition"
-                    value={tempoReserva}
-                    onChange={(e) => setTempoReserva(e.target.value)}
-                    required
-                    placeholder="Ex: 4"
-                  />
-                  <span className="ml-3 text-gray-600 text-sm">
-                    horas por reserva
-                  </span>
-                </div>
-                <p className="text-gray-500 text-xs mt-2">
-                  Defina o tempo máximo que uma reserva pode ocupar esta sala
-                </p>
-              </div>
-
-              <div className="relative">
-                <div className="text-gray-700 font-medium mb-2 text-sm md:text-base">
-                  Espaços:
+                  <p className="text-gray-500 text-xs mt-2">
+                    Determina se a reserva nesta sala requer participação "Autorizada" em projeto ativo.
+                  </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      id="espacoInput"
-                      className="w-full border border-gray-300 rounded-lg p-3 text-sm md:text-base focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition"
-                      value={espaco}
-                      onChange={(e) => setEspaco(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder={
-                        editandoIndex !== null
-                          ? `Editando espaço "${espacos[editandoIndex]}"...`
-                          : "Digite o código do espaço (Ex: A1, B2, C3...)"
-                      }
-                    />
-                    {espacos.length > 0 && (
-                      <p className="text-gray-500 text-xs mt-2">
-                        {espacos.length} espaço(s) adicionado(s)
-                        {editandoIndex !== null &&
-                          ` - Editando espaço ${editandoIndex + 1}`}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={adicionarEspaco}
-                      className="px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 text-gray-700 font-medium flex items-center justify-center gap-2 transition whitespace-nowrap text-sm md:text-base"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <title>Adicionar espaço</title>
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 4v16m8-8H4"
-                        />
-                      </svg>
-                      {editandoIndex !== null ? "Salvar Edição" : "Adicionar"}
-                    </button>
-                    {espacos.length > 0 && (
+                <div className="relative">
+                  <div className="text-gray-700 font-medium mb-2 text-sm md:text-base">Espaços:</div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        id="espacoInput"
+                        className="w-full border border-gray-300 rounded-lg p-3 text-sm md:text-base focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition"
+                        value={espaco}
+                        onChange={(e) => setEspaco(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder={
+                          editandoIndex !== null
+                            ? `Editando espaço "${espacos[editandoIndex]}"...`
+                            : "Digite o código do espaço (Ex: A1, B2, C3...)"
+                        }
+                      />
+                      {espacos.length > 0 && (
+                        <p className="text-gray-500 text-xs mt-2">
+                          {espacos.length} espaço(s) adicionado(s)
+                          {editandoIndex !== null && ` - Editando espaço ${editandoIndex + 1}`}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-3">
                       <button
                         type="button"
-                        onClick={() => setMostrarEspacos((prev) => !prev)}
-                        className="px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 font-medium transition"
-                        aria-label={
-                          mostrarEspacos ? "Ocultar espaços" : "Mostrar espaços"
-                        }
+                        onClick={adicionarEspaco}
+                        className="px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 text-gray-700 font-medium flex items-center justify-center gap-2 transition whitespace-nowrap text-sm md:text-base"
                       >
-                        {mostrarEspacos ? "▲" : "▼"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {mostrarEspacos && espacos.length > 0 && (
-                  <div className="mt-4 space-y-2 border border-gray-200 p-4 rounded-lg bg-gray-50">
-                    <h4 className="font-medium text-gray-700 mb-3 text-sm md:text-base">
-                      Espaços Adicionados ({espacos.length})
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {espacos.map((item, i) => (
-                        <div
-                          key={`espaco-${item}-${item}`}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                        >
-                          <div className="flex-1 mb-2 sm:mb-0">
-                            <span className="text-gray-800 font-medium text-sm md:text-base">
-                              {item}
-                            </span>
-                            {i === editandoIndex && (
-                              <span className="ml-2 text-teal-600 text-xs font-medium">
-                                (Editando)
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => editarEspaco(i)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded transition"
-                              aria-label={`Editar espaço ${item}`}
-                            >
-                              <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                                aria-hidden="true"
-                              >
-                                <title>Editar espaço</title>
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                />
-                              </svg>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => apagarEspaco(i)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded transition"
-                              aria-label={`Remover espaço ${item}`}
-                            >
-                              <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                                aria-hidden="true"
-                              >
-                                <title>Remover espaço</title>
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-gray-500 text-xs mt-3 text-center">
-                      Clique no ícone de edição para modificar ou no ícone de
-                      lixeira para remover
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-6 border-t border-gray-200">
-                <div className="flex flex-col sm:flex-row gap-4 justify-end">
-                  <button
-                    type="button"
-                    onClick={() => router.push("/salas")}
-                    className="px-6 py-3 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 text-gray-700 font-medium transition w-full sm:w-auto text-center"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 font-medium transition disabled:opacity-70 disabled:cursor-not-allowed w-full sm:w-auto text-center"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        {idSala ? "Salvando..." : "Criando Sala..."}
-                      </span>
-                    ) : (
-                      <span className="flex items-center justify-center gap-2">
                         <svg
                           className="w-5 h-5"
                           fill="none"
@@ -899,24 +674,139 @@ export default function SalaEspacoPage() {
                           viewBox="0 0 24 24"
                           aria-hidden="true"
                         >
-                          <title>Salvar sala</title>
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
+                          <title>Adicionar espaço</title>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
-                        {idSala ? "Atualizar Sala" : "Criar Sala"}
-                      </span>
-                    )}
-                  </button>
+                        {editandoIndex !== null ? "Salvar Edição" : "Adicionar"}
+                      </button>
+                      {espacos.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setMostrarEspacos((prev) => !prev)}
+                          className="px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 font-medium transition"
+                          aria-label={mostrarEspacos ? "Ocultar espaços" : "Mostrar espaços"}
+                        >
+                          {mostrarEspacos ? "▲" : "▼"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {mostrarEspacos && espacos.length > 0 && (
+                    <div className="mt-4 space-y-2 border border-gray-200 p-4 rounded-lg bg-gray-50">
+                      <h4 className="font-medium text-gray-700 mb-3 text-sm md:text-base">
+                        Espaços Adicionados ({espacos.length})
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {espacos.map((item, i) => (
+                          <div
+                            key={`espaco-${item}-${item}`}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                          >
+                            <div className="flex-1 mb-2 sm:mb-0">
+                              <span className="text-gray-800 font-medium text-sm md:text-base">{item}</span>
+                              {i === editandoIndex && (
+                                <span className="ml-2 text-teal-600 text-xs font-medium">(Editando)</span>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => editarEspaco(i)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded transition"
+                                aria-label={`Editar espaço ${item}`}
+                              >
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                  aria-hidden="true"
+                                >
+                                  <title>Editar espaço</title>
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                  />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => apagarEspaco(i)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded transition"
+                                aria-label={`Remover espaço ${item}`}
+                              >
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                  aria-hidden="true"
+                                >
+                                  <title>Remover espaço</title>
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-gray-500 text-xs mt-3 text-center">
+                        Clique no ícone de edição para modificar ou no ícone de lixeira para remover
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </form>
+
+                <div className="pt-6 border-t border-gray-200">
+                  <div className="flex flex-col sm:flex-row gap-4 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => router.push("/salas")}
+                      className="px-6 py-3 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 text-gray-700 font-medium transition w-full sm:w-auto text-center"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 font-medium transition disabled:opacity-70 disabled:cursor-not-allowed w-full sm:w-auto text-center"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          {idSala ? "Salvando..." : "Criando Sala..."}
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <title>Salvar sala</title>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          {idSala ? "Atualizar Sala" : "Criar Sala"}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 }

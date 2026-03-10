@@ -26,11 +26,7 @@ export async function GET(req: Request) {
     let error: PostgrestError | null = null;
 
     if (idSala) {
-      ({ data, error } = await supabase
-        .from("Sala")
-        .select(`*, Espaco(*)`)
-        .eq("idSala", idSala)
-        .single());
+      ({ data, error } = await supabase.from("Sala").select(`*, Espaco(*)`).eq("idSala", idSala).single());
 
       return NextResponse.json({ success: true, salas: data ? [data] : [] });
     } else {
@@ -39,20 +35,13 @@ export async function GET(req: Request) {
 
       ({ data, error } = await query);
 
-      if (error)
-        return NextResponse.json(
-          { success: false, error: "Erro ao carregar salas" },
-          { status: 400 },
-        );
+      if (error) return NextResponse.json({ success: false, error: "Erro ao carregar salas" }, { status: 400 });
 
       return NextResponse.json({ success: true, salas: data || [] });
     }
   } catch (e) {
     console.error(e);
-    return NextResponse.json(
-      { success: false, error: "Erro interno." },
-      { status: 500 },
-    );
+    return NextResponse.json({ success: false, error: "Erro interno." }, { status: 500 });
   }
 }
 
@@ -64,11 +53,7 @@ export async function POST(req: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user)
-      return NextResponse.json(
-        { success: false, error: "Usuário não autenticado." },
-        { status: 401 },
-      );
+    if (!user) return NextResponse.json({ success: false, error: "Usuário não autenticado." }, { status: 401 });
 
     let isAdmin = false;
     let usuarioInfo: UsuarioInfo | null = null;
@@ -104,16 +89,13 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "Acesso negado. Apenas administradores podem criar ou editar salas.",
+          error: "Acesso negado. Apenas administradores podem criar ou editar salas.",
         },
         { status: 403 },
       );
     }
 
-    const { idSala, nomeSala, mapa, limiteHorasReserva, ativa, espacos } =
-      await req.json();
-
+    const { idSala, nomeSala, mapa, limiteHorasReserva, ativa, exigeProjeto, espacos } = await req.json();
 
     if (!nomeSala || !mapa || !limiteHorasReserva)
       return NextResponse.json(
@@ -136,15 +118,13 @@ export async function POST(req: Request) {
           mapa: mapa.trim(),
           limiteHorasReserva: Number(limiteHorasReserva),
           ativa,
+          exigeProjeto: exigeProjeto ?? true,
         })
         .eq("idSala", idSala);
 
       if (updateError) {
         console.error("Erro ao atualizar sala:", updateError);
-        return NextResponse.json(
-          { success: false, error: "Erro ao atualizar sala." },
-          { status: 400 },
-        );
+        return NextResponse.json({ success: false, error: "Erro ao atualizar sala." }, { status: 400 });
       }
 
       console.log("Sala atualizada com sucesso.");
@@ -161,10 +141,7 @@ export async function POST(req: Request) {
           if (fetchError) {
             console.error("Erro ao buscar espaços existentes:", fetchError);
           } else {
-            console.log(
-              "Espaços existentes no banco:",
-              espacosExistentes?.length || 0,
-            );
+            console.log("Espaços existentes no banco:", espacosExistentes?.length || 0);
 
             const espacosComReservas: number[] = [];
 
@@ -185,58 +162,36 @@ export async function POST(req: Request) {
               }
             }
 
-            console.log(
-              "Espaços com reservas (não podem ser deletados):",
-              espacosComReservas.length,
-            );
+            console.log("Espaços com reservas (não podem ser deletados):", espacosComReservas.length);
 
             const espacosParaManterIds = new Set(espacosComReservas);
             const espacosParaDeletar =
-              espacosExistentes?.filter(
-                (esp) => !espacosParaManterIds.has(esp.idEspaco),
-              ) || [];
+              espacosExistentes?.filter((esp) => !espacosParaManterIds.has(esp.idEspaco)) || [];
 
-            console.log(
-              "Espaços que podem ser deletados:",
-              espacosParaDeletar.length,
-            );
+            console.log("Espaços que podem ser deletados:", espacosParaDeletar.length);
 
             if (espacosParaDeletar.length > 0) {
-              const idsParaDeletar = espacosParaDeletar.map(
-                (esp) => esp.idEspaco,
-              );
-              const { error: deleteError } = await supabase
-                .from("Espaco")
-                .delete()
-                .in("idEspaco", idsParaDeletar);
+              const idsParaDeletar = espacosParaDeletar.map((esp) => esp.idEspaco);
+              const { error: deleteError } = await supabase.from("Espaco").delete().in("idEspaco", idsParaDeletar);
 
               if (deleteError) {
                 console.error("Erro ao deletar espaços:", deleteError);
               } else {
-                console.log(
-                  `${idsParaDeletar.length} espaços deletados com sucesso.`,
-                );
+                console.log(`${idsParaDeletar.length} espaços deletados com sucesso.`);
               }
             }
 
-            const espacosParaManter =
-              espacosExistentes?.filter((esp) =>
-                espacosParaManterIds.has(esp.idEspaco),
-              ) || [];
+            const espacosParaManter = espacosExistentes?.filter((esp) => espacosParaManterIds.has(esp.idEspaco)) || [];
 
             console.log(
               "Espaços que serão mantidos (têm reservas):",
               espacosParaManter.map((e) => e.codigoEspaco),
             );
 
-            const codigosExistentes = new Set(
-              espacosParaManter.map((e) => e.codigoEspaco),
-            );
+            const codigosExistentes = new Set(espacosParaManter.map((e) => e.codigoEspaco));
             const codigosNovosRecebidos = new Set(
               Array.isArray(espacos)
-                ? espacos
-                    .map((c: string) => c?.toString().trim())
-                    .filter((c: string) => c !== "")
+                ? espacos.map((c: string) => c?.toString().trim()).filter((c: string) => c !== "")
                 : [],
             );
 
@@ -247,45 +202,35 @@ export async function POST(req: Request) {
             console.log("Espaços novos para criar:", espacosParaCriar);
 
             if (espacosParaCriar.length > 0) {
-              const novosEspacos: EspacoInsert[] = espacosParaCriar.map(
-                (codigo: string) => {
-                  const espacoObj: EspacoInsert = {
-                    codigoEspaco: codigo,
-                    idSalaPertence: idSala,
-                  };
+              const novosEspacos: EspacoInsert[] = espacosParaCriar.map((codigo: string) => {
+                const espacoObj: EspacoInsert = {
+                  codigoEspaco: codigo,
+                  idSalaPertence: idSala,
+                };
 
-                  if (userId !== null) {
-                    espacoObj.idUsuarioCriador = userId;
-                  }
+                if (userId !== null) {
+                  espacoObj.idUsuarioCriador = userId;
+                }
 
-                  return espacoObj;
-                },
-              );
+                return espacoObj;
+              });
 
               console.log("Dados para criação de novos espaços:", novosEspacos);
 
-              const { error: insertError } = await supabase
-                .from("Espaco")
-                .insert(novosEspacos);
+              const { error: insertError } = await supabase.from("Espaco").insert(novosEspacos);
 
               if (insertError) {
                 console.error("Erro ao criar novos espaços:", insertError);
 
-                const novosEspacosSemUsuario: EspacoInsert[] =
-                  espacosParaCriar.map((codigo: string) => ({
-                    codigoEspaco: codigo,
-                    idSalaPertence: idSala,
-                  }));
+                const novosEspacosSemUsuario: EspacoInsert[] = espacosParaCriar.map((codigo: string) => ({
+                  codigoEspaco: codigo,
+                  idSalaPertence: idSala,
+                }));
 
-                const { error: insertError2 } = await supabase
-                  .from("Espaco")
-                  .insert(novosEspacosSemUsuario);
+                const { error: insertError2 } = await supabase.from("Espaco").insert(novosEspacosSemUsuario);
 
                 if (insertError2) {
-                  console.error(
-                    "Erro mesmo sem idUsuarioCriador:",
-                    insertError2,
-                  );
+                  console.error("Erro mesmo sem idUsuarioCriador:", insertError2);
                 } else {
                   console.log("Espaços criados sem idUsuarioCriador.");
                 }
@@ -299,15 +244,11 @@ export async function POST(req: Request) {
               .map((e) => e.codigoEspaco);
 
             if (codigosManterNaoNaLista.length > 0) {
-              console.log(
-                "AVISO: Os seguintes espaços têm reservas e não foram removidos:",
-                codigosManterNaoNaLista,
-              );
+              console.log("AVISO: Os seguintes espaços têm reservas e não foram removidos:", codigosManterNaoNaLista);
             }
           }
         } catch (error) {
           console.error("Erro no processamento de espaços:", error);
-
         }
       }
 
@@ -323,16 +264,15 @@ export async function POST(req: Request) {
           mapa: mapa.trim(),
           limiteHorasReserva: Number(limiteHorasReserva),
           ativa,
+          exigeProjeto: exigeProjeto ?? true,
+          idUsuarioCriador: userId,
         })
         .select()
         .single();
 
       if (insertError) {
         console.error("Erro ao criar sala:", insertError);
-        return NextResponse.json(
-          { success: false, error: "Erro ao criar sala." },
-          { status: 400 },
-        );
+        return NextResponse.json({ success: false, error: "Erro ao criar sala." }, { status: 400 });
       }
 
       console.log("Nova sala criada. ID:", novaSala.idSala);
@@ -343,41 +283,30 @@ export async function POST(req: Request) {
           .filter((codigo: string) => codigo !== "");
 
         if (espacosValidos.length > 0) {
-          const novosEspacos: EspacoInsert[] = espacosValidos.map(
-            (codigo: string) => {
-              const espacoObj: EspacoInsert = {
-                codigoEspaco: codigo,
-                idSalaPertence: novaSala.idSala,
-              };
+          const novosEspacos: EspacoInsert[] = espacosValidos.map((codigo: string) => {
+            const espacoObj: EspacoInsert = {
+              codigoEspaco: codigo,
+              idSalaPertence: novaSala.idSala,
+            };
 
-              if (userId !== null) {
-                espacoObj.idUsuarioCriador = userId;
-              }
+            if (userId !== null) {
+              espacoObj.idUsuarioCriador = userId;
+            }
 
-              return espacoObj;
-            },
-          );
+            return espacoObj;
+          });
 
-          const { error: insertEspError } = await supabase
-            .from("Espaco")
-            .insert(novosEspacos);
+          const { error: insertEspError } = await supabase.from("Espaco").insert(novosEspacos);
 
           if (insertEspError) {
-            console.error(
-              "Erro ao inserir espaços na nova sala:",
-              insertEspError,
-            );
+            console.error("Erro ao inserir espaços na nova sala:", insertEspError);
 
-            const novosEspacosSemUsuario: EspacoInsert[] = espacosValidos.map(
-              (codigo: string) => ({
-                codigoEspaco: codigo,
-                idSalaPertence: novaSala.idSala,
-              }),
-            );
+            const novosEspacosSemUsuario: EspacoInsert[] = espacosValidos.map((codigo: string) => ({
+              codigoEspaco: codigo,
+              idSalaPertence: novaSala.idSala,
+            }));
 
-            const { error: insertError2 } = await supabase
-              .from("Espaco")
-              .insert(novosEspacosSemUsuario);
+            const { error: insertError2 } = await supabase.from("Espaco").insert(novosEspacosSemUsuario);
 
             if (insertError2) {
               console.error("Erro mesmo sem idUsuarioCriador:", insertError2);
@@ -390,9 +319,6 @@ export async function POST(req: Request) {
     }
   } catch (e) {
     console.error(e);
-    return NextResponse.json(
-      { success: false, error: "Erro interno." },
-      { status: 500 },
-    );
+    return NextResponse.json({ success: false, error: "Erro interno." }, { status: 500 });
   }
 }

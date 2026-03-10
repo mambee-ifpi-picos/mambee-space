@@ -89,7 +89,7 @@ export const POST = Auth(async (request: NextRequest, _user: User | null) => {
     hoje.setUTCHours(0, 0, 0, 0);
     const diaReserva = new Date(`${data}T00:00:00.000Z`);
 
-    if (diaReserva < hoje) return NextResponse.json({ error: "Data passada não pode." }, { status: 400 });
+    if (diaReserva < hoje) return NextResponse.json({ error: "Data menor que a permitida." }, { status: 400 });
     if (inicio >= fim) return NextResponse.json({ error: "Hora final deve ser maior que a inicial." }, { status: 400 });
     if (!idUsuarioSupabase) return NextResponse.json({ error: "Usuário não identificado." }, { status: 401 });
 
@@ -120,37 +120,43 @@ export const POST = Auth(async (request: NextRequest, _user: User | null) => {
 
     if (!usuarioReal) return NextResponse.json({ error: "Erro: Usuário não encontrado." }, { status: 404 });
 
-    
-    const participacao = await prisma.participa.findFirst({
-      where: {
-        idUsuario: usuarioReal.idUsuario,
-        situacao: "Autorizado",
-      },
-    });
-
-    if (!participacao) {
-      return NextResponse.json(
-        { error: "Você precisa estar participando de um projeto aprovado para fazer reservas." },
-        { status: 403 }
-      );
-    }
-
-
     const espacoInfo = await prisma.espaco.findUnique({
       where: { idEspaco: Number(idEspaco) },
       include: { sala: true },
     });
 
-    if (espacoInfo) {
-      const diffHoras = (fim.getTime() - inicio.getTime()) / (1000 * 60 * 60);
-      if (diffHoras > espacoInfo.sala.limiteHorasReserva) {
+    if (!espacoInfo) {
+      return NextResponse.json({ error: "Espaço não encontrado." }, { status: 404 });
+    }
+
+    if (espacoInfo.sala.exigeProjeto && !usuarioReal.admin) {
+      const isCreator = await prisma.projeto.findFirst({
+        where: { idUsuarioCriador: usuarioReal.idUsuario, situacao: { not: "Inativo" } },
+      });
+
+      const participacao = await prisma.participa.findFirst({
+        where: { idUsuario: usuarioReal.idUsuario, situacao: "Autorizado" },
+      });
+
+      if (!isCreator && !participacao) {
         return NextResponse.json(
           {
-            error: `Tempo excedido! Limite: ${espacoInfo.sala.limiteHorasReserva}h.`,
+            error:
+              "Acesso negado: Você precisa estar participando de um projeto aprovado para fazer reservas nesta sala.",
           },
-          { status: 400 },
+          { status: 403 },
         );
       }
+    }
+
+    const diffHoras = (fim.getTime() - inicio.getTime()) / (1000 * 60 * 60);
+    if (diffHoras > espacoInfo.sala.limiteHorasReserva) {
+      return NextResponse.json(
+        {
+          error: `Tempo excedido! Limite: ${espacoInfo.sala.limiteHorasReserva}h.`,
+        },
+        { status: 400 },
+      );
     }
 
     const conflito = await prisma.reserva.findFirst({

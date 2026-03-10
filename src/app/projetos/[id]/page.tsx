@@ -43,17 +43,13 @@ export default function DetalhesProjeto() {
 
   const [projeto, setProjeto] = useState<Projeto | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [participacoes, setParticipacoes] = useState<ParticipacaoDetalhada[]>(
-    [],
-  );
+  const [participacoes, setParticipacoes] = useState<ParticipacaoDetalhada[]>([]);
   const [loading, setLoading] = useState(true);
 
-  
   const [modalSolicitacao, setModalSolicitacao] = useState(false);
   const [motivoSolicitacao, setMotivoSolicitacao] = useState("");
   const [modalDecisao, setModalDecisao] = useState(false);
-  const [solicitacaoAlvo, setSolicitacaoAlvo] =
-    useState<ParticipacaoDetalhada | null>(null);
+  const [solicitacaoAlvo, setSolicitacaoAlvo] = useState<ParticipacaoDetalhada | null>(null);
   const [motivoNegativa, setMotivoNegativa] = useState("");
 
   const [toast, setToast] = useState({
@@ -64,17 +60,12 @@ export default function DetalhesProjeto() {
 
   const showToast = useCallback((msg: string, type = "success") => {
     setToast({ visible: true, message: msg, type });
-    setTimeout(
-      () => setToast({ visible: false, message: "", type: "success" }),
-      3500,
-    );
+    setTimeout(() => setToast({ visible: false, message: "", type: "success" }), 3500);
   }, []);
 
   const carregarDados = useCallback(async () => {
     try {
-      const resProj = await fetch(
-        `/api/projetos/${idProjeto}?include=participacoes`,
-      );
+      const resProj = await fetch(`/api/projetos/${idProjeto}?include=participacoes`);
       if (resProj.ok) {
         const dadosProj = await resProj.json();
         setProjeto(dadosProj);
@@ -101,10 +92,7 @@ export default function DetalhesProjeto() {
     if (idProjeto) carregarDados();
   }, [idProjeto, carregarDados]);
 
-  const processarAcaoAdmin = async (
-    acao: "entrar" | "sair" | "remover",
-    idUsuarioRemover?: number,
-  ) => {
+  const processarAcaoAdmin = async (acao: "entrar" | "sair" | "remover", idUsuarioRemover?: number) => {
     try {
       if (acao === "entrar") {
         await fetch("/api/solicitar_participacao", {
@@ -118,12 +106,8 @@ export default function DetalhesProjeto() {
           }),
         });
       } else {
-        const idAlvo =
-          acao === "remover" ? idUsuarioRemover : usuario?.idUsuario;
-        await fetch(
-          `/api/solicitar_participacao?idProjeto=${idProjeto}&idUsuario=${idAlvo}`,
-          { method: "DELETE" },
-        );
+        const idAlvo = acao === "remover" ? idUsuarioRemover : usuario?.idUsuario;
+        await fetch(`/api/solicitar_participacao?idProjeto=${idProjeto}&idUsuario=${idAlvo}`, { method: "DELETE" });
       }
       showToast("Sucesso!");
       carregarDados();
@@ -146,9 +130,7 @@ export default function DetalhesProjeto() {
       });
 
       if (res.ok) {
-        showToast(
-          `Candidato ${status === "Autorizado" ? "Aprovado" : "Recusado"}!`,
-        );
+        showToast(`Candidato ${status === "Autorizado" ? "Aprovado" : "Recusado"}!`);
         setModalDecisao(false);
         setSolicitacaoAlvo(null);
         setMotivoNegativa("");
@@ -192,17 +174,11 @@ export default function DetalhesProjeto() {
     );
   if (!projeto) return null;
 
-  const minhaPart = participacoes.find(
-    (p) => p.usuario?.idUsuario === usuario?.idUsuario,
-  );
+  const minhaPart = participacoes.find((p) => p.usuario?.idUsuario === usuario?.idUsuario);
 
-  
-  const isMembroAutorizado =
-    usuario?.admin || minhaPart?.situacao === "Autorizado";
+  const isMembroAutorizado = usuario?.admin || minhaPart?.situacao === "Autorizado";
 
-  const solicitacoesPendentes = participacoes.filter(
-    (p) => p.situacao === "Solicitado",
-  );
+  const solicitacoesPendentes = participacoes.filter((p) => p.situacao === "Solicitado");
 
   return (
     <>
@@ -218,11 +194,7 @@ export default function DetalhesProjeto() {
       {modalSolicitacao && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl border border-gray-200">
-            <h3
-              className={`${inriaSerif700.className} text-2xl mb-4 uppercase tracking-tighter`}
-            >
-              Solicitar Vaga
-            </h3>
+            <h3 className={`${inriaSerif700.className} text-2xl mb-4 uppercase tracking-tighter`}>Solicitar Vaga</h3>
             <textarea
               value={motivoSolicitacao}
               onChange={(e) => setMotivoSolicitacao(e.target.value)}
@@ -258,23 +230,14 @@ export default function DetalhesProjeto() {
             <div className="flex items-center gap-3 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
               <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 border">
                 {solicitacaoAlvo.usuario.foto ? (
-                  <img
-                    src={solicitacaoAlvo.usuario.foto}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={solicitacaoAlvo.usuario.foto} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="flex items-center justify-center h-full text-xl font-bold">
-                    👤
-                  </span>
+                  <span className="flex items-center justify-center h-full text-xl font-bold">👤</span>
                 )}
               </div>
-              <span className="font-bold text-gray-800">
-                {solicitacaoAlvo.usuario.nome}
-              </span>
+              <span className="font-bold text-gray-800">{solicitacaoAlvo.usuario.nome}</span>
             </div>
-            <p className="text-sm text-gray-600 mb-4 italic">
-              "{solicitacaoAlvo.motivo}"
-            </p>
+            <p className="text-sm text-gray-600 mb-4 italic">"{solicitacaoAlvo.motivo}"</p>
             <textarea
               value={motivoNegativa}
               onChange={(e) => setMotivoNegativa(e.target.value)}
@@ -314,9 +277,7 @@ export default function DetalhesProjeto() {
             >
               ← Voltar
             </Link>
-            <h1
-              className={`${inriaSerif700.className} text-2xl uppercase tracking-tighter text-gray-800`}
-            >
+            <h1 className={`${inriaSerif700.className} text-2xl uppercase tracking-tighter text-gray-800`}>
               {projeto.nome}
             </h1>
             <div className="w-12"></div>
@@ -326,12 +287,8 @@ export default function DetalhesProjeto() {
         <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white rounded-2xl shadow-sm border p-8 border-gray-300">
-              <h3 className="text-2xl font-bold mb-4 uppercase tracking-tighter text-teal-800">
-                Sobre o Projeto
-              </h3>
-              <p className="text-gray-700 whitespace-pre-line leading-relaxed mb-8 text-lg">
-                {projeto.resumo}
-              </p>
+              <h3 className="text-2xl font-bold mb-4 uppercase tracking-tighter text-teal-800">Sobre o Projeto</h3>
+              <p className="text-gray-700 whitespace-pre-line leading-relaxed mb-8 text-lg">{projeto.resumo}</p>
 
               <div className="mt-8 pt-8 border-t space-y-8 border-gray-200">
                 {}
@@ -349,27 +306,17 @@ export default function DetalhesProjeto() {
                         >
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 border border-gray-200">
                             {p.usuario.foto ? (
-                              <img
-                                src={p.usuario.foto}
-                                className="w-full h-full object-cover"
-                              />
+                              <img src={p.usuario.foto} className="w-full h-full object-cover" />
                             ) : (
                               <span className="flex items-center justify-center h-full text-xs font-bold text-gray-400">
                                 👤
                               </span>
                             )}
                           </div>
-                          <span className="text-sm font-bold text-gray-700">
-                            {p.usuario.nome}
-                          </span>
+                          <span className="text-sm font-bold text-gray-700">{p.usuario.nome}</span>
                           {usuario?.admin && (
                             <button
-                              onClick={() =>
-                                processarAcaoAdmin(
-                                  "remover",
-                                  p.usuario.idUsuario,
-                                )
-                              }
+                              onClick={() => processarAcaoAdmin("remover", p.usuario.idUsuario)}
                               className="ml-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] hover:bg-red-700 font-bold transition-all shadow-md"
                             >
                               X
@@ -381,32 +328,28 @@ export default function DetalhesProjeto() {
                 </div>
 
                 {}
-                {isMembroAutorizado &&
-                  projeto.anexos &&
-                  projeto.anexos.length > 0 && (
-                    <div className="border-t pt-8 border-gray-100">
-                      <h4 className="text-[10px] font-bold text-teal-600 uppercase tracking-widest mb-4">
-                        📎 Documentação Restrita
-                      </h4>
-                      <div className="grid grid-cols-1 gap-2">
-                        {projeto.anexos.map((url, i) => (
-                          <a
-                            key={i}
-                            href={url}
-                            target="_blank"
-                            className="flex items-center justify-between p-5 bg-teal-50 border border-teal-100 rounded-2xl hover:bg-teal-100 transition-all group"
-                          >
-                            <span className="text-sm font-bold text-teal-900 uppercase">
-                              Documento de Apoio {i + 1}
-                            </span>
-                            <span className="text-teal-600 text-[10px] font-bold uppercase underline tracking-tighter group-hover:scale-110 transition-transform">
-                              Baixar Arquivo
-                            </span>
-                          </a>
-                        ))}
-                      </div>
+                {isMembroAutorizado && projeto.anexos && projeto.anexos.length > 0 && (
+                  <div className="border-t pt-8 border-gray-100">
+                    <h4 className="text-[10px] font-bold text-teal-600 uppercase tracking-widest mb-4">
+                      📎 Documentação Restrita
+                    </h4>
+                    <div className="grid grid-cols-1 gap-2">
+                      {projeto.anexos.map((url, i) => (
+                        <a
+                          key={i}
+                          href={url}
+                          target="_blank"
+                          className="flex items-center justify-between p-5 bg-teal-50 border border-teal-100 rounded-2xl hover:bg-teal-100 transition-all group"
+                        >
+                          <span className="text-sm font-bold text-teal-900 uppercase">Documento de Apoio {i + 1}</span>
+                          <span className="text-teal-600 text-[10px] font-bold uppercase underline tracking-tighter group-hover:scale-110 transition-transform">
+                            Baixar Arquivo
+                          </span>
+                        </a>
+                      ))}
                     </div>
-                  )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -420,9 +363,7 @@ export default function DetalhesProjeto() {
                     Painel de Gestão
                   </h4>
                   <button
-                    onClick={() =>
-                      router.push(`/projetos/editar/${projeto.idProjeto}`)
-                    }
+                    onClick={() => router.push(`/projetos/editar/${projeto.idProjeto}`)}
                     className="w-full bg-amber-500 text-white py-4 rounded-2xl font-bold uppercase text-xs shadow-md mb-2 hover:bg-amber-600 transition-all"
                   >
                     ✏️ Editar Projeto
@@ -459,19 +400,14 @@ export default function DetalhesProjeto() {
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 border">
                               {s.usuario.foto ? (
-                                <img
-                                  src={s.usuario.foto}
-                                  className="w-full h-full object-cover"
-                                />
+                                <img src={s.usuario.foto} className="w-full h-full object-cover" />
                               ) : (
                                 <span className="flex items-center justify-center h-full text-[10px] font-bold">
                                   👤
                                 </span>
                               )}
                             </div>
-                            <span className="text-xs font-bold text-gray-700">
-                              {s.usuario.nome}
-                            </span>
+                            <span className="text-xs font-bold text-gray-700">{s.usuario.nome}</span>
                           </div>
                           <button
                             onClick={() => {
@@ -506,13 +442,9 @@ export default function DetalhesProjeto() {
                   </div>
                 ) : minhaPart?.situacao === "Negado" ? (
                   <div className="p-5 bg-red-50 text-red-700 border border-red-200 rounded-2xl text-center">
-                    <p className="font-bold text-xs uppercase">
-                      ❌ Participação Recusada
-                    </p>
+                    <p className="font-bold text-xs uppercase">❌ Participação Recusada</p>
                     {minhaPart.motivoSituacao && (
-                      <p className="text-[10px] mt-2 italic opacity-80 leading-tight">
-                        "{minhaPart.motivoSituacao}"
-                      </p>
+                      <p className="text-[10px] mt-2 italic opacity-80 leading-tight">"{minhaPart.motivoSituacao}"</p>
                     )}
                     <button
                       onClick={() => setModalSolicitacao(true)}
@@ -537,24 +469,30 @@ export default function DetalhesProjeto() {
                 Informações Técnicas
               </h4>
               <div className="space-y-4">
-                <div className="flex justify-between uppercase text-[10px] font-medium">
+                <div className="flex justify-between uppercase text-[10px] font-medium items-center">
                   <span className="text-gray-400">Status</span>
-                  <span className="font-bold text-teal-600 tracking-widest">
-                    {projeto.situacao}
+                  <span
+                    className={`font-bold tracking-widest px-2 py-1 rounded-md ${
+                      projeto.situacao === "Concluido"
+                        ? "bg-blue-50 text-blue-600"
+                        : projeto.situacao === "Ativo"
+                          ? "bg-green-50 text-green-600"
+                          : projeto.situacao === "Inativo"
+                            ? "bg-red-50 text-red-600"
+                            : "text-orange-600 bg-orange-50"
+                    }`}
+                  >
+                    {projeto.situacao === "Concluido" ? "Projeto Concluído" : projeto.situacao}
                   </span>
                 </div>
                 <div className="flex justify-between uppercase text-[10px] font-medium">
                   <span className="text-gray-400">Início</span>
-                  <span className="font-bold text-gray-800">
-                    {new Date(projeto.dataInicio).toLocaleDateString()}
-                  </span>
+                  <span className="font-bold text-gray-800">{new Date(projeto.dataInicio).toLocaleDateString()}</span>
                 </div>
                 {projeto.dataFim && (
                   <div className="flex justify-between uppercase text-[10px] font-medium">
                     <span className="text-gray-400">Término</span>
-                    <span className="font-bold text-gray-800">
-                      {new Date(projeto.dataFim).toLocaleDateString()}
-                    </span>
+                    <span className="font-bold text-gray-800">{new Date(projeto.dataFim).toLocaleDateString()}</span>
                   </div>
                 )}
               </div>

@@ -48,7 +48,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    const { data: usuario } = await supabase.from("Usuario").select("admin").eq("email", user.email).maybeSingle();
+    const { data: usuario } = await supabase.from("Usuario").select("admin").eq("idAuth", user.id).maybeSingle();
 
     if (!usuario?.admin) {
       return NextResponse.redirect(new URL("/403", request.url));
@@ -67,6 +67,7 @@ export const config = {
     "/sala_espaco/:path*",
     "/salas/:path*",
     "/projetos/:path*",
+    "/cadastro_projetos/:path*",
     "/",
     "/login",
     "/relatorio",

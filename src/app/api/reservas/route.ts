@@ -90,9 +90,11 @@ export const GET = Auth(async (req: Request) => {
       ...(filters.length > 0 ? { AND: filters } : {}),
       ...(searchParam
         ? {
-            motivo: {
-              contains: searchParam.trim(),
-              mode: "insensitive",
+            criador: {
+              nome: {
+                contains: searchParam.trim(),
+                mode: "insensitive",
+              },
             },
           }
         : {}),
@@ -113,10 +115,21 @@ export const GET = Auth(async (req: Request) => {
 
     const total = await prisma.reserva.count({ where });
 
+    let totalUsuarioLogado = 0;
+    if (usuarioLogado?.idUsuario) {
+      totalUsuarioLogado = await prisma.reserva.count({
+        where: {
+          idUsuarioCriador: usuarioLogado.idUsuario,
+          situacao: { not: "CANCELADA" },
+        },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       reservas,
       total,
+      totalUsuarioLogado,
       pageSize,
       usuarioLogado,
     });

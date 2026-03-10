@@ -35,6 +35,7 @@ model Sala {
   mapa               String
   limiteHorasReserva Int
   ativa              Boolean @default(true)
+  exigeProjeto       Boolean @default(true)
   idUsuarioCriador   Int
 
   criador Usuario  @relation(fields: [idUsuarioCriador], references: [idUsuario])

@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Sobre from "@/components/sobre";
 import Relatorios from "@/components/relatorios";
-import Footer from "@/components/Footer"; 
+import Footer from "@/components/Footer";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
@@ -26,8 +26,7 @@ export default function Home() {
             transition={{ duration: 0.6 }}
             className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-gray-900 leading-tight mb-6"
           >
-            O que é o{" "}
-            <span className="text-[#C76E88] drop-shadow-sm">Mambee</span>{" "}
+            O que é o <span className="text-[#C76E88] drop-shadow-sm">Mambee</span>{" "}
             <span className="text-[#4B4B4B]">Space?</span>
           </motion.h1>
 
@@ -38,14 +37,11 @@ export default function Home() {
             className="text-gray-700 text-lg sm:text-xl leading-relaxed text-justify"
           >
             O <strong>Mambee Space</strong> é um sistema online inovador para o{" "}
-            <strong>agendamento de salas e espaços</strong>. A primeira unidade
-            a utilizá-lo é a <strong>Mambee</strong> — Fábrica e Escola de
-            Software do <strong>Instituto Federal do Piauí (IFPI)</strong>.
-            Desenvolvido com foco em praticidade e transparência, o sistema
-            permite visualizar espaços disponíveis, realizar e cancelar reservas
-            e gerar relatórios completos. Tudo isso de forma{" "}
-            <strong>simples, rápida e segura</strong>, proporcionando um
-            ambiente ideal para estudos, reuniões e projetos colaborativos.
+            <strong>agendamento de salas e espaços</strong>. A primeira unidade a utilizá-lo é a <strong>Mambee</strong>{" "}
+            — Fábrica e Escola de Software do <strong>Instituto Federal do Piauí (IFPI)</strong>. Desenvolvido com foco
+            em praticidade e transparência, o sistema permite visualizar espaços disponíveis, realizar e cancelar
+            reservas e gerar relatórios completos. Tudo isso de forma <strong>simples, rápida e segura</strong>,
+            proporcionando um ambiente ideal para estudos, reuniões e projetos colaborativos.
           </motion.p>
 
           <motion.button

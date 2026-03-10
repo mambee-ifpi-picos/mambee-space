@@ -5,7 +5,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server/supabaseServer
 export async function GET() {
   try {
     const projetos = await prisma.projeto.findMany({
-      orderBy: { idProjeto: "desc" },
+      orderBy: [
+        { situacao: "asc" },
+        { nome: "asc" },
+      ],
       include: {
         criador: { select: { nome: true } },
       },
@@ -14,10 +17,7 @@ export async function GET() {
     return NextResponse.json(projetos);
   } catch (error) {
     console.error("ERRO GET API:", error);
-    return NextResponse.json(
-      { success: false, error: "Erro ao buscar projetos no banco" },
-      { status: 500 },
-    );
+    return NextResponse.json({ success: false, error: "Erro ao buscar projetos no banco" }, { status: 500 });
   }
 }
 
@@ -29,10 +29,7 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: "Autenticação necessária" },
-        { status: 401 },
-      );
+      return NextResponse.json({ success: false, error: "Autenticação necessária" }, { status: 401 });
     }
 
     const usuarioBanco = await prisma.usuario.findUnique({
@@ -40,21 +37,29 @@ export async function POST(req: Request) {
     });
 
     if (!usuarioBanco || !usuarioBanco.admin) {
-      return NextResponse.json(
-        { success: false, error: "Acesso negado: Somente administradores" },
-        { status: 403 },
-      );
+      return NextResponse.json({ success: false, error: "Acesso negado: Somente administradores" }, { status: 403 });
     }
 
     const body = await req.json();
     const { nome, resumo, dataInicio, dataFim, situacao, anexos } = body;
 
+    const projetoExistente = await prisma.projeto.findFirst({
+      where: { nome: { equals: nome } },
+    });
+
+    if (projetoExistente) {
+      return NextResponse.json({ success: false, error: "Já existe um projeto com este nome." }, { status: 400 });
+    }
+
+    const startUTC = new Date(`${dataInicio}T12:00:00.000Z`);
+    const endUTC = dataFim ? new Date(`${dataFim}T12:00:00.000Z`) : null;
+
     const novoProjeto = await prisma.projeto.create({
       data: {
         nome,
         resumo,
-        dataInicio: new Date(dataInicio),
-        dataFim: dataFim ? new Date(dataFim) : null,
+        dataInicio: startUTC,
+        dataFim: endUTC,
         situacao,
         anexos: Array.isArray(anexos) ? anexos : [],
         idUsuarioCriador: usuarioBanco.idUsuario,
@@ -64,10 +69,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, projeto: novoProjeto });
   } catch (error) {
     console.error("ERRO POST API:", error);
-    return NextResponse.json(
-      { success: false, error: "Erro ao salvar projeto" },
-      { status: 500 },
-    );
+    return NextResponse.json({ success: false, error: "Erro ao salvar projeto" }, { status: 500 });
   }
 }
 
@@ -79,10 +81,7 @@ export async function PUT(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: "Auth required" },
-        { status: 401 },
-      );
+      return NextResponse.json({ success: false, error: "Auth required" }, { status: 401 });
     }
 
     const usuarioBanco = await prisma.usuario.findUnique({
@@ -90,23 +89,33 @@ export async function PUT(req: Request) {
     });
 
     if (!usuarioBanco || !usuarioBanco.admin) {
-      return NextResponse.json(
-        { success: false, error: "Forbidden" },
-        { status: 403 },
-      );
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
     }
 
     const body = await req.json();
-    const { idProjeto, nome, resumo, dataInicio, dataFim, situacao, anexos } =
-      body;
+    const { idProjeto, nome, resumo, dataInicio, dataFim, situacao, anexos } = body;
+
+    const projetoExistente = await prisma.projeto.findFirst({
+      where: {
+        nome: { equals: nome },
+        idProjeto: { not: Number(idProjeto) },
+      },
+    });
+
+    if (projetoExistente) {
+      return NextResponse.json({ success: false, error: "Já existe um outro projeto com este nome." }, { status: 400 });
+    }
+
+    const startUTC = new Date(`${dataInicio}T12:00:00.000Z`);
+    const endUTC = dataFim ? new Date(`${dataFim}T12:00:00.000Z`) : null;
 
     const projetoAtualizado = await prisma.projeto.update({
       where: { idProjeto: Number(idProjeto) },
       data: {
         nome,
         resumo,
-        dataInicio: new Date(dataInicio),
-        dataFim: dataFim ? new Date(dataFim) : null,
+        dataInicio: startUTC,
+        dataFim: endUTC,
         situacao,
         anexos: Array.isArray(anexos) ? anexos : [],
       },
@@ -115,10 +124,7 @@ export async function PUT(req: Request) {
     return NextResponse.json({ success: true, projeto: projetoAtualizado });
   } catch (error) {
     console.error("ERRO PUT API:", error);
-    return NextResponse.json(
-      { success: false, error: "Erro ao atualizar" },
-      { status: 500 },
-    );
+    return NextResponse.json({ success: false, error: "Erro ao atualizar" }, { status: 500 });
   }
 }
 
