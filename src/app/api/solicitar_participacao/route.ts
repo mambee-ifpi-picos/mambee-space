@@ -5,17 +5,25 @@ export async function POST(req: Request) {
   try {
     const { idProjeto, idUsuario, motivo, situacaoManual } = await req.json();
 
+    const projId = Number(idProjeto);
+    const userId = Number(idUsuario);
+
+    if (isNaN(projId) || isNaN(userId)) {
+      return NextResponse.json({ error: "IDs de projeto ou usuário inválidos" }, { status: 400 });
+    }
+
     const participacao = await prisma.participa.create({
       data: {
-        idProjeto: Number(idProjeto),
-        idUsuario: Number(idUsuario),
         motivo,
         situacao: situacaoManual || "Solicitado",
+        projeto: { connect: { idProjeto: projId } },
+        usuario: { connect: { idUsuario: userId } },
       },
     });
 
     return NextResponse.json(participacao);
   } catch (error) {
+    console.error("ERRO NO POST solicitar_participacao:", error);
     return NextResponse.json({ error: "Erro ao criar participação" }, { status: 500 });
   }
 }

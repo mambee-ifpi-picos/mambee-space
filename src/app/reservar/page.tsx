@@ -77,10 +77,11 @@ export default function ReservarEspaco() {
               if (Array.isArray(projetos)) {
                 const isParticipating = projetos.some(
                   (p: any) =>
-                    p.criador?.idUsuario === usuario.idUsuario ||
-                    p.participacoes?.some(
-                      (part: any) => part.idUsuario === usuario.idUsuario && part.situacao === "Autorizado",
-                    ),
+                    (p.criador?.idUsuario === usuario.idUsuario ||
+                      p.participacoes?.some(
+                        (part: any) => part.idUsuario === usuario.idUsuario && part.situacao === "Autorizado",
+                      )) &&
+                    p.situacao === "Ativo",
                 );
                 setPodeReservar(isParticipating);
               } else {

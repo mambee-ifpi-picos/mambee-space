@@ -1,28 +1,23 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { createSupabaseServerClient } from "@/lib/supabase/server/supabaseServer";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
-
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { searchParams } = new URL(req.url);
+    const idAuth = searchParams.get("idAuth");
 
-    if (!user) {
-      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    if (!idAuth) {
+      return NextResponse.json({ error: "idAuth não fornecido" }, { status: 400 });
     }
 
     const usuario = await prisma.usuario.findUnique({
-      where: { idAuth: user.id },
+      where: { idAuth },
       select: {
         idUsuario: true,
         nome: true,
         email: true,
-        foto: true,
         admin: true,
+        foto: true,
       },
     });
 
@@ -32,7 +27,7 @@ export async function GET() {
 
     return NextResponse.json(usuario);
   } catch (error) {
-    console.error("Erro ao buscar usuário:", error);
+    console.error("Erro em /api/usuarios/me:", error);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
   }
 }

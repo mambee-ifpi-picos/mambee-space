@@ -78,7 +78,7 @@ export default function DetalhesProjeto() {
         data: { session },
       } = await supabase.auth.getSession();
       if (session?.user) {
-        const resUsuario = await fetch("/api/usuarios/me");
+        const resUsuario = await fetch(`/api/usuarios/me?idAuth=${session.user.id}`);
         if (resUsuario.ok) setUsuario(await resUsuario.json());
       }
     } catch (error) {
@@ -94,19 +94,22 @@ export default function DetalhesProjeto() {
 
   const processarAcaoAdmin = async (acao: "entrar" | "sair" | "remover", idUsuarioRemover?: number) => {
     try {
+      if (!usuario?.idUsuario) return showToast("Usuário não identificado", "error");
+
       if (acao === "entrar") {
         await fetch("/api/solicitar_participacao", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             idProjeto,
-            idUsuario: usuario?.idUsuario,
+            idUsuario: usuario.idUsuario,
             motivo: "Acesso direto Admin",
             situacaoManual: "Autorizado",
           }),
         });
       } else {
-        const idAlvo = acao === "remover" ? idUsuarioRemover : usuario?.idUsuario;
+        const idAlvo = acao === "remover" ? idUsuarioRemover : usuario.idUsuario;
+        if (!idAlvo) return showToast("Usuário alvo não identificado", "error");
         await fetch(`/api/solicitar_participacao?idProjeto=${idProjeto}&idUsuario=${idAlvo}`, { method: "DELETE" });
       }
       showToast("Sucesso!");
@@ -145,13 +148,14 @@ export default function DetalhesProjeto() {
 
   const enviarSolicitacao = async () => {
     if (!motivoSolicitacao.trim()) return showToast("Diga o motivo!", "error");
+    if (!usuario?.idUsuario) return showToast("Você precisa estar logado!", "error");
     try {
       const res = await fetch("/api/solicitar_participacao", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           idProjeto,
-          idUsuario: usuario?.idUsuario,
+          idUsuario: usuario.idUsuario,
           motivo: motivoSolicitacao,
         }),
       });

@@ -131,18 +131,22 @@ export const POST = Auth(async (request: NextRequest, _user: User | null) => {
 
     if (espacoInfo.sala.exigeProjeto && !usuarioReal.admin) {
       const isCreator = await prisma.projeto.findFirst({
-        where: { idUsuarioCriador: usuarioReal.idUsuario, situacao: { not: "Inativo" } },
+        where: { idUsuarioCriador: usuarioReal.idUsuario, situacao: "Ativo" },
       });
 
       const participacao = await prisma.participa.findFirst({
-        where: { idUsuario: usuarioReal.idUsuario, situacao: "Autorizado" },
+        where: {
+          idUsuario: usuarioReal.idUsuario,
+          situacao: "Autorizado",
+          projeto: { situacao: "Ativo" },
+        },
       });
 
       if (!isCreator && !participacao) {
         return NextResponse.json(
           {
             error:
-              "Acesso negado: Você precisa estar participando de um projeto aprovado para fazer reservas nesta sala.",
+              "Acesso negado: Você precisa estar participando de um projeto ATIVO e aprovado para fazer reservas nesta sala.",
           },
           { status: 403 },
         );

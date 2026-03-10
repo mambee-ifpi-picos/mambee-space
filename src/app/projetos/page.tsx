@@ -5,6 +5,7 @@ import { Inria_Serif } from "next/font/google";
 import { supabase } from "@/lib/supabase/browser/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Bell } from "lucide-react";
 
 const inriaSerif700 = Inria_Serif({ subsets: ["latin"], weight: ["700"] });
 
@@ -206,7 +207,7 @@ export default function ListaProjetos() {
                     onClick={() => setMostrarNotificacoes(!mostrarNotificacoes)}
                     className="relative p-3 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition transform hover:scale-105 shadow-sm"
                   >
-                    <span className="text-xl">🔔</span>
+                    <Bell size={20} className="text-gray-600" />
                     {notificacoes.length > 0 && (
                       <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-bounce shadow-sm">
                         {notificacoes.length}
@@ -218,7 +219,7 @@ export default function ListaProjetos() {
                     <div className="absolute top-14 right-0 w-80 bg-white border border-gray-200 shadow-2xl rounded-xl z-50 overflow-hidden transform origin-top-right transition-all">
                       <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                         <h3 className="font-bold text-gray-800">Notificações</h3>
-                        <span className="text-xs font-medium text-gray-500">{notificacoes.length} unread</span>
+                        <span className="text-xs font-medium text-gray-500">{notificacoes.length} não lidas</span>
                       </div>
                       <div className="max-h-[300px] overflow-y-auto">
                         {notificacoes.length === 0 ? (
@@ -269,8 +270,8 @@ export default function ListaProjetos() {
             </p>
 
             {/* Ações: Busca e Novo Projeto */}
-            <div className="flex flex-col md:flex-row items-center gap-4 mt-2">
-              <div className="relative group flex-1 w-full max-w-2xl">
+            <div className="flex flex-row flex-wrap items-center gap-3 mt-2">
+              <div className="relative group flex-1 min-w-[280px] max-w-2xl">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-teal-500 transition-colors">
                   🔍
                 </span>
@@ -286,7 +287,7 @@ export default function ListaProjetos() {
               {isAdmin && (
                 <Link
                   href="/cadastro_projetos"
-                  className="w-full md:w-auto px-8 py-3.5 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-bold rounded-2xl hover:shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                  className="px-6 py-3.5 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-bold rounded-2xl hover:shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-sm"
                 >
                   <span className="text-xl">+</span>
                   <span>Novo Projeto</span>
@@ -297,7 +298,7 @@ export default function ListaProjetos() {
                 <button
                   type="button"
                   onClick={fazerLogin}
-                  className="w-full md:w-auto px-8 py-3.5 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-bold rounded-2xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  className="px-6 py-3.5 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-bold rounded-2xl hover:shadow-lg transition-all flex items-center justify-center gap-2 shadow-sm"
                 >
                   <span>🔐</span>
                   <span>Fazer Login</span>
