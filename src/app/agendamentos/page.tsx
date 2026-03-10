@@ -26,7 +26,7 @@ type RelatorioItem = {
   Espaco?: EspacoInfo;
 };
 
-// --- Funções de Formatação ---
+
 function formatarHora(dataIso: string) {
   if (!dataIso) return "--:--";
   try {

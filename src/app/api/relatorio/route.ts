@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server/supabaseServer
 
 export const dynamic = 'force-dynamic';
 
-// Função auxiliar para pegar valor ignorando maiúsculas/minúsculas nas propriedades
+
 function pegarValor(obj: any, chavesPossiveis: string[]) {
   if (!obj) return null;
   for (const chave of chavesPossiveis) {
@@ -22,10 +22,10 @@ function pegarValor(obj: any, chavesPossiveis: string[]) {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    // Voltamos a usar o cliente do servidor correto
+    
     const supabase = await createSupabaseServerClient();
 
-    // Filtros
+    
     const filtroSala = (searchParams.get("sala") ?? "").trim().toLowerCase();
     const filtroEspaco = (searchParams.get("espaco") ?? "").trim().toLowerCase();
     const filtroUsuario = (searchParams.get("usuario") ?? "").trim().toLowerCase();
@@ -38,9 +38,9 @@ export async function GET(req: Request) {
 
     console.log("--- Iniciando busca Relatório ---");
 
-    // 1. BUSCA RESERVAS (Usando "Reserva" com R Maiúsculo conforme o erro indicou)
+    
     const { data: reservasData, error: errRes } = await supabase
-      .from("Reserva") // <--- NOME EXATO DO BANCO
+      .from("Reserva") 
       .select("*")
       .neq("situacao", "CANCELADA")
       .order("horaInicio", { ascending: true });
@@ -50,30 +50,30 @@ export async function GET(req: Request) {
       throw new Error(`Erro no banco (Reserva): ${errRes.message}`);
     }
 
-    // 2. BUSCA DADOS AUXILIARES (Usando Maiúsculas também)
+    
     const [resUsuarios, resEspacos, resSalas] = await Promise.all([
-      supabase.from("Usuario").select("*"), // <--- Usuario
-      supabase.from("Espaco").select("*"),  // <--- Espaco
-      supabase.from("Sala").select("*")     // <--- Sala
+      supabase.from("Usuario").select("*"), 
+      supabase.from("Espaco").select("*"),  
+      supabase.from("Sala").select("*")     
     ]);
 
     const usuarios = resUsuarios.data ?? [];
     const espacos = resEspacos.data ?? [];
     const salas = resSalas.data ?? [];
 
-    // 3. MAPEAMENTO MANUAL
+    
     const reservasMapeadas = (reservasData ?? []).map((r: any) => {
-      // Tenta achar ID do Criador
+      
       const idCriadorRaw = pegarValor(r, ["idUsuarioCriador", "idusuariocriador", "id_usuario_criador", "usuario_id", "idUsuario"]);
       const idCriadorString = String(idCriadorRaw);
 
-      // Busca Usuário na lista
+      
       let usuarioReal = usuarios.find((u: any) => {
         const idUser = pegarValor(u, ["idUsuario", "idusuario", "id_usuario", "id"]);
         return String(idUser) === idCriadorString;
       });
       
-      // Fallback via idAuth
+      
       if (!usuarioReal) {
         const idAuthReserva = pegarValor(r, ["idAuth", "id_auth"]);
         if (idAuthReserva) {
@@ -81,18 +81,18 @@ export async function GET(req: Request) {
         }
       }
 
-      // Tenta achar Espaço
+      
       const idEspacoResRaw = pegarValor(r, ["idEspacoReservado", "id_espaco_reservado", "idespacoreservado", "espaco_id"]);
       const espaco = espacos.find((e: any) => String(pegarValor(e, ["idEspaco", "idespaco", "id"])) === String(idEspacoResRaw));
 
-      // Tenta achar Sala
+      
       let sala = null;
       if (espaco) {
         const idSalaPertence = pegarValor(espaco, ["idSalaPertence", "idsalapertence", "sala_id", "id_sala"]);
         sala = salas.find((s: any) => String(pegarValor(s, ["idSala", "idsala", "id"])) === String(idSalaPertence));
       }
 
-      // Pega valores seguros
+      
       const nomeUsuario = usuarioReal ? (pegarValor(usuarioReal, ["nome", "Nome"]) || "Sem Nome") : "Desconhecido";
       const fotoUsuario = usuarioReal ? (pegarValor(usuarioReal, ["foto", "avatar_url"]) || null) : null;
       const nomeSala = sala ? (pegarValor(sala, ["nomeSala", "nomesala", "nome"]) || "") : "";

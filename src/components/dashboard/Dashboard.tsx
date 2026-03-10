@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/a11y/useAriaPropsSupportedByRole: <explanation> */
+
 "use client";
 
 import { TopUsuario } from "@/utils/tipos";
@@ -6,10 +6,10 @@ import { useEffect, useState } from "react";
 import { LoadingError } from "./LoadingError";
 import { CardTotalReservas } from "./CardTotalReservas";
 import { CardInfoCinza } from "./CardInfoCinza";
-//import { CardUsoEspacos } from "./CardUsoEspacos";
+
 import { GraficoHorarios } from "./GraficoHorarios";
-//import { GraficoFrequencia } from "./GraficoFrequencia";
-//import { CardInatividade } from "./CardMinhasReservas";
+
+
 import { TopFrequentadores } from "./TopFrequentadores";
 
 type DashboardData = {
@@ -82,7 +82,7 @@ export default function Dashboard() {
 
         <CardInfoCinza />
 
-        {/* <CardUsoEspacos data={espacosUtilizados} /> */}
+        {}
 
         <GraficoHorarios periodo="manha" data={manhaData} />
 

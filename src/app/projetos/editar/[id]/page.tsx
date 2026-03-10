@@ -39,7 +39,7 @@ export default function EditarProjeto() {
     );
   }, []);
 
-  // CARREGAR DADOS ATUAIS
+  
   useEffect(() => {
     async function carregarProjeto() {
       try {
@@ -51,7 +51,7 @@ export default function EditarProjeto() {
           setNome(p.nome);
           setResumo(p.resumo);
           setSituacao(p.situacao);
-          // O split("T")[0] é essencial pro input tipo date entender o valor
+          
           setDataInicio(p.dataInicio ? p.dataInicio.split("T")[0] : "");
           setDataFim(p.dataFim ? p.dataFim.split("T")[0] : "");
           setAnexosExistentes(p.anexos || []);
@@ -108,7 +108,7 @@ export default function EditarProjeto() {
         nome,
         resumo,
         dataInicio,
-        dataFim: dataFim || null, // Se tiver vazio, vai nulo pro banco
+        dataFim: dataFim || null, 
         situacao,
         anexos: todosAnexos,
       };
@@ -123,10 +123,10 @@ export default function EditarProjeto() {
       if (res.ok) {
         showToast("Projeto atualizado!", "success");
 
-        // O PULO DO GATO: Forçamos o refresh e o redirecionamento
+        
         setTimeout(() => {
           router.push(`/projetos/${idProjeto}`);
-          router.refresh(); // Garante que o Next busque os dados novos
+          router.refresh(); 
         }, 500);
       } else {
         showToast("Erro ao salvar alterações", "error");
@@ -229,7 +229,7 @@ export default function EditarProjeto() {
             />
           </div>
 
-          {/* ANEXOS */}
+          {}
           <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-4">
             <p className="font-bold text-gray-700 border-b pb-2 text-xs uppercase tracking-widest">
               📁 Gerenciar Anexos

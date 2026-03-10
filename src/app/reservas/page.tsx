@@ -325,16 +325,16 @@ export default function ReservasPage() {
   const podeCancelarReserva = (reserva: Reserva) => {
     if (!usuarioLogado) return false;
 
-    // Se já estiver cancelada, ninguém cancela
+    
     if (reserva.situacao === "CANCELADA") return false;
 
     const agora = new Date();
     const fim = new Date(reserva.horaFim);
 
-    // Admin pode cancelar mesmo se já passou do horário
+    
     if (usuarioLogado.admin && fim > agora) return true;
 
-    // Usuário comum não pode cancelar reserva finalizada
+    
     if (fim < agora) return false;
 
     const reservaCriadorId = reserva.idUsuarioCriador ?? reserva.criador?.idUsuario ?? reserva.idCriador;

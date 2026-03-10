@@ -23,7 +23,7 @@ export async function createSupabaseServerClient() {
           try {
             cookieStore.set({ name, value: "", ...options });
           } catch {
-            // ignore errors when removing cookies in read-only contexts
+            
           }
         },
       },

@@ -15,7 +15,7 @@ export async function GET() {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    // Busca usuário pelo idAuth do Supabase
+    
     const usuario = await prisma.usuario.findUnique({
       where: { idAuth: user.id },
       select: {

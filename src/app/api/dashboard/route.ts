@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { prisma } from "@/lib/prisma";
 import { Auth } from "@/lib/supabase/server/Auth";
 import type { User } from "@supabase/supabase-js";
@@ -39,14 +39,14 @@ export const GET = Auth(
       const firstDay = new Date(Date.UTC(year, month - 1, 1));
       const lastDay = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
 
-      // 1. Verificar conexão com banco
+      
       try {
         await prisma.$queryRaw`SELECT 1`;
       } catch {
         return NextResponse.json({ error: "Servidor de banco de dados indisponível" }, { status: 503 });
       }
 
-      // 2. Buscar usuário logado
+      
       const usuario = await prisma.usuario.findFirst({
         where: {
           OR: [{ email: user.email }, { idAuth: user.id }],
@@ -62,7 +62,7 @@ export const GET = Auth(
         return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
       }
 
-      // 3. Dados do usuário
+      
       const [totalReservasUsuario, reservasMesUsuario, reservasSemanaUsuario] = await Promise.all([
         prisma.reserva.count({
           where: { idUsuarioCriador: usuario.idUsuario },
@@ -85,7 +85,7 @@ export const GET = Auth(
         }),
       ]);
 
-      // 4. Dados gerais
+      
       let totalReservasGeral = 0;
       let reservasPorEspaco: CountGroup[] = [];
       let reservasMes: CountUser[] = [];
@@ -122,7 +122,7 @@ export const GET = Auth(
         }),
       ]);
 
-      // 5. Espaço mais utilizado
+      
       let espacoMaisUtilizado = "Nenhum";
       if (reservasPorEspaco.length > 0) {
         const maisUsado = reservasPorEspaco.sort((a, b) => b._count.idReserva - a._count.idReserva)[0];
@@ -134,11 +134,11 @@ export const GET = Auth(
         espacoMaisUtilizado = espacoInfo?.nome ?? "Desconhecido";
       }
 
-      // 6. Tops
+      
       const topMes = await processarTopUsuarios(reservasMes);
       const topSemana = await processarTopUsuarios(reservasSemana);
 
-      // 7. Uso dos espaços
+      
       const [totalEspacos, espacosComReservasMes, espacosComReservasSemana, espacosComReservasHoje] = await Promise.all(
         [
           prisma.espaco.count(),
@@ -163,7 +163,7 @@ export const GET = Auth(
         ],
       );
 
-      // 8. Frequência por dia
+      
       const frequenciaDiasMap: Record<string, number> = {};
       const dias = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -182,7 +182,7 @@ export const GET = Auth(
 });
 
 
-      // 9. Horários
+      
       const horariosManha = Array(6).fill(0);
       const horariosTarde = Array(11).fill(0);
 
@@ -205,7 +205,7 @@ export const GET = Auth(
         if (hora >= 13 && hora < 24) horariosTarde[hora - 13] = total;
       });
 
-      // 10. INATIVIDADE (CORRETA)
+      
       const [totalUsuarios, usuariosComReserva] = await Promise.all([
         prisma.usuario.count(),
         prisma.reserva.findMany({
@@ -216,7 +216,7 @@ export const GET = Auth(
 
       const totalInatividade = Math.max(totalUsuarios - usuariosComReserva.length, 0);
 
-      // 11. Percentuais
+      
       const espacosUtilizados = {
         mensal: totalEspacos ? Math.round((espacosComReservasMes.length / totalEspacos) * 100) : 0,
         semanal: totalEspacos ? Math.round((espacosComReservasSemana.length / totalEspacos) * 100) : 0,

@@ -27,7 +27,7 @@ export async function GET(
                   select: { idUsuario: true, nome: true, foto: true },
                 },
               },
-              orderBy: { idParticipa: "desc" }, // Mostra os pedidos mais recentes primeiro
+              orderBy: { idParticipa: "desc" }, 
             }
           : false,
       },
@@ -39,7 +39,7 @@ export async function GET(
         { status: 404 },
       );
 
-    // Formata datas para evitar erro de serialização no Next.js
+    
     const projetoFormatado = {
       ...projeto,
       dataInicio: projeto.dataInicio.toISOString(),
@@ -71,7 +71,7 @@ export async function PATCH(
         situacao,
         dataInicio: new Date(dataInicio),
         dataFim: dataFim ? new Date(dataFim) : null,
-        anexos, // O Prisma já entende que é uma lista de strings
+        anexos, 
       },
     });
     return NextResponse.json(projetoAtualizado);

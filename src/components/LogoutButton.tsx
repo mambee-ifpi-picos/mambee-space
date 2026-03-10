@@ -12,7 +12,7 @@ export default function LogoutButton() {
       console.error("Erro ao sair:", error.message);
       return;
     }
-    router.replace("/login"); // redirect after logout
+    router.replace("/login"); 
   }
 
   return (

@@ -35,7 +35,7 @@ export default function LoginPage() {
 
           <h1 className="text-4xl font-semibold text-center text-gray-800 mb-12">Entrar no sistema</h1>
 
-          {/* Google */}
+          {}
           <button
             type="button"
             onClick={handleGoogleLogin}
@@ -45,7 +45,7 @@ export default function LoginPage() {
             Entrar com Google
           </button>
 
-          {/* Apple */}
+          {}
           <button
             type="button"
             onClick={handleAppleLogin}

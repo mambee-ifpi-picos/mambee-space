@@ -120,7 +120,7 @@ export const POST = Auth(async (request: NextRequest, _user: User | null) => {
 
     if (!usuarioReal) return NextResponse.json({ error: "Erro: Usuário não encontrado." }, { status: 404 });
 
-    // Verificar se o usuário participa de algum projeto aprovado
+    
     const participacao = await prisma.participa.findFirst({
       where: {
         idUsuario: usuarioReal.idUsuario,

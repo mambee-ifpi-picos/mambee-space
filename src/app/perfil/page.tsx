@@ -151,7 +151,7 @@ export default function ProfilePage() {
         finalAvatarUrl = publicUrl;
       }
 
-      // Atualiza AUTH
+      
       const { error: updateAuth } = await supabase.auth.updateUser({
         data: {
           full_name: nome,
@@ -161,7 +161,7 @@ export default function ProfilePage() {
 
       if (updateAuth) throw updateAuth;
 
-      // Atualiza BANCO
+      
       await supabase
         .from("Usuario")
         .update({

@@ -32,7 +32,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    // 2. Listen for changes (this handles logins/logouts)
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       handleAuth(session);
     });

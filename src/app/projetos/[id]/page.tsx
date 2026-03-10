@@ -48,7 +48,7 @@ export default function DetalhesProjeto() {
   );
   const [loading, setLoading] = useState(true);
 
-  // Estados dos Modais
+  
   const [modalSolicitacao, setModalSolicitacao] = useState(false);
   const [motivoSolicitacao, setMotivoSolicitacao] = useState("");
   const [modalDecisao, setModalDecisao] = useState(false);
@@ -196,7 +196,7 @@ export default function DetalhesProjeto() {
     (p) => p.usuario?.idUsuario === usuario?.idUsuario,
   );
 
-  // REGRA DE OURO: Admin ou Membro Autorizado
+  
   const isMembroAutorizado =
     usuario?.admin || minhaPart?.situacao === "Autorizado";
 
@@ -214,7 +214,7 @@ export default function DetalhesProjeto() {
         </div>
       )}
 
-      {/* MODAL SOLICITAÇÃO (USUÁRIO) */}
+      {}
       {modalSolicitacao && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl border border-gray-200">
@@ -248,7 +248,7 @@ export default function DetalhesProjeto() {
         </div>
       )}
 
-      {/* MODAL DECISÃO (ADMIN) */}
+      {}
       {modalDecisao && solicitacaoAlvo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-xl w-full max-w-md p-6 text-gray-900 border shadow-2xl">
@@ -334,7 +334,7 @@ export default function DetalhesProjeto() {
               </p>
 
               <div className="mt-8 pt-8 border-t space-y-8 border-gray-200">
-                {/* EQUIPE (PÚBLICO) */}
+                {}
                 <div>
                   <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-6">
                     Equipe do Projeto
@@ -380,7 +380,7 @@ export default function DetalhesProjeto() {
                   </div>
                 </div>
 
-                {/* ANEXOS (TRAVADO: SÓ ADMIN OU MEMBRO DO TIME) */}
+                {}
                 {isMembroAutorizado &&
                   projeto.anexos &&
                   projeto.anexos.length > 0 && (
@@ -412,7 +412,7 @@ export default function DetalhesProjeto() {
           </div>
 
           <div className="space-y-6">
-            {/* PAINEL ADMIN */}
+            {}
             {usuario?.admin && (
               <div className="bg-white rounded-3xl shadow-xl border-2 border-teal-500 p-6 space-y-6">
                 <div>
@@ -444,7 +444,7 @@ export default function DetalhesProjeto() {
                   )}
                 </div>
 
-                {/* FILA DE SOLICITAÇÕES */}
+                {}
                 {solicitacoesPendentes.length > 0 && (
                   <div className="pt-4 border-t border-teal-100">
                     <h5 className="text-[10px] font-black text-gray-500 uppercase mb-4 text-center tracking-widest">
@@ -490,7 +490,7 @@ export default function DetalhesProjeto() {
               </div>
             )}
 
-            {/* STATUS DO USUÁRIO COMUM */}
+            {}
             {!usuario?.admin && (
               <div className="bg-white rounded-3xl shadow-lg border p-6 border-gray-300">
                 <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-4 border-b pb-2 tracking-widest">

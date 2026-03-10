@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// --- CRIAR SOLICITAÇÃO (OU ENTRADA DIRETA ADMIN) ---
+
 export async function POST(req: Request) {
   try {
     const { idProjeto, idUsuario, motivo, situacaoManual } = await req.json();
@@ -24,8 +24,8 @@ export async function POST(req: Request) {
   }
 }
 
-// --- ATUALIZAR STATUS (APROVAR OU NEGAR) ---
-// Yuri, esse é o método que faltava pra o botão de aceitar funcionar!
+
+
 export async function PUT(req: Request) {
   try {
     const { idParticipa, situacao, motivoSituacao } = await req.json();
@@ -48,7 +48,7 @@ export async function PUT(req: Request) {
   }
 }
 
-// --- REMOVER PARTICIPAÇÃO (ADMIN SAINDO OU REMOVENDO ALGUÉM) ---
+
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);

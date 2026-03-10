@@ -44,7 +44,7 @@ export default function ListaProjetos() {
     [],
   );
 
-  // 1. Verificar apenas se existe sessão
+  
   useEffect(() => {
     const verificarAutenticacao = async () => {
       setLoadingAuth(true);
@@ -66,7 +66,7 @@ export default function ListaProjetos() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 2. Carregar projetos
+  
   useEffect(() => {
     const carregarProjetos = async () => {
       setLoading(true);
@@ -99,7 +99,7 @@ export default function ListaProjetos() {
 
   return (
     <>
-      {/* TOAST */}
+      {}
       {toast.visible && (
         <div
           className={`fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-md shadow-lg z-[100] border ${
@@ -155,7 +155,7 @@ export default function ListaProjetos() {
           </div>
         </div>
 
-        {/* LISTA DE PROJETOS */}
+        {}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[1, 2, 3, 4, 5, 6].map((i) => (

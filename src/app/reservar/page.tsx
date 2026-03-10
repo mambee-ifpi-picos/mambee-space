@@ -228,7 +228,7 @@ export default function ReservarEspaco() {
 
       <div className="flex justify-center items-start mt-5 pb-10 w-full px-4">
         <div className="bg-white shadow-md rounded-xl w-full max-w-6xl border border-gray-300 flex flex-col lg:flex-row overflow-hidden">
-          {/* ESQUERDA */}
+          {}
           <div className="w-full lg:w-[35%] p-6 border-b lg:border-b-0 lg:border-r border-gray-300">
             <div className="mb-6">
               <h1 className={`${inriaSerif700.className} text-3xl text-gray-900`}>RESERVAR ESPAÇO</h1>
@@ -339,7 +339,7 @@ export default function ReservarEspaco() {
             </form>
           </div>
 
-          {/* DIREITA - MAPA */}
+          {}
           <div className="flex-1 p-6 bg-gray-50 flex flex-col gap-6">
             <div className="w-full h-[300px] bg-white border border-gray-300 rounded relative flex items-center justify-center overflow-hidden">
               {carregandoMapa ? (
@@ -360,7 +360,7 @@ export default function ReservarEspaco() {
               )}
             </div>
 
-            {/* CRONOGRAMA */}
+            {}
             <div className="flex-1 border border-gray-300 rounded p-4 bg-white overflow-y-auto custom-scrollbar min-h-[250px]">
               <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
                 <h3 className={`${inriaSerif700.className} text-gray-800 text-lg`}>Cronograma</h3>
@@ -397,7 +397,7 @@ export default function ReservarEspaco() {
                         key={res.idReserva}
                         className="bg-white border-l-4 border-teal-500 p-2 shadow-sm text-sm flex gap-3 items-start hover:bg-gray-50 transition"
                       >
-                        {/* CORREÇÃO 2: shrink-0 */}
+                        {}
                         <div className="shrink-0">
                           {res.criador.foto ? (
                             <Image

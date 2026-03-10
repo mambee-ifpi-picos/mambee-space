@@ -156,7 +156,7 @@ export default function GerenciarProjetos() {
         anexos: urlsGeradas,
       };
 
-      // FIX: Ajustado o endpoint para bater na pasta correta
+      
       const res = await fetch("/api/cadastro_projetos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -192,7 +192,7 @@ export default function GerenciarProjetos() {
 
       <div className="flex justify-center items-start mt-5 pb-10 w-full px-4">
         <div className="bg-white shadow-md rounded-xl w-full max-w-6xl border border-gray-300 flex flex-col lg:flex-row overflow-hidden">
-          {/* Form */}
+          {}
           <div className="w-full lg:w-[40%] p-8 border-b lg:border-b-0 lg:border-r border-gray-300 bg-white">
             <h1
               className={`${inriaSerif700.className} text-3xl text-gray-900 uppercase mb-6`}
@@ -319,7 +319,7 @@ export default function GerenciarProjetos() {
             </form>
           </div>
 
-          {/* Lista Simples */}
+          {}
           <div className="flex-1 bg-gray-100 flex flex-col overflow-hidden">
             <div className="p-6 border-b border-gray-200 bg-white shadow-sm z-10">
               <h3
