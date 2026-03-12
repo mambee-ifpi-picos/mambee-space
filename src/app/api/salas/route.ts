@@ -118,7 +118,6 @@ export async function POST(req: Request) {
           mapa: mapa.trim(),
           limiteHorasReserva: Number(limiteHorasReserva),
           ativa,
-          exigeProjeto: true,
         })
         .eq("idSala", idSala);
 
@@ -264,7 +263,6 @@ export async function POST(req: Request) {
           mapa: mapa.trim(),
           limiteHorasReserva: Number(limiteHorasReserva),
           ativa,
-          exigeProjeto: true,
           idUsuarioCriador: userId,
         })
         .select()
