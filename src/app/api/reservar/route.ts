@@ -186,8 +186,8 @@ export const POST = Auth(async (request: NextRequest, _user: User | null) => {
     });
 
     return NextResponse.json(novaReserva, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
-    return NextResponse.json({ error: "Erro no servidor" }, { status: 500 });
+    return NextResponse.json({ error: `Erro no servidor: ${error?.message || String(error)}` }, { status: 500 });
   }
 });

@@ -66,10 +66,10 @@ export function Menu({ isOpen, isAdmin, onClose, mobileClose }: MenuProps) {
 
       <aside
         className={`
-          md:sticky top-0 left-0 z-50
-          w-64 h-screen
+          fixed md:sticky top-0 left-0 z-50
+          w-64 h-[100dvh] md:h-screen
           bg-[#f3f3f3] p-4 flex flex-col
-          transition-transform duration-300
+          transition-transform duration-300 overflow-y-auto
           ${isOpen ? "translate-x-0" : "-translate-x-full hidden"}
         `}
       >
