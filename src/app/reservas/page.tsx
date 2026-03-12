@@ -398,10 +398,8 @@ export default function ReservasPage() {
           </div>
         )}
         {!loading && usuarioLogado && (
-          <div className="bg-teal-50 border border-teal-100 px-4 py-2 rounded-lg shadow-sm">
-            <span className="text-sm font-medium text-teal-700">
-              Seu total de reservas: <span className="text-lg font-bold">{totalUsuarioLogado}</span>
-            </span>
+          <div className="text-sm text-gray-600">
+            Seu total de reservas: <span className="font-medium">{totalUsuarioLogado}</span>
           </div>
         )}
       </div>

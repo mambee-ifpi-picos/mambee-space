@@ -95,7 +95,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { idSala, nomeSala, mapa, limiteHorasReserva, ativa, exigeProjeto, espacos } = await req.json();
+    const { idSala, nomeSala, mapa, limiteHorasReserva, ativa, espacos } = await req.json();
 
     if (!nomeSala || !mapa || !limiteHorasReserva)
       return NextResponse.json(
@@ -118,7 +118,7 @@ export async function POST(req: Request) {
           mapa: mapa.trim(),
           limiteHorasReserva: Number(limiteHorasReserva),
           ativa,
-          exigeProjeto: exigeProjeto ?? true,
+          exigeProjeto: true,
         })
         .eq("idSala", idSala);
 
@@ -264,7 +264,7 @@ export async function POST(req: Request) {
           mapa: mapa.trim(),
           limiteHorasReserva: Number(limiteHorasReserva),
           ativa,
-          exigeProjeto: exigeProjeto ?? true,
+          exigeProjeto: true,
           idUsuarioCriador: userId,
         })
         .select()

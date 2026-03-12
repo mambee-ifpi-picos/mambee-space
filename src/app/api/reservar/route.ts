@@ -129,11 +129,7 @@ export const POST = Auth(async (request: NextRequest, _user: User | null) => {
       return NextResponse.json({ error: "Espaço não encontrado." }, { status: 404 });
     }
 
-    if (espacoInfo.sala.exigeProjeto && !usuarioReal.admin) {
-      const isCreator = await prisma.projeto.findFirst({
-        where: { idUsuarioCriador: usuarioReal.idUsuario, situacao: "Ativo" },
-      });
-
+    if (!usuarioReal.admin) {
       const participacao = await prisma.participa.findFirst({
         where: {
           idUsuario: usuarioReal.idUsuario,
@@ -142,7 +138,7 @@ export const POST = Auth(async (request: NextRequest, _user: User | null) => {
         },
       });
 
-      if (!isCreator && !participacao) {
+      if (!participacao) {
         return NextResponse.json(
           {
             error:

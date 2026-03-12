@@ -34,7 +34,6 @@ export default function SalaEspacoPage() {
   const [mapa, setMapa] = useState<MapaPreview | null>(null);
   const [arrastando, setArrastando] = useState(false);
   const [situacao, setSituacao] = useState<"Ativa" | "Inativa">("Ativa");
-  const [exigeProjeto, setExigeProjeto] = useState(true);
   const [tempoReserva, setTempoReserva] = useState("");
   const [espaco, setEspaco] = useState("");
   const [espacos, setEspacos] = useState<string[]>([]);
@@ -177,7 +176,6 @@ export default function SalaEspacoPage() {
 
           setNomeSala(s.nomeSala);
           setSituacao(s.ativa ? "Ativa" : "Inativa");
-          setExigeProjeto(s.exigeProjeto ?? true);
           setTempoReserva(s.limiteHorasReserva?.toString() || "");
           setEspacos(s.Espaco?.map((e: Espaco) => e.codigoEspaco) || []);
 
@@ -243,7 +241,6 @@ export default function SalaEspacoPage() {
 
   const removerImagem = () => setMapa(null);
   const toggleSituacao = () => setSituacao(situacao === "Ativa" ? "Inativa" : "Ativa");
-  const toggleExigeProjeto = () => setExigeProjeto(!exigeProjeto);
 
   const adicionarEspaco = () => {
     if (!espaco.trim()) return;
@@ -341,7 +338,6 @@ export default function SalaEspacoPage() {
         mapa: string;
         limiteHorasReserva: number;
         ativa: boolean;
-        exigeProjeto: boolean;
         espacos: string[];
         idSala?: number;
         idUsuarioCriador?: number;
@@ -350,7 +346,6 @@ export default function SalaEspacoPage() {
         mapa: mapaUrl,
         limiteHorasReserva: limiteHoras,
         ativa: situacao === "Ativa",
-        exigeProjeto,
         espacos: espacos.filter((esp) => esp.trim() !== ""),
       };
 
@@ -598,43 +593,7 @@ export default function SalaEspacoPage() {
                   </p>
                 </div>
 
-                <div>
-                  <div className="text-gray-700 font-medium mb-2 text-sm md:text-base">
-                    Exigir Participação em Projeto:
-                  </div>
-                  <div className="flex items-center">
-                    <div
-                      role="switch"
-                      aria-checked={exigeProjeto}
-                      tabIndex={0}
-                      onClick={toggleExigeProjeto}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          toggleExigeProjeto();
-                        }
-                      }}
-                      className={`relative w-28 h-10 cursor-pointer rounded-full transition-all duration-300 ${
-                        exigeProjeto ? "bg-teal-500" : "bg-red-500"
-                      }`}
-                    >
-                      <div
-                        className={`absolute top-1 left-1 h-8 w-8 bg-white rounded-full shadow-md transition-all duration-300 ${
-                          exigeProjeto ? "translate-x-16" : "translate-x-0"
-                        }`}
-                      />
-                      <span className="absolute inset-0 flex items-center justify-center text-white font-semibold text-sm">
-                        {exigeProjeto ? "Sim" : "Não"}
-                      </span>
-                    </div>
-                    <span className="ml-3 text-gray-600 text-sm">
-                      {exigeProjeto ? "Obrigatório ter projeto ativo" : "Livre para todos reservarem"}
-                    </span>
-                  </div>
-                  <p className="text-gray-500 text-xs mt-2">
-                    Determina se a reserva nesta sala requer participação "Autorizada" em projeto ativo.
-                  </p>
-                </div>
+
 
                 <div className="relative">
                   <div className="text-gray-700 font-medium mb-2 text-sm md:text-base">Espaços:</div>
