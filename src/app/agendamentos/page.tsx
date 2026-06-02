@@ -31,7 +31,7 @@ function formatarHora(dataIso: string) {
   try {
     const data = new Date(dataIso);
     if (Number.isNaN(data.getTime())) return dataIso.split(/[ T]/)[1]?.substring(0, 5) ?? "";
-    return data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    return data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
   } catch {
     return "--:--";
   }
@@ -42,7 +42,7 @@ function formatarData(dataIso: string) {
   try {
     const data = new Date(dataIso);
     if (Number.isNaN(data.getTime())) return dataIso.split(/[ T]/)[0]?.split("-").reverse().join("/") ?? "";
-    return data.toLocaleDateString("pt-BR");
+    return data.toLocaleDateString("pt-BR", { timeZone: "UTC" });
   } catch {
     return "--/--/----";
   }

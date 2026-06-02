@@ -19,7 +19,9 @@ function formatarHora(dataIso: string) {
   try {
     const data = new Date(dataIso);
     if (Number.isNaN(data.getTime())) return dataIso.split(/[ T]/)[1]?.substring(0, 5) ?? "";
-    return data.getHours().toString().padStart(2, "0") + ":" + data.getMinutes().toString().padStart(2, "0");
+    const horas = data.getUTCHours().toString().padStart(2, "0");
+    const minutos = data.getUTCMinutes().toString().padStart(2, "0");
+    return `${horas}:${minutos}`;
   } catch {
     return "--:--";
   }
@@ -30,7 +32,7 @@ function formatarData(dataIso: string) {
   try {
     const data = new Date(dataIso);
     if (Number.isNaN(data.getTime())) return dataIso.split(/[ T]/)[0] ?? "";
-    return data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
   } catch {
     return "--/--";
   }
