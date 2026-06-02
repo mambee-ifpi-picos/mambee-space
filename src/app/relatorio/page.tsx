@@ -85,9 +85,11 @@ export default function RelatorioPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-4 md:p-8 font-serif text-gray-800">
+    <div className="min-h-screen bg-white p-4 md:p-8 font-sans text-gray-700">
       <div className="mb-6 md:mb-8">
-        <h1 className="text-3xl font-bold text-black uppercase tracking-wide text-center md:text-left">Relatório</h1>
+        <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-black uppercase tracking-tight text-center md:text-left">
+          Relatório
+        </h1>
       </div>
 
       {erro && (
@@ -123,7 +125,7 @@ export default function RelatorioPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
           <div>
-            <label className="block text-sm font-bold mb-1 text-gray-600">Início</label>
+            <label className="block text-sm font-bold mb-1 text-gray-600">Data Início</label>
             <input
               type="date"
               value={dataInicio}
@@ -132,7 +134,7 @@ export default function RelatorioPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-bold mb-1 text-gray-600">Fim</label>
+            <label className="block text-sm font-bold mb-1 text-gray-600">Data Fim</label>
             <input
               type="date"
               value={dataFim}

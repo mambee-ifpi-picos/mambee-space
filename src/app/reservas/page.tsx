@@ -8,6 +8,8 @@ type Espaco = {
   idSalaPertence: number;
   idEspaco?: number;
   id?: number;
+  sala?: { nomeSala: string } | null;
+  Sala?: { nomeSala: string } | null;
 };
 type Reserva = {
   idReserva: number;
@@ -18,6 +20,7 @@ type Reserva = {
   idUsuarioCriador?: number;
   idEspacoReservado?: number;
   Espaco?: Espaco | null;
+  espaco?: Espaco | null;
   criador?: { nome?: string; email?: string; idUsuario?: number } | null;
   idCriador?: number;
 };
@@ -70,9 +73,28 @@ function initialsFromNameOrEmail(name?: string | null, email?: string | null) {
   return "US";
 }
 
+function obterAgoraLocalAsUtc() {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(new Date());
+  const getVal = (type: string) => parts.find((p) => p.type === type)?.value;
+
+  return new Date(
+    `${getVal("year")}-${getVal("month")}-${getVal("day")}T${getVal("hour")}:${getVal("minute")}:${getVal("second")}.000Z`
+  );
+}
+
 function reservaJaFinalizada(reserva: Reserva) {
   const fim = new Date(reserva.horaFim);
-  const agora = new Date();
+  const agora = obterAgoraLocalAsUtc();
 
   return fim.getTime() <= agora.getTime();
 }
@@ -331,8 +353,7 @@ export default function ReservasPage() {
     if (reserva.situacao === "CANCELADA") return false;
 
     // Adjusting agora to match UTC stored times or correct browser TZ
-    // Usually using 'getTime' is safe if both are parsed locally identically.
-    const agora = new Date().getTime();
+    const agora = obterAgoraLocalAsUtc().getTime();
     const fim = new Date(reserva.horaFim).getTime();
 
     // Admin can cancel anything that hasn't finished yet
@@ -411,7 +432,7 @@ export default function ReservasPage() {
         </p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 auto-rows-[10rem] items-stretch">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
         {reservas.map((reserva) => {
           const creatorId =
             reserva.idUsuarioCriador ??
@@ -433,20 +454,22 @@ export default function ReservasPage() {
           const initials = initialsFromNameOrEmail(user?.nome ?? displayEmail, displayEmail);
 
           const podeCancelar = podeCancelarReserva(reserva);
+          const espacoObj = reserva.Espaco || reserva.espaco;
+          const salaObj = espacoObj?.Sala || espacoObj?.sala;
 
           return (
             <article
               key={reserva.idReserva}
-              className="flex rounded-xl shadow-sm bg-[#F5F5F5] overflow-hidden h-full relative group hover:shadow-md transition-shadow"
+              className="flex rounded-xl shadow-sm bg-[#F5F5F5] overflow-hidden relative group hover:shadow-md transition-shadow border border-gray-200"
             >
               {reservaJaFinalizada(reserva) && (
-                <span className="absolute top-2 right-2 text-xs bg-gray-300 text-gray-700 px-2 py-0.5 rounded z-10">
+                <span className="absolute top-2 right-2 text-[10px] font-bold uppercase bg-gray-300 text-gray-700 px-2 py-0.5 rounded z-10">
                   Finalizada
                 </span>
               )}
 
-              <div className="w-2 bg-teal-500" />
-              <div className="flex-1 px-4 py-3 flex flex-col justify-between h-full">
+              <div className="w-2 bg-teal-500 shrink-0" />
+              <div className="flex-1 px-4 py-3 flex flex-col justify-between min-h-[11rem]">
                 <div className="flex items-center gap-3 mb-2">
                   <div
                     style={{
@@ -479,89 +502,96 @@ export default function ReservasPage() {
                     )}
                   </div>
 
-                  <div className="flex flex-col text-sm text-gray-800">
-                    <span className="font-semibold leading-tight">{displayName}</span>
-                    {displayEmail && <span className="text-xs text-gray-500 leading-tight">{displayEmail}</span>}
+                  <div className="flex flex-col text-sm text-gray-800 overflow-hidden">
+                    <span className="font-semibold leading-tight truncate max-w-[150px]">{displayName}</span>
+                    {displayEmail && <span className="text-xs text-gray-500 leading-tight truncate max-w-[150px]">{displayEmail}</span>}
                   </div>
                 </div>
 
-                <p
-                  className="text-sm text-gray-800 mb-1 overflow-hidden"
-                  style={{
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                  }}
-                >
+                <p className="text-sm text-gray-800 mb-2 line-clamp-2 font-medium">
                   {reserva.motivo}
                 </p>
 
-                <p className="text-xs text-gray-600 mb-3">{formatarReservaHora(reserva.horaInicio, reserva.horaFim)}</p>
+                {/* Badges de Sala e Espaço */}
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {salaObj?.nomeSala ? (
+                    <span className="bg-teal-50 border border-teal-200 text-teal-700 text-[10px] font-bold px-2 py-0.5 rounded">
+                      {salaObj.nomeSala}
+                    </span>
+                  ) : null}
+                  <span className="bg-[#E0F2F1] border border-[#B2DFDB] text-[#00695C] text-[10px] font-bold px-2 py-0.5 rounded">
+                    Espaço {espacoObj?.codigoEspaco || "—"}
+                  </span>
+                </div>
 
-                {podeCancelar && (
-                  <div className="absolute bottom-2 right-2 flex gap-2">
-                    {new Date(reserva.horaInicio).getTime() <= new Date().getTime() &&
-                      new Date(reserva.horaFim).getTime() > new Date().getTime() && (
-                        <span className="px-2 py-1 text-xs text-white bg-blue-500 rounded font-medium shadow-sm animate-pulse flex items-center">
+                {/* Rodapé: Data/Hora e Ações (Empilhados: botão abaixo da hora e data) */}
+                <div className="flex flex-col gap-2 pt-2 border-t border-gray-200/60 mt-auto">
+                  <p className="text-xs text-gray-600 font-medium whitespace-nowrap">
+                    {formatarReservaHora(reserva.horaInicio, reserva.horaFim)}
+                  </p>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {reserva.situacao !== "CANCELADA" && (() => {
+                      const agoraMs = obterAgoraLocalAsUtc().getTime();
+                      return new Date(reserva.horaInicio).getTime() <= agoraMs &&
+                             new Date(reserva.horaFim).getTime() > agoraMs;
+                    })() && (
+                        <span className="px-2 py-0.5 text-[10px] text-white bg-blue-500 rounded font-semibold shadow-sm animate-pulse whitespace-nowrap">
                           Em Andamento
                         </span>
                       )}
-                    <button
-                      type="button"
-                      onClick={() => cancelarReserva(reserva.idReserva)}
-                      disabled={deletingId === reserva.idReserva || !podeCancelar}
-                      className={`
-                        px-3 py-1 text-xs font-medium rounded
-                        transition-all duration-200
-                        ${
-                          deletingId === reserva.idReserva
-                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                            : "bg-red-500 hover:bg-red-600 text-white shadow-sm"
-                        }
-                        flex items-center gap-1
-                      `}
-                      title="Cancelar esta reserva"
-                    >
-                      {deletingId === reserva.idReserva ? (
-                        <>
-                          <span className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
-                          Cancelando...
-                        </>
-                      ) : (
-                        <>
-                          <svg
-                            className="w-3 h-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                            aria-label="Ícone de cancelar"
-                          >
-                            <title>Cancelar</title>
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                          Cancelar Horário
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
 
-                {!podeCancelar && usuarioLogado && (
-                  <div className="absolute bottom-2 right-2">
-                    <span
-                      className="px-2 py-1 text-xs text-gray-500 bg-gray-100 rounded"
-                      title="Apenas o criador da reserva ou um administrador pode cancelar"
-                    >
-                      {reserva.situacao === "CANCELADA" ? "Reserva cancelada" : "Reserva não pode ser cancelada"}
-                    </span>
+                    {podeCancelar ? (
+                      <button
+                        type="button"
+                        onClick={() => cancelarReserva(reserva.idReserva)}
+                        disabled={deletingId === reserva.idReserva || !podeCancelar}
+                        className={`
+                          px-2 py-1 text-[10px] font-bold rounded
+                          transition-all duration-200
+                          ${
+                            deletingId === reserva.idReserva
+                              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                              : "bg-red-500 hover:bg-red-600 text-white shadow-sm"
+                          }
+                          flex items-center gap-1 whitespace-nowrap
+                        `}
+                        title="Cancelar esta reserva"
+                      >
+                        {deletingId === reserva.idReserva ? (
+                          <>
+                            <span className="animate-spin h-2.5 w-2.5 border-2 border-white border-t-transparent rounded-full"></span>
+                            ...
+                          </>
+                        ) : (
+                          <>
+                            <svg
+                              className="w-2.5 h-2.5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              xmlns="http://www.w3.org/2000/svg"
+                              aria-label="Ícone de cancelar"
+                            >
+                              <title>Cancelar</title>
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Cancelar
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      usuarioLogado && (
+                        <span
+                          className="px-2 py-0.5 text-[10px] text-gray-500 bg-gray-200/80 rounded whitespace-nowrap"
+                          title="Apenas o criador da reserva ou um administrador pode cancelar"
+                        >
+                          {reserva.situacao === "CANCELADA" ? "Cancelada" : "Bloqueada"}
+                        </span>
+                      )
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </article>
           );

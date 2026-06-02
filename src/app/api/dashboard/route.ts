@@ -61,11 +61,12 @@ export const GET = Auth(
 
       const [totalReservasUsuario, reservasMesUsuario, reservasSemanaUsuario] = await Promise.all([
         prisma.reserva.count({
-          where: { idUsuarioCriador: usuario.idUsuario },
+          where: { idUsuarioCriador: usuario.idUsuario, situacao: { not: "CANCELADA" } },
         }),
         prisma.reserva.count({
           where: {
             idUsuarioCriador: usuario.idUsuario,
+            situacao: { not: "CANCELADA" },
             horaInicio: { gte: firstDay },
             horaFim: { lte: lastDay },
           },
@@ -73,6 +74,7 @@ export const GET = Auth(
         prisma.reserva.count({
           where: {
             idUsuarioCriador: usuario.idUsuario,
+            situacao: { not: "CANCELADA" },
             horaInicio: {
               gte: now.startOf("week").toDate(),
               lt: now.endOf("week").toDate(),
@@ -136,11 +138,16 @@ export const GET = Auth(
           prisma.espaco.count(),
           prisma.reserva.groupBy({
             by: ["idEspacoReservado"],
-            where: { horaInicio: { gte: firstDay }, horaFim: { lte: lastDay } },
+            where: {
+              situacao: { not: "CANCELADA" },
+              horaInicio: { gte: firstDay },
+              horaFim: { lte: lastDay },
+            },
           }),
           prisma.reserva.groupBy({
             by: ["idEspacoReservado"],
             where: {
+              situacao: { not: "CANCELADA" },
               horaInicio: { gte: now.startOf("week").toDate() },
               horaFim: { lte: now.endOf("week").toDate() },
             },
@@ -148,6 +155,7 @@ export const GET = Auth(
           prisma.reserva.groupBy({
             by: ["idEspacoReservado"],
             where: {
+              situacao: { not: "CANCELADA" },
               horaInicio: { gte: now.startOf("day").toDate() },
               horaFim: { lt: now.add(1, "day").startOf("day").toDate() },
             },
@@ -197,6 +205,7 @@ export const GET = Auth(
       const [totalUsuarios, usuariosComReserva] = await Promise.all([
         prisma.usuario.count(),
         prisma.reserva.findMany({
+          where: { situacao: { not: "CANCELADA" } },
           select: { idUsuarioCriador: true },
           distinct: ["idUsuarioCriador"],
         }),

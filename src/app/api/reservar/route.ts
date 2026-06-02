@@ -83,13 +83,31 @@ export const POST = Auth(async (request: NextRequest, _user: User | null) => {
 
     if (!horaInicio || !horaFim) return NextResponse.json({ error: "Horários obrigatórios!" }, { status: 400 });
 
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(new Date());
+    const getVal = (type: string) => parts.find((p) => p.type === type)?.value;
+
+    const agora = new Date(
+      `${getVal("year")}-${getVal("month")}-${getVal("day")}T${getVal("hour")}:${getVal("minute")}:${getVal("second")}.000Z`
+    );
+
     const inicio = new Date(`${data}T${horaInicio}:00.000Z`);
     const fim = new Date(`${data}T${horaFim}:00.000Z`);
-    const hoje = new Date();
+    const hoje = new Date(agora);
     hoje.setUTCHours(0, 0, 0, 0);
     const diaReserva = new Date(`${data}T00:00:00.000Z`);
 
     if (diaReserva < hoje) return NextResponse.json({ error: "Data menor que a permitida." }, { status: 400 });
+    if (inicio < agora) return NextResponse.json({ error: "Não é possível reservar em horários passados." }, { status: 400 });
     if (inicio >= fim) return NextResponse.json({ error: "Hora final deve ser maior que a inicial." }, { status: 400 });
     if (!idUsuarioSupabase) return NextResponse.json({ error: "Usuário não identificado." }, { status: 401 });
 

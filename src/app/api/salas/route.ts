@@ -1,12 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server/supabaseServer";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { PostgrestError } from "@supabase/supabase-js";
-
-interface EspacoInsert {
-  codigoEspaco: string;
-  idSalaPertence: number;
-  idUsuarioCriador?: number;
-}
 
 interface UsuarioInfo {
   idUsuario: number;
@@ -17,27 +11,45 @@ interface UsuarioInfo {
 
 export async function GET(req: Request) {
   try {
-    const supabase = await createSupabaseServerClient();
     const url = new URL(req.url);
     const idSala = url.searchParams.get("id");
     const search = url.searchParams.get("search");
 
-    let data: any;
-    let error: PostgrestError | null = null;
-
     if (idSala) {
-      ({ data, error } = await supabase.from("Sala").select(`*, Espaco(*)`).eq("idSala", idSala).single());
+      const sala = await prisma.sala.findUnique({
+        where: { idSala: Number(idSala) },
+        include: { espacos: true },
+      });
 
-      return NextResponse.json({ success: true, salas: data ? [data] : [] });
+      const mappedSala = sala
+        ? {
+            ...sala,
+            Espaco: sala.espacos,
+            espacos: sala.espacos,
+          }
+        : null;
+
+      return NextResponse.json({ success: true, salas: mappedSala ? [mappedSala] : [] });
     } else {
-      let query = supabase.from("Sala").select(`*, Espaco(*)`);
-      if (search) query = query.ilike("nomeSala", `%${search}%`);
+      const salas = await prisma.sala.findMany({
+        where: search
+          ? {
+              nomeSala: {
+                contains: search,
+                mode: "insensitive",
+              },
+            }
+          : {},
+        include: { espacos: true },
+      });
 
-      ({ data, error } = await query);
+      const mappedSalas = salas.map((s: any) => ({
+        ...s,
+        Espaco: s.espacos,
+        espacos: s.espacos,
+      }));
 
-      if (error) return NextResponse.json({ success: false, error: "Erro ao carregar salas" }, { status: 400 });
-
-      return NextResponse.json({ success: true, salas: data || [] });
+      return NextResponse.json({ success: true, salas: mappedSalas });
     }
   } catch (e) {
     console.error(e);
@@ -59,15 +71,12 @@ export async function POST(req: Request) {
     let usuarioInfo: UsuarioInfo | null = null;
 
     try {
-      const { data: usuarioData, error: usuarioError } = await supabase
-        .from("Usuario")
-        .select("idUsuario, email, nome, admin")
-        .eq("email", user.email)
-        .maybeSingle();
+      const usuarioData = await prisma.usuario.findFirst({
+        where: { email: user.email ?? "" },
+        select: { idUsuario: true, email: true, nome: true, admin: true },
+      });
 
-      if (usuarioError) {
-        console.error("Erro ao buscar usuário:", usuarioError);
-      } else if (usuarioData) {
+      if (usuarioData) {
         usuarioInfo = {
           idUsuario: usuarioData.idUsuario,
           email: usuarioData.email,
@@ -111,20 +120,15 @@ export async function POST(req: Request) {
     if (idSala) {
       console.log("ATUALIZANDO SALA EXISTENTE");
 
-      const { error: updateError } = await supabase
-        .from("Sala")
-        .update({
+      await prisma.sala.update({
+        where: { idSala: Number(idSala) },
+        data: {
           nomeSala: nomeSala.trim(),
           mapa: mapa.trim(),
           limiteHorasReserva: Number(limiteHorasReserva),
           ativa,
-        })
-        .eq("idSala", idSala);
-
-      if (updateError) {
-        console.error("Erro ao atualizar sala:", updateError);
-        return NextResponse.json({ success: false, error: "Erro ao atualizar sala." }, { status: 400 });
-      }
+        },
+      });
 
       console.log("Sala atualizada com sucesso.");
 
@@ -132,119 +136,108 @@ export async function POST(req: Request) {
         console.log("Processando atualização de espaços...");
 
         try {
-          const { data: espacosExistentes, error: fetchError } = await supabase
-            .from("Espaco")
-            .select("idEspaco, codigoEspaco")
-            .eq("idSalaPertence", idSala);
+          const espacosExistentes = await prisma.espaco.findMany({
+            where: { idSalaPertence: Number(idSala) },
+            select: { idEspaco: true, codigoEspaco: true },
+          });
 
-          if (fetchError) {
-            console.error("Erro ao buscar espaços existentes:", fetchError);
-          } else {
-            console.log("Espaços existentes no banco:", espacosExistentes?.length || 0);
+          console.log("Espaços existentes no banco:", espacosExistentes?.length || 0);
 
-            const espacosComReservas: number[] = [];
+          const espacosComReservas: number[] = [];
 
-            if (espacosExistentes && espacosExistentes.length > 0) {
-              for (const espaco of espacosExistentes) {
-                const { data: reservas, error: reservasError } = await supabase
-                  .from("Reserva")
-                  .select("idReserva")
-                  .eq("idEspacoReservado", espaco.idEspaco)
-                  .limit(1);
-
-                if (!reservasError && reservas && reservas.length > 0) {
-                  espacosComReservas.push(espaco.idEspaco);
-                  console.log(
-                    `Espaço ${espaco.codigoEspaco} (ID: ${espaco.idEspaco}) tem reservas e NÃO pode ser deletado.`,
-                  );
-                }
-              }
-            }
-
-            console.log("Espaços com reservas (não podem ser deletados):", espacosComReservas.length);
-
-            const espacosParaManterIds = new Set(espacosComReservas);
-            const espacosParaDeletar =
-              espacosExistentes?.filter((esp) => !espacosParaManterIds.has(esp.idEspaco)) || [];
-
-            console.log("Espaços que podem ser deletados:", espacosParaDeletar.length);
-
-            if (espacosParaDeletar.length > 0) {
-              const idsParaDeletar = espacosParaDeletar.map((esp) => esp.idEspaco);
-              const { error: deleteError } = await supabase.from("Espaco").delete().in("idEspaco", idsParaDeletar);
-
-              if (deleteError) {
-                console.error("Erro ao deletar espaços:", deleteError);
-              } else {
-                console.log(`${idsParaDeletar.length} espaços deletados com sucesso.`);
-              }
-            }
-
-            const espacosParaManter = espacosExistentes?.filter((esp) => espacosParaManterIds.has(esp.idEspaco)) || [];
-
-            console.log(
-              "Espaços que serão mantidos (têm reservas):",
-              espacosParaManter.map((e) => e.codigoEspaco),
-            );
-
-            const codigosExistentes = new Set(espacosParaManter.map((e) => e.codigoEspaco));
-            const codigosNovosRecebidos = new Set(
-              Array.isArray(espacos)
-                ? espacos.map((c: string) => c?.toString().trim()).filter((c: string) => c !== "")
-                : [],
-            );
-
-            const espacosParaCriar = Array.from(codigosNovosRecebidos).filter(
-              (codigo: string) => !codigosExistentes.has(codigo),
-            );
-
-            console.log("Espaços novos para criar:", espacosParaCriar);
-
-            if (espacosParaCriar.length > 0) {
-              const novosEspacos: EspacoInsert[] = espacosParaCriar.map((codigo: string) => {
-                const espacoObj: EspacoInsert = {
-                  codigoEspaco: codigo,
-                  idSalaPertence: idSala,
-                };
-
-                if (userId !== null) {
-                  espacoObj.idUsuarioCriador = userId;
-                }
-
-                return espacoObj;
+          if (espacosExistentes && espacosExistentes.length > 0) {
+            for (const espaco of espacosExistentes) {
+              const countReservas = await prisma.reserva.count({
+                where: { idEspacoReservado: espaco.idEspaco },
               });
 
-              console.log("Dados para criação de novos espaços:", novosEspacos);
-
-              const { error: insertError } = await supabase.from("Espaco").insert(novosEspacos);
-
-              if (insertError) {
-                console.error("Erro ao criar novos espaços:", insertError);
-
-                const novosEspacosSemUsuario: EspacoInsert[] = espacosParaCriar.map((codigo: string) => ({
-                  codigoEspaco: codigo,
-                  idSalaPertence: idSala,
-                }));
-
-                const { error: insertError2 } = await supabase.from("Espaco").insert(novosEspacosSemUsuario);
-
-                if (insertError2) {
-                  console.error("Erro mesmo sem idUsuarioCriador:", insertError2);
-                } else {
-                  console.log("Espaços criados sem idUsuarioCriador.");
-                }
-              } else {
-                console.log(`${novosEspacos.length} novos espaços criados.`);
+              if (countReservas > 0) {
+                espacosComReservas.push(espaco.idEspaco);
+                console.log(
+                  `Espaço ${espaco.codigoEspaco} (ID: ${espaco.idEspaco}) tem reservas e NÃO pode ser deletado.`,
+                );
               }
             }
+          }
 
-            const codigosManterNaoNaLista = espacosParaManter
-              .filter((e) => !codigosNovosRecebidos.has(e.codigoEspaco))
-              .map((e) => e.codigoEspaco);
+          console.log("Espaços com reservas (não podem ser deletados):", espacosComReservas.length);
 
-            if (codigosManterNaoNaLista.length > 0) {
-              console.log("AVISO: Os seguintes espaços têm reservas e não foram removidos:", codigosManterNaoNaLista);
+          const espacosParaManterIds = new Set(espacosComReservas);
+          const espacosParaDeletar = espacosExistentes.filter((esp: any) => !espacosParaManterIds.has(esp.idEspaco));
+
+          console.log("Espaços que podem ser deletados:", espacosParaDeletar.length);
+
+          if (espacosParaDeletar.length > 0) {
+            const idsParaDeletar = espacosParaDeletar.map((esp: any) => esp.idEspaco);
+            await prisma.espaco.deleteMany({
+              where: { idEspaco: { in: idsParaDeletar } },
+            });
+            console.log(`${idsParaDeletar.length} espaços deletados com sucesso.`);
+          }
+
+          const espacosParaManter = espacosExistentes.filter((esp: any) => espacosParaManterIds.has(esp.idEspaco));
+
+          console.log(
+            "Espaços que serão mantidos (têm reservas):",
+            espacosParaManter.map((e: any) => e.codigoEspaco),
+          );
+
+          const codigosExistentes = new Set(espacosParaManter.map((e: any) => e.codigoEspaco));
+          const codigosNovosRecebidos = new Set(
+            Array.isArray(espacos)
+              ? espacos.map((c: string) => c?.toString().trim()).filter((c: string) => c !== "")
+              : [],
+          );
+
+          const espacosParaCriar = Array.from(codigosNovosRecebidos).filter(
+            (codigo: string) => !codigosExistentes.has(codigo),
+          );
+
+          console.log("Espaços novos para criar:", espacosParaCriar);
+
+          if (espacosParaCriar.length > 0) {
+            const novosEspacos = espacosParaCriar.map((codigo: string) => {
+              const espacoObj: any = {
+                codigoEspaco: codigo,
+                idSalaPertence: Number(idSala),
+              };
+
+              if (userId !== null) {
+                espacoObj.idUsuarioCriador = userId;
+              }
+
+              return espacoObj;
+            });
+
+            console.log("Dados para criação de novos espaços:", novosEspacos);
+
+            try {
+              await prisma.espaco.createMany({
+                data: novosEspacos,
+                skipDuplicates: true,
+              });
+              console.log(`${novosEspacos.length} novos espaços criados.`);
+            } catch (insertError) {
+              console.error("Erro ao criar novos espaços:", insertError);
+              const novosEspacosSemUsuario = espacosParaCriar.map((codigo: string) => ({
+                codigoEspaco: codigo,
+                idSalaPertence: Number(idSala),
+              }));
+
+              await prisma.espaco.createMany({
+                data: novosEspacosSemUsuario,
+                skipDuplicates: true,
+              });
+              console.log("Espaços criados sem idUsuarioCriador.");
             }
+          }
+
+          const codigosManterNaoNaLista = espacosParaManter
+            .filter((e: any) => !codigosNovosRecebidos.has(e.codigoEspaco))
+            .map((e: any) => e.codigoEspaco);
+
+          if (codigosManterNaoNaLista.length > 0) {
+            console.log("AVISO: Os seguintes espaços têm reservas e não foram removidos:", codigosManterNaoNaLista);
           }
         } catch (error) {
           console.error("Erro no processamento de espaços:", error);
@@ -256,22 +249,19 @@ export async function POST(req: Request) {
     } else {
       console.log("CRIANDO NOVA SALA");
 
-      const { data: novaSala, error: insertError } = await supabase
-        .from("Sala")
-        .insert({
+      if (userId === null) {
+        return NextResponse.json({ success: false, error: "Usuário criador não identificado." }, { status: 400 });
+      }
+
+      const novaSala = await prisma.sala.create({
+        data: {
           nomeSala: nomeSala.trim(),
           mapa: mapa.trim(),
           limiteHorasReserva: Number(limiteHorasReserva),
           ativa,
           idUsuarioCriador: userId,
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error("Erro ao criar sala:", insertError);
-        return NextResponse.json({ success: false, error: "Erro ao criar sala." }, { status: 400 });
-      }
+        },
+      });
 
       console.log("Nova sala criada. ID:", novaSala.idSala);
 
@@ -281,8 +271,8 @@ export async function POST(req: Request) {
           .filter((codigo: string) => codigo !== "");
 
         if (espacosValidos.length > 0) {
-          const novosEspacos: EspacoInsert[] = espacosValidos.map((codigo: string) => {
-            const espacoObj: EspacoInsert = {
+          const novosEspacos = espacosValidos.map((codigo: string) => {
+            const espacoObj: any = {
               codigoEspaco: codigo,
               idSalaPertence: novaSala.idSala,
             };
@@ -294,21 +284,23 @@ export async function POST(req: Request) {
             return espacoObj;
           });
 
-          const { error: insertEspError } = await supabase.from("Espaco").insert(novosEspacos);
-
-          if (insertEspError) {
+          try {
+            await prisma.espaco.createMany({
+              data: novosEspacos,
+              skipDuplicates: true,
+            });
+          } catch (insertEspError) {
             console.error("Erro ao inserir espaços na nova sala:", insertEspError);
 
-            const novosEspacosSemUsuario: EspacoInsert[] = espacosValidos.map((codigo: string) => ({
+            const novosEspacosSemUsuario = espacosValidos.map((codigo: string) => ({
               codigoEspaco: codigo,
               idSalaPertence: novaSala.idSala,
             }));
 
-            const { error: insertError2 } = await supabase.from("Espaco").insert(novosEspacosSemUsuario);
-
-            if (insertError2) {
-              console.error("Erro mesmo sem idUsuarioCriador:", insertError2);
-            }
+            await prisma.espaco.createMany({
+              data: novosEspacosSemUsuario,
+              skipDuplicates: true,
+            });
           }
         }
       }

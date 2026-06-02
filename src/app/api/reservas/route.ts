@@ -106,7 +106,11 @@ export const GET = Auth(async (req: Request) => {
       skip: (page - 1) * pageSize,
       take: pageSize,
       include: {
-        espaco: true,
+        espaco: {
+          include: {
+            sala: true,
+          },
+        },
         criador: {
           select: { idUsuario: true, nome: true, email: true, foto: true },
         },
@@ -125,9 +129,19 @@ export const GET = Auth(async (req: Request) => {
       });
     }
 
+    const mappedReservas = reservas.map((r: any) => ({
+      ...r,
+      Espaco: r.espaco
+        ? {
+            ...r.espaco,
+            Sala: r.espaco.sala,
+          }
+        : null,
+    }));
+
     return NextResponse.json({
       success: true,
-      reservas,
+      reservas: mappedReservas,
       total,
       totalUsuarioLogado,
       pageSize,
@@ -240,7 +254,22 @@ export const DELETE = Auth(async (req: Request) => {
     });
 
     const isAdmin = solicitante?.admin === true;
-    const agora = new Date();
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(new Date());
+    const getVal = (type: string) => parts.find((p) => p.type === type)?.value;
+
+    const agora = new Date(
+      `${getVal("year")}-${getVal("month")}-${getVal("day")}T${getVal("hour")}:${getVal("minute")}:${getVal("second")}.000Z`
+    );
 
     if (reserva.horaFim < agora && !isAdmin) {
       return NextResponse.json(

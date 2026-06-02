@@ -345,7 +345,7 @@ export default function SalaEspacoPage() {
         nomeSala: nomeSala.trim(),
         mapa: mapaUrl,
         limiteHorasReserva: limiteHoras,
-        ativa: situacao === "Ativa",
+        ativa: true,
         espacos: espacos.filter((esp) => esp.trim() !== ""),
       };
 
@@ -520,54 +520,19 @@ export default function SalaEspacoPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-                  <div>
-                    <label htmlFor="nomeSala" className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
-                      Nome da Sala:<span className="text-red-500 ml-1">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="nomeSala"
-                      className="w-full border border-gray-300 rounded-lg p-3 text-sm md:text-base focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition"
-                      value={nomeSala}
-                      onChange={(e) => setNomeSala(e.target.value)}
-                      required
-                      placeholder="Ex: Sala de Reuniões A"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="text-gray-700 font-medium mb-2 text-sm md:text-base">Situação:</div>
-                    <div className="flex items-center">
-                      <div
-                        role="switch"
-                        aria-checked={situacao === "Ativa"}
-                        tabIndex={0}
-                        onClick={toggleSituacao}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            toggleSituacao();
-                          }
-                        }}
-                        className={`relative w-28 h-10 cursor-pointer rounded-full transition-all duration-300 ${
-                          situacao === "Ativa" ? "bg-teal-500" : "bg-red-500"
-                        }`}
-                      >
-                        <div
-                          className={`absolute top-1 left-1 h-8 w-8 bg-white rounded-full shadow-md transition-all duration-300 ${
-                            situacao === "Ativa" ? "translate-x-20" : "translate-x-0"
-                          }`}
-                        />
-                        <span className="absolute inset-0 flex items-center justify-center text-white font-semibold text-sm">
-                          {situacao === "Ativa" ? "Ativa" : "Inativa"}
-                        </span>
-                      </div>
-                      <span className="ml-3 text-gray-600 text-sm">
-                        {situacao === "Ativa" ? "Sala disponível para reservas" : "Sala temporariamente indisponível"}
-                      </span>
-                    </div>
-                  </div>
+                <div className="max-w-xl">
+                  <label htmlFor="nomeSala" className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
+                    Nome da Sala:<span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="nomeSala"
+                    className="w-full border border-gray-300 rounded-lg p-3 text-sm md:text-base focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition"
+                    value={nomeSala}
+                    onChange={(e) => setNomeSala(e.target.value)}
+                    required
+                    placeholder="Ex: Sala de Reuniões A"
+                  />
                 </div>
 
                 <div className="max-w-md">
