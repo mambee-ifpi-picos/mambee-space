@@ -123,6 +123,23 @@ export default function ReservasPage() {
     email: string;
   } | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [modalConfirmacao, setModalConfirmacao] = useState<{
+    visible: boolean;
+    idReserva: number | null;
+  }>({ visible: false, idReserva: null });
+
+  const [toast, setToast] = useState<{
+    visible: boolean;
+    message: string;
+    type: "success" | "error";
+  }>({ visible: false, message: "", type: "success" });
+
+  const showToast = useCallback((message: string, type: "success" | "error" = "success") => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => {
+      setToast((prev) => ({ ...prev, visible: false }));
+    }, 4000);
+  }, []);
 
   const debugFetch = useCallback(async (input: RequestInfo | URL, init?: RequestInit) => {
     const res = await fetch(input, init);
@@ -310,19 +327,19 @@ export default function ReservasPage() {
     return () => clearTimeout(timer);
   }, [busca, buscaAtiva, executarBusca]);
 
-  const cancelarReserva = async (idReserva: number) => {
+  const cancelarReserva = (idReserva: number) => {
     if (!usuarioLogado) {
-      alert("Você precisa estar logado para cancelar uma reserva");
+      showToast("Você precisa estar logado para cancelar uma reserva", "error");
       return;
     }
 
-    if (!confirm("Tem certeza que deseja cancelar esta reserva?")) {
-      return;
-    }
+    setModalConfirmacao({ visible: true, idReserva });
+  };
 
+  const confirmarCancelamento = async (idReserva: number) => {
     setDeletingId(idReserva);
     try {
-      const url = `/api/reservas?idReserva=${idReserva}&idUsuario=${usuarioLogado.idUsuario}`;
+      const url = `/api/reservas?idReserva=${idReserva}&idUsuario=${usuarioLogado!.idUsuario}`;
       const response = await fetch(url, {
         method: "DELETE",
       });
@@ -335,13 +352,13 @@ export default function ReservasPage() {
 
       if (result.success) {
         carregarReservas(pagina, buscaAtiva);
-        alert("Reserva cancelada com sucesso!");
+        showToast("Reserva cancelada com sucesso!", "success");
       } else {
         throw new Error(result.error || "Erro ao cancelar reserva");
       }
     } catch (error) {
       console.error("Erro ao cancelar reserva:", error);
-      alert(error instanceof Error ? error.message : "Erro ao cancelar reserva");
+      showToast(error instanceof Error ? error.message : "Erro ao cancelar reserva", "error");
     } finally {
       setDeletingId(null);
     }
@@ -380,7 +397,53 @@ export default function ReservasPage() {
   }
 
   return (
-    <main className="max-w-6xl mx-auto px-8 py-8 space-y-6">
+    <>
+      {toast.visible && (
+        <div
+          className={`fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-md shadow-lg z-50 border transition-all duration-300 ${
+            toast.type === "success"
+              ? "bg-teal-500 border-teal-300 text-white"
+              : "bg-red-500 border-red-500 text-white"
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
+
+      {modalConfirmacao.visible && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-gray-200 transform scale-100 transition-all">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Cancelar Reserva</h3>
+            <p className="text-gray-600 text-sm mb-6">
+              Tem certeza que deseja cancelar esta reserva? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setModalConfirmacao({ visible: false, idReserva: null })}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-gray-700 text-sm font-semibold transition-colors"
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = modalConfirmacao.idReserva;
+                  setModalConfirmacao({ visible: false, idReserva: null });
+                  if (id !== null) {
+                    await confirmarCancelamento(id);
+                  }
+                }}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="max-w-6xl mx-auto px-8 py-8 space-y-6">
       <section className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <label htmlFor="search" className="sr-only">
           Buscar pelo usuário
@@ -448,9 +511,9 @@ export default function ReservasPage() {
               : undefined;
           const user = userByEmail ?? userById;
 
-          const displayName = user?.nome ?? (creatorEmail ? getLocalPart(creatorEmail) : `Usuário ${creatorId}`);
+          const displayName = user?.nome ?? reserva.criador?.nome ?? (creatorEmail ? getLocalPart(creatorEmail) : `Usuário ${creatorId}`);
           const displayEmail = user?.email ?? creatorEmail ?? null;
-          const avatarFoto = user?.foto ?? null;
+          const avatarFoto = user?.foto ?? reserva.criador?.foto ?? null;
           const initials = initialsFromNameOrEmail(user?.nome ?? displayEmail, displayEmail);
 
           const podeCancelar = podeCancelarReserva(reserva);
@@ -480,12 +543,10 @@ export default function ReservasPage() {
                     }}
                   >
                     {avatarFoto ? (
-                      <Image
+                      <img
                         src={avatarFoto}
                         alt={`Foto de ${displayName}`}
-                        width={32}
-                        height={32}
-                        className="rounded-full border border-gray-300 object-cover"
+                        className="w-full h-full rounded-full border border-gray-300 object-cover"
                       />
                     ) : (
                       <div
@@ -636,5 +697,6 @@ export default function ReservasPage() {
         </div>
       )}
     </main>
+    </>
   );
 }

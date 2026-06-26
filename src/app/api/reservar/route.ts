@@ -97,7 +97,7 @@ export const POST = Auth(async (request: NextRequest, _user: User | null) => {
     const getVal = (type: string) => parts.find((p) => p.type === type)?.value;
 
     const agora = new Date(
-      `${getVal("year")}-${getVal("month")}-${getVal("day")}T${getVal("hour")}:${getVal("minute")}:${getVal("second")}.000Z`
+      `${getVal("year")}-${getVal("month")}-${getVal("day")}T${getVal("hour")}:${getVal("minute")}:00.000Z`
     );
 
     const inicio = new Date(`${data}T${horaInicio}:00.000Z`);

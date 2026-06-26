@@ -456,13 +456,10 @@ export default function ReservarEspaco() {
                           {}
                           <div className="shrink-0">
                             {res.criador.foto ? (
-                              <Image
+                              <img
                                 src={tratarCaminhoImagem(res.criador.foto)}
                                 alt="Avatar"
-                                width={40}
-                                height={40}
                                 className="w-10 h-10 rounded-full object-cover border border-gray-200"
-                                unoptimized={true}
                               />
                             ) : (
                               <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold border border-gray-300">
