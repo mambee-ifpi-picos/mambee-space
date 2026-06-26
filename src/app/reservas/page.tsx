@@ -21,7 +21,7 @@ type Reserva = {
   idEspacoReservado?: number;
   Espaco?: Espaco | null;
   espaco?: Espaco | null;
-  criador?: { nome?: string; email?: string; idUsuario?: number } | null;
+  criador?: { nome?: string; email?: string; idUsuario?: number; foto?: string | null } | null;
   idCriador?: number;
 };
 type Usuario = {
